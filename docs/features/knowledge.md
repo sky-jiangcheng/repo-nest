@@ -65,9 +65,27 @@ highlight.js 代码高亮、Mermaid 图、KaTeX 数学公式、GFM Callout 与�
 - 查看任意版本与当前的行级 LCS diff（+/- 标记）
 - 一键恢复到任意历史版本
 
-## 导入 Claude 记忆
+## 从 agent 记忆导入知识库
 
-一键将 `~/.claude/projects/*/memory/*.md` 幂等导入为知识笔记（重复导入更新而非重复创建）。**设置 → 插件** 可查看导入源并手动触发。
+应用内置 5 个知识源，把你在各 agent 工具里留下的记忆/会话转录幂等导入为知识笔记（重复导入更新而非重复创建）：
+
+| 源 | 触发 | 读什么 |
+|----|------|--------|
+| `claude` | 启动自动 | `~/.claude/projects/*/memory/*.md` |
+| `codex` | 手动 | 会话转录 `rollout-*.jsonl`（首条指令 + 末条回复） |
+| `opencode` | 手动 | 会话标题与摘要 |
+| `openclaw` | 手动 | `~/.openclaw-autoclaw/workspace/*.md` |
+| `hermes` | 手动 | `~/.hermes/memories/{MEMORY,USER}.md` |
+
+**设置 → 插件** 可查看全部导入源、逐个手动触发，并看到每个源的 `{created, updated, skipped}` 统计。
+
+三条容易踩的规则：
+
+1. **导入按项目归属，不是全堆进知识库首页。** 文档靠项目名 / 仓库路径匹配到具体项目，匹配不上的计入 `skipped` 而不入库。所以先扫描入库项目、再导入，命中率才高。
+2. **`openclaw` 与 `hermes` 需先配置目标项目**（`openclaw_project` / `hermes_project`），否则静默全部 `skipped`。
+3. **重复导入不是失败。** `created=0` + `updated=N` 说明幂等命中，内容已更新。
+
+导入的笔记 `kind` 为 `knowledge`（记忆类）或 `log`（会话类），写入后立即可被全文搜索命中。各源的完整路径、匹配规则与限制见 [知识源导入](../plugins/overview.md)。
 
 ## 导出
 

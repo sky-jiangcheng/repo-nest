@@ -83,6 +83,16 @@ flowchart TB
 - **桌面端**：首页 **快速创建笔记** 选项目，写下“这个项目怎么跑起来的 / 坑在哪”（见[知识库](features/knowledge.md)）；
 - **AI 侧**：会话结束自动写入 `handoff` 笔记，下一个会话开头自动置顶（见[AI 集成](features/ai-integration.md)）。
 
+### 6. 导入已有的 agent 记忆（可选）
+
+如果你在 Claude / Codex / OpenCode / OpenClaw / Hermes 里已经攒过记忆或会话记录，可以直接导成知识笔记，不用手抄。**设置 → 插件** 里能看到全部 5 个源：
+
+- `claude` 记忆默认随应用启动自动导入，无需手动操作；
+- 其余四个源在 **设置 → 插件** 逐个点击触发，每次会显示 `新增 / 更新 / 跳过` 三个数字；
+- `openclaw` 与 `hermes` 导入前需先指定归属项目（否则会全部计为“跳过”）。
+
+建议在第 3 步扫描完成之后再做这步 —— 导入靠项目名匹配归属，项目先入库了命中率才高。详见[知识源导入](plugins/overview.md)。
+
 ## 核心功能速览
 
 | 功能 | 定位 | 说明 |
@@ -92,7 +102,7 @@ flowchart TB
 | 项目理解与检索 | 核心 | 命令面板 `⌘/Ctrl+K`、全局搜索、项目上下文跳转 |
 | AI 集成 | 核心 | llms.txt、笔记导出、MCP server（含 agent-score 自检，见[AI 集成](features/ai-integration.md)） |
 | 仪表盘 | 支持 | 每日目标进度环、项目卡片、趋势折线图、提交热力图 |
-| 插件系统 | 实验 | yaegi 进程内 Go 脚本 + 知识源导入（见[知识源导入](plugins/overview.md)） |
+| 插件系统 | 实验 | yaegi 进程内 Go 脚本 + 5 个内置知识源导入（见[知识源导入](plugins/overview.md)） |
 
 各页展开的图：仪表盘的页面分层见[仪表盘](features/dashboard.md#页面结构自上而下)，笔记的保存与版本链路见[知识库](features/knowledge.md)，知识库为何比 AI 直读 git 更划算见[存储结构优化与 AI 价值](storage-optimization.md#二比-ai-直接读-git-仓库的优势)。
 
