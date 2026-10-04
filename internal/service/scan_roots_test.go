@@ -37,6 +37,9 @@ func TestNormalizeScanRoots(t *testing.T) {
 		input     []string
 		wantRoots []string
 		wantRej   map[string]string // path -> reason
+		// Set when the case asserts platform path semantics that only hold on
+		// case-insensitive filesystems (Windows, macOS).
+		skipUnlessCaseInsensitive bool
 	}{
 		{
 			name:      "plain absolute path is kept as-is",
@@ -92,15 +95,24 @@ func TestNormalizeScanRoots(t *testing.T) {
 			wantRej:   map[string]string{"": "empty", "nope-relative": "relative"},
 		},
 		{
-			name:      "duplicate detection folds case on case-insensitive platforms",
-			input:     []string{real, strings.ToUpper(real)},
-			wantRoots: []string{real},
-			wantRej:   map[string]string{strings.ToUpper(real): "duplicate"},
+			// Case-folding is platform-conditional by design: dedupeKey only
+			// folds on Windows/macOS, because Linux paths really are
+			// case-sensitive. On Linux the upper-cased spelling is a different
+			// (non-existent) path, so it must fall through to the Stat check
+			// and be rejected as not_found rather than as a duplicate.
+			skipUnlessCaseInsensitive: true,
+			name:                      "duplicate detection folds case on case-insensitive platforms",
+			input:                     []string{real, strings.ToUpper(real)},
+			wantRoots:                 []string{real},
+			wantRej:                   map[string]string{strings.ToUpper(real): "duplicate"},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.skipUnlessCaseInsensitive && runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
+				t.Skip("case-insensitive path semantics only apply to Windows and macOS")
+			}
 			roots, rejected := normalizeScanRoots(tc.input)
 
 			if len(roots) != len(tc.wantRoots) {
