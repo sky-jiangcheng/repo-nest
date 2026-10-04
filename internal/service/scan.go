@@ -15,9 +15,9 @@ import (
 
 // ScanResult holds the result of a scan operation.
 type ScanResult struct {
-	Success    bool `json:"success"`
-	ReposFound int  `json:"repos_found"`
-	Projects   int  `json:"projects"`
+	Success    bool   `json:"success"`
+	ReposFound int    `json:"repos_found"`
+	Projects   int    `json:"projects"`
 	// SyncErrors counts project groups whose DB sync failed while others
 	// succeeded. A partial sync used to report plain success, leaving the
 	// agent to believe the knowledge base was complete.
@@ -228,6 +228,31 @@ func (s *Service) runCollectedScan(ctx context.Context) (out ScanResult, err err
 		scannedPaths = append(scannedPaths, r.Path)
 	}
 
+	// A scan that walked the configured roots and came back with nothing, while
+	// the knowledge base already holds repositories, means the walk failed —
+	// the root is unreadable, a symlink target vanished, an external volume is
+	// unmounted. It does NOT mean the user deleted every repo. Reconciling
+	// against that empty result would delete all of them, and stats computed
+	// from git history cannot be rebuilt without re-walking every project.
+	// Abort instead; the next successful scan reconciles normally.
+	if len(scannedPaths) == 0 {
+		existing, err := db.GetCollectedProjectIDs(ctx, s.db)
+		if err != nil {
+			log.Printf("count collected projects before cleanup: %v", err)
+		}
+		if len(existing) > 0 {
+			return ScanResult{}, fmt.Errorf(
+				"scan found 0 repositories under %d configured root(s) but %d project(s) are on record; "+
+					"refusing to delete them — check that the roots exist and are readable",
+				len(roots), len(existing))
+		}
+		// Genuinely empty knowledge base with genuinely empty scan: nothing to
+		// lose, so fall through. CleanupStaleDataTx still refuses the empty
+		// path set, which is the right outcome — there is nothing to clean.
+		return ScanResult{}, fmt.Errorf("scan found 0 repositories under %d configured root(s): %w",
+			len(roots), db.ErrNoScannedPaths)
+	}
+
 	tx, err := s.db.Begin()
 	if err != nil {
 		return ScanResult{ReposFound: len(repos)}, fmt.Errorf("begin scan transaction: %w", err)
@@ -267,31 +292,6 @@ func (s *Service) runCollectedScan(ctx context.Context) (out ScanResult, err err
 	// when it is empty.
 	if syncErrs > 0 && syncErrs == len(groups) {
 		return ScanResult{}, fmt.Errorf("scan sync failed for all %d discovered project group(s)", len(groups))
-	}
-
-	// A scan that walked the configured roots and came back with nothing, while
-	// the knowledge base already holds repositories, means the walk failed —
-	// the root is unreadable, a symlink target vanished, an external volume is
-	// unmounted. It does NOT mean the user deleted every repo. Reconciling
-	// against that empty result would delete all of them, and stats computed
-	// from git history cannot be rebuilt without re-walking every project.
-	// Abort instead; the next successful scan reconciles normally.
-	if len(scannedPaths) == 0 {
-		existing, err := db.GetCollectedProjectIDs(ctx, s.db)
-		if err != nil {
-			log.Printf("count collected projects before cleanup: %v", err)
-		}
-		if len(existing) > 0 {
-			return ScanResult{}, fmt.Errorf(
-				"scan found 0 repositories under %d configured root(s) but %d project(s) are on record; "+
-					"refusing to delete them — check that the roots exist and are readable",
-				len(roots), len(existing))
-		}
-		// Genuinely empty knowledge base with genuinely empty scan: nothing to
-		// lose, so fall through. CleanupStaleDataTx still refuses the empty
-		// path set, which is the right outcome — there is nothing to clean.
-		return ScanResult{}, fmt.Errorf("scan found 0 repositories under %d configured root(s): %w",
-			len(roots), db.ErrNoScannedPaths)
 	}
 
 	if err := db.CleanupStaleDataTx(tx, scannedPaths); err != nil {
