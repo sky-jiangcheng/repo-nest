@@ -423,8 +423,13 @@ jobs:
           set -euo pipefail
           VER="${{ steps.ver.outputs.version }}"
           SUMS="assets/releases/v$VER/SHA256SUMS"
-          # Gate 1: no placeholder may survive. brew/scoop hard-fail on them.
-          if grep -rn "__FILL_SHA256_" packaging/; then
+          # Gate 1: no placeholder may survive in the MANIFESTS. brew/scoop
+          # hard-fail on them. The grep is scoped to the manifest trees only:
+          # an unscoped grep over packaging/ also matched the README, which
+          # documents the placeholder format verbatim, so this gate failed on
+          # its own docs and blocked every release fill since it was added
+          # (v1.13.0, v1.14.0, v1.14.1).
+          if grep -rn "__FILL_SHA256_" packaging/homebrew packaging/scoop; then
             echo "ERROR: at least one asset this release should ship is missing" >&2
             echo "       (its manifest kept the placeholder). Check the release page." >&2
             exit 1
