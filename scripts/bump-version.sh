@@ -10,7 +10,10 @@
 #   ./scripts/bump-version.sh 1.5.4
 #   ./scripts/bump-version.sh   # no arg = read current version from wails.json, just sync
 #
-# After running: git commit, git tag v<X.Y.Z>, git push --tags.
+# After running: git commit, git tag v<X.Y.Z>, then push that one tag.
+# Push the version tag explicitly rather than `git push --tags`: the latter
+# also pushes every local tag and fails outright when any historical tag
+# disagrees with the remote, which can leave the intended release unpushed.
 set -euo pipefail
 
 # Accept either "1.5.4" or "v1.5.4"; store without leading v.
@@ -120,4 +123,4 @@ echo
 echo "Then commit & tag:"
 echo "  git add -A && git commit -m \"chore: bump version to $VERSION\""
 echo "  git tag -a v$VERSION -m \"Release v$VERSION\""
-echo "  git push origin master --tags"
+echo "  git push github master && git push github v<X.Y.Z>"
