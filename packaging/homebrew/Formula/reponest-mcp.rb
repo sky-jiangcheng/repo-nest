@@ -14,13 +14,13 @@ class ReponestMcp < Formula
 
   if OS.mac? && Hardware::CPU.arm?
     url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/reponest-mcp-darwin-arm64.tar.gz"
-    sha256 "2b53631b5ae4e77ca5ef21a13998f18ae48d1e803defae41aa35f501ee61a306"
+    sha256 "a02b258942c7d9819181e261a0a232cb2a31690984bbdceaac98708ed15e053b"
   elsif OS.mac? && Hardware::CPU.is_64_bit?
     url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/reponest-mcp-darwin-amd64.tar.gz"
-    sha256 "f186bce0c3f66710a6ca0bddc0945e4241b88635f4446d54423b8b26d9d45034"
+    sha256 "0e140e447dc157c34bf34405b1875a1a7d430ddba47f0eeed7a572ec8e8a2077"
   else
     url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/reponest-mcp-linux-amd64.tar.gz"
-    sha256 "1135d6243be015611bcf6102feaa9b70b49cc636bc301c96a7f05ed62a37855a"
+    sha256 "58adb11b746e97c60d3a94d4d83a88c13f5f9d594b02681b55b630b93f600a36"
   end
 
   def install
