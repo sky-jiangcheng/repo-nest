@@ -47,6 +47,14 @@ func main() {
 	gitUser := platform.GetGitUserName()
 	svc := service.New(database, gitUser)
 
+	// Run the same startup sequence the desktop App runs. Without it the
+	// knowledge-source importers are never registered, so GetKnowledgeSources
+	// returns an empty list and TriggerKnowledgeImport fails with
+	// `unknown knowledge source`. Startup is sync.Once-guarded and also honours
+	// the auto_import config key, so headless clients get the same import
+	// behaviour as the desktop app instead of a silently reduced feature set.
+	svc.Startup()
+
 	// Bind the same App object the desktop Wails layer exposes, so the browser
 	// frontend can reach every capability via /api/rpc (see httpapi/rpc.go).
 	mux := httpapi.New(svc, app.New(svc))
