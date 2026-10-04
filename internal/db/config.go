@@ -38,3 +38,10 @@ func GetAllConfigs(db *sql.DB) (map[string]string, error) {
 	}
 	return configs, rows.Err()
 }
+
+// DeleteConfig removes a config key entirely. Used by tooling (cmd/abeval)
+// that temporarily flips a key and must restore "absent", not just a value.
+func DeleteConfig(db *sql.DB, key string) error {
+	_, err := db.Exec("DELETE FROM app_config WHERE key = ?", key)
+	return err
+}

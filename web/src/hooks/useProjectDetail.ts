@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProjectDetail, getProjectOverview, updateProjectLevel } from '../api/client'
 import type { ProjectDetail, ProjectOverview } from '../api/client'
@@ -23,16 +23,29 @@ export function useProjectDetail(id: string | undefined) {
 
   const load = useCallback(() => {
     if (!id) return
+    // Sequence guard: /project/:id reuses this component instance across
+    // navigation, so a slow response for the previous project id would
+    // otherwise overwrite the new project's page with the old project's data.
+    const seq = ++loadSeqRef.current
+    const current = () => loadSeqRef.current === seq
     setLoading(true)
     setError('')
     getProjectDetail(Number(id))
       .then(p => {
+        if (!current()) return
         setProject(p)
-        getProjectOverview(Number(id)).then(setOverview).catch(() => {})
+        // The overview is nested inside detail's chain: it needs the same
+        // guard, or a late overview could still land after the next load.
+        getProjectOverview(Number(id))
+          .then(ov => { if (current()) setOverview(ov) })
+          .catch(() => {})
       })
-      .catch((e) => setError(e instanceof Error ? e.message : t('common.failed')))
-      .finally(() => setLoading(false))
+      .catch((e) => { if (current()) setError(e instanceof Error ? e.message : t('common.failed')) })
+      .finally(() => { if (current()) setLoading(false) })
   }, [id, t])
+
+  // Keeps the token for the most recent load; anything older is discarded.
+  const loadSeqRef = useRef(0)
 
   // Initial + on-`id`-change data load. Synchronous setState (loading/error
   // reset) is intentional here; matches the established set-state-in-effect

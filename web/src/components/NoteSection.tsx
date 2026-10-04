@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   listNotes, createNoteWithMeta, updateNoteFull, deleteNote, pinNote, moveNote,
@@ -38,12 +38,23 @@ function NoteSection({ projectId, autoNew = false }: Props) {
   const { data: projectsData } = useApiData(() => getProjects(undefined, false), [], { cacheKey: 'projects:all' })
   const projects = projectsData ?? []
 
-  const { run, retryLast, lastOpRef } = useNoteMutations(setError)
+  const { run, retryLast } = useNoteMutations(setError)
   const vh = useNoteVersionHistory(run)
 
+  // Sequence guard: when the project switches (or a refetch races a refetch),
+  // a late response for an older query must not overwrite the current list —
+  // or flip the loading/error state of a request that is no longer current.
+  const fetchSeqRef = useRef(0)
   const fetchNotes = useCallback(() => {
-    listNotes(projectId).then(setNotes).finally(() => setLoading(false))
-  }, [projectId])
+    const seq = ++fetchSeqRef.current
+    listNotes(projectId)
+      .then(notes => { if (fetchSeqRef.current === seq) setNotes(notes) })
+      .catch(e => {
+        // A failed load must not masquerade as the "no notes yet" empty state.
+        if (fetchSeqRef.current === seq) setError(`${t('project.loadFailed')}: ${e instanceof Error ? e.message : ''}`)
+      })
+      .finally(() => { if (fetchSeqRef.current === seq) setLoading(false) })
+  }, [projectId, t])
 
   useEffect(() => { fetchNotes() }, [fetchNotes])
 
@@ -129,11 +140,13 @@ function NoteSection({ projectId, autoNew = false }: Props) {
   const handlePin = async (note: Note) => {
     const nextPinned = !note.pinned
     setNotes(prev => prev.map(n => n.id === note.id ? { ...n, pinned: nextPinned } : n))
-    await run(async () => {
+    // Roll back the optimistic toggle only when THIS pin actually failed —
+    // run() resolves to success/failure (the old lastOpRef check fired on any
+    // earlier failed operation and rolled back successful pins too).
+    const ok = await run(async () => {
       await pinNote(note.id, nextPinned)
     }, t('project.saveFailed') + ': ')
-    // Roll back the optimistic toggle if the pin actually failed.
-    if (lastOpRef.current) setNotes(prev => prev.map(n => n.id === note.id ? { ...n, pinned: note.pinned } : n))
+    if (!ok) setNotes(prev => prev.map(n => n.id === note.id ? { ...n, pinned: note.pinned } : n))
   }
 
   if (loading) {

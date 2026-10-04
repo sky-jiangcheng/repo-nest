@@ -159,10 +159,20 @@ func UpdateNoteFull(db *sql.DB, noteID int64, content, title, tags, kind string,
 	return tx.Commit()
 }
 
-// DeleteNote removes a note. Deleting an absent id is not an error.
+// DeleteNote removes a note. Deleting an absent id is not an error. The
+// derived vector index is kept in sync best-effort: its rows are keyed by
+// note id, and without this cleanup deleted notes leave orphaned vectors
+// that consume KNN's recall budget until the next full rebuild.
 func DeleteNote(db *sql.DB, noteID int64) error {
-	_, err := db.Exec("DELETE FROM project_notes WHERE id = ?", noteID)
-	return err
+	if _, err := db.Exec("DELETE FROM project_notes WHERE id = ?", noteID); err != nil {
+		return err
+	}
+	// The note IS deleted at this point, so an embedding cleanup failure is
+	// not worth failing the call over — the index is a rebuildable cache.
+	if VectorIndexReady(db) {
+		_ = DeleteNoteEmbedding(db, noteID) //nolint:errcheck // repairable via RebuildEmbeddings
+	}
+	return nil
 }
 
 // UpdateNoteMeta updates a note's editable metadata.

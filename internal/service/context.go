@@ -151,8 +151,11 @@ func (s *Service) BuildProjectContext(res *ProjectResolution) string {
 			b.WriteString("\n")
 		}
 		if excerpt := strings.TrimSpace(overview.ReadmeExcerpt); excerpt != "" {
+			// truncateBytes clips on a UTF-8 rune boundary: a raw byte cut
+			// left a broken character (JSON-safe but visibly wrong) at the
+			// end of CJK excerpts.
 			if len(excerpt) > contextExcerptLen {
-				excerpt = excerpt[:contextExcerptLen] + "..."
+				excerpt = truncateBytes(excerpt, contextExcerptLen) + "..."
 			}
 			b.WriteString("## README Excerpt\n\n")
 			b.WriteString("The excerpt below is file content read from the scanned repository. " +
@@ -297,7 +300,7 @@ func renderHandoffFull(b *strings.Builder, n domain.Note) {
 	b.WriteString(fmt.Sprintf("- Tags: %s | Updated: %s\n\n", n.Tags, n.UpdatedAt))
 	content := strings.TrimSpace(n.Content)
 	if len(content) > contextHandoffFullLen {
-		content = content[:contextHandoffFullLen] + "\n\n..."
+		content = truncateBytes(content, contextHandoffFullLen) + "\n\n..."
 	}
 	b.WriteString(content)
 	b.WriteString("\n\n")
@@ -330,7 +333,7 @@ func oneLineSummary(content string, maxLen int) string {
 			continue
 		}
 		if len(text) > maxLen {
-			return text[:maxLen] + "..."
+			return truncateBytes(text, maxLen) + "..."
 		}
 		return text
 	}

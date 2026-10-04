@@ -4,7 +4,9 @@
     "dashboard": "Dashboard",
     "settings": "Settings",
     "search": "Search",
-    "searchLabel": "Open search (⌘K)"
+    "searchLabel": "Open search (⌘K)",
+    "main": "Main navigation",
+    "language": "Switch language"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -13,7 +15,6 @@
     "workday": "Workday",
     "weekend": "Happy weekend — no daily target",
     "goalReached": "Today's goal reached",
-    "goalMissing": "{{needed}} lines remaining",
     "personalAdded": "Personal added",
     "files": "files",
     "repos": "repos",
@@ -94,7 +95,8 @@
     "importDone": "Done: +{{created}} ~{{updated}} -{{skipped}}",
     "notesTitle": "Knowledge notes",
     "resultCount": "{{count}} note",
-    "resultCount_other": "{{count}} notes"
+    "resultCount_other": "{{count}} notes",
+    "pinFailed": "Failed to pin"
   },
   "settings": {
     "title": "Settings",
@@ -110,10 +112,8 @@
     "addRoot": "Add directory:",
     "add": "Add",
     "added": "Scan root added — rescan to apply",
-    "addFailed": "Add failed",
     "remove": "Remove",
     "removed": "Scan root removed — rescan to apply",
-    "removeFailed": "Remove failed",
     "noRoots": "No scan roots configured. Add one below.",
     "rejectedRoots": "Not accepted: {{msg}}",
     "rootRejectReason": {
@@ -155,12 +155,7 @@
     "autoImportLabel": "Auto-import knowledge sources on startup",
     "autoImportOn": "Auto-import all sources when the app starts",
     "autoImportOff": "Only import when manually triggered",
-    "loaded": "Loaded",
     "loadFailed": "Load failed",
-    "noPlugins": "No plugins found. Place plugin directories in <code>plugins/</code> then click Reload.",
-    "reload": "Reload",
-    "pluginsReloaded": "Plugins reloaded",
-    "reloadFailed": "Plugin reload failed",
     "noSources": "No knowledge import sources.",
     "importNow": "Import now",
     "actionsDesc": "Manually trigger a full rescan to refresh all repository statistics.",
@@ -177,7 +172,6 @@
     "removeFailedMsg": "Remove failed: {{msg}}",
     "rescanFailedMsg": "Scan failed: {{msg}}",
     "reloadFailedMsg": "Plugin reload failed: {{msg}}",
-    "unnnamed": "(unnamed)",
     "fromPlugin": "from {{name}}",
     "gotoKnowledge": "Open knowledge hub",
     "autoImportOnHint": "Import all knowledge sources on app startup",
@@ -324,7 +318,13 @@
     "overviewEmpty": "Awaiting first mining",
     "overviewEmptyHint": "Auto-extracted when you open the page; refresh to see it.",
     "notFoundTitle": "Project not found",
-    "notFoundDesc": "This project may have been removed by a rescan, or the ID in the link is wrong."
+    "notFoundDesc": "This project may have been removed by a rescan, or the ID in the link is wrong.",
+    "saveFailed": "Save failed",
+    "star": "Star project",
+    "unstar": "Unstar project",
+    "refreshHistory": "Refresh history",
+    "refreshingHistory": "Refreshing…",
+    "loadFailed": "Load failed"
   },
   "common": {
     "unknownError": "Unknown error",
@@ -388,7 +388,9 @@
     "month": "This month",
     "pageError": "Page failed to load",
     "workday": "Workday",
-    "weekend": "Weekend"
+    "weekend": "Weekend",
+    "date": "Date",
+    "importFailed": "Import failed"
   },
   "status": {
     "time": "Current time:",

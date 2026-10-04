@@ -64,3 +64,57 @@ func TestNoteWriteBoundsAtDBLayer(t *testing.T) {
 		t.Errorf("note mutated by rejected writes: %+v", got)
 	}
 }
+
+// Deleting a note must not leave its embedding behind: orphaned vectors
+// consume KNN's k budget and are invisible to the inner-join materialisation,
+// so semantic recall degrades silently until a full rebuild.
+func TestDeleteNoteRemovesEmbedding(t *testing.T) {
+	database := setupTestDB(t)
+	defer database.Close()
+
+	pid := createTestProject(t, database, "vec")
+	note, err := CreateNote(database, pid, "to be deleted")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureVectorIndex(database, 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := PutNoteEmbedding(database, note.ID, []float32{1, 0}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := DeleteNote(database, note.ID); err != nil {
+		t.Fatalf("DeleteNote: %v", err)
+	}
+	ids, err := KnnNoteIDs(database, []float32{1, 0}, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) != 0 {
+		t.Fatalf("embedding for deleted note %d survived: %v", note.ID, ids)
+	}
+
+	// Cascade path: prune removes vectors for notes deleted outside DeleteNote.
+	other, err := CreateNote(database, pid, "cascade deleted")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := PutNoteEmbedding(database, other.ID, []float32{0, 1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec("DELETE FROM project_notes WHERE id = ?", other.ID); err != nil {
+		t.Fatal(err)
+	}
+	n, err := PruneNoteEmbeddings(database)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("prune should remove 1 orphan, removed %d", n)
+	}
+	ids, _ = KnnNoteIDs(database, []float32{0, 1}, 5)
+	if len(ids) != 0 {
+		t.Fatalf("orphaned embedding survived prune: %v", ids)
+	}
+}

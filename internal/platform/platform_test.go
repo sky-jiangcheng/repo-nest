@@ -1,11 +1,33 @@
 package platform
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 )
+
+// TestMain redirects every user-directory lookup into a throwaway tree before
+// any test runs. The real implementations create directories (MkdirAll) and
+// fire the once-per-process legacy gitbuddy->reponest rename, and these tests
+// must never touch the developer's actual HOME — before the isolation the
+// suite created ~/Library/Application Support/reponest for real and could
+// rename a genuine legacy data directory.
+func TestMain(m *testing.M) {
+	home, err := os.MkdirTemp("", "platform-test-home")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(home)
+	os.Setenv("HOME", home)
+	os.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	os.Setenv("XDG_STATE_HOME", filepath.Join(home, ".state"))
+	if runtime.GOOS == "windows" {
+		os.Setenv("AppData", filepath.Join(home, "AppData", "Roaming"))
+	}
+	os.Exit(m.Run())
+}
 
 func TestDefaultScanRoots(t *testing.T) {
 	roots := DefaultScanRoots()

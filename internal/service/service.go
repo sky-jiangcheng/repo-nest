@@ -40,6 +40,21 @@ type Service struct {
 	// the auto import.
 	startupOnce sync.Once
 
+	// Background goroutine plumbing: bgCtx is cancelled by Shutdown, and
+	// bgWG tracks the goroutines so Close() never races a writer. Every
+	// service-launched goroutine must go through bgGo — a panic in a bare
+	// `go` kills the whole process (net/http only recovers handler
+	// goroutines), and an untracked goroutine can still be writing when the
+	// database handle closes underneath it.
+	bgCtx    context.Context
+	bgCancel context.CancelFunc
+	bgWG     sync.WaitGroup
+
+	// statsRefreshInFlight deduplicates on-demand single-day stats refreshes
+	// keyed by "projectID|date": without it, every dashboard load for a date
+	// with no rows yet spawns another refresh goroutine per project.
+	statsRefreshInFlight sync.Map
+
 	// Scan engine state, guarded by scanMu.
 	scanMu          sync.Mutex
 	scanning        bool
@@ -71,7 +86,42 @@ func New(database *sql.DB, gitUser string) *Service {
 // NewWithDeps constructs a Service with explicitly supplied dependencies
 // (used by tests and future alternative providers).
 func NewWithDeps(database *sql.DB, provider git.Provider, runtime *pluginruntime.Runtime, gitUser string) *Service {
-	return &Service{db: database, git: provider, rt: runtime, guser: gitUser}
+	bgCtx, bgCancel := context.WithCancel(context.Background())
+	return &Service{db: database, git: provider, rt: runtime, guser: gitUser, bgCtx: bgCtx, bgCancel: bgCancel}
+}
+
+// bgGo runs fn on a tracked background goroutine: panics become log entries
+// instead of process kills, and Shutdown waits for the goroutine to settle
+// before the caller closes the database. The long-lived async scan (TriggerScan)
+// keeps its own lifecycle via scanCancel — it checks ctx between work units and
+// its post-commit writes are single-statement upserts, which SQLite serializes
+// safely even in the close-race window.
+func (s *Service) bgGo(name string, fn func(ctx context.Context)) {
+	if s.bgCtx == nil {
+		// Service built without NewWithDeps (tests): fall back to an
+		// untracked, un-cancellable goroutine rather than panicking on a nil
+		// context.
+		s.bgWG.Add(1)
+		go func() {
+			defer s.bgWG.Done()
+			s.runBgFn(name, fn, context.Background())
+		}()
+		return
+	}
+	s.bgWG.Add(1)
+	go func() {
+		defer s.bgWG.Done()
+		s.runBgFn(name, fn, s.bgCtx)
+	}()
+}
+
+func (s *Service) runBgFn(name string, fn func(ctx context.Context), ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("background %s panicked: %v", name, r)
+		}
+	}()
+	fn(ctx)
 }
 
 // gitUser returns the current "mine" author. Reads are guarded so the value
@@ -112,10 +162,15 @@ func (s *Service) Startup() {
 			len(s.rt.PluginStatuses()), len(s.rt.SourceStatuses()))
 
 		// Auto-import knowledge sources on startup (issue #36). Defaults to
-		// on; a user can disable it via the auto_import config key.
+		// on; a user can disable it via the auto_import config key. Tracked
+		// via bgGo so Shutdown waits for it instead of closing the database
+		// underneath a mid-import upsert.
 		if v, err := db.GetConfig(s.db, "auto_import"); err == nil && v != "0" {
-			go func() {
+			s.bgGo("auto-import", func(ctx context.Context) {
 				for _, r := range s.TriggerAllKnowledgeImports() {
+					if ctx.Err() != nil {
+						return
+					}
 					if r.Err != "" {
 						log.Printf("auto-import %q failed: %s", r.Name, r.Err)
 					} else {
@@ -123,18 +178,35 @@ func (s *Service) Startup() {
 							r.Name, r.Run.Created, r.Run.Updated, r.Run.Skipped)
 					}
 				}
-			}()
+			})
 		}
 	})
 }
 
-// Shutdown cancels any running scan.
+// Shutdown cancels the running scan, signals every background goroutine, and
+// waits (bounded) for them to settle. Callers may Close() the database only
+// after this returns; without the wait, an in-flight auto-import or stats
+// refresh would be writing into a closed handle. The timeout is a backstop —
+// a goroutine stuck on a slow git subprocess must not hang the exit path.
 func (s *Service) Shutdown() {
 	s.scanMu.Lock()
 	if s.scanCancel != nil {
 		s.scanCancel()
 	}
 	s.scanMu.Unlock()
+	if s.bgCancel != nil {
+		s.bgCancel()
+	}
+	done := make(chan struct{})
+	go func() {
+		s.bgWG.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		log.Printf("shutdown: background work did not settle in 3s; continuing")
+	}
 }
 
 // Health returns a health-check payload.

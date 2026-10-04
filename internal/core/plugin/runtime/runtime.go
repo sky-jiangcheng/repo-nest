@@ -171,6 +171,9 @@ func (r *Runtime) loadPlugin(dir string) {
 
 	ctx := r.newContext()
 	if err := init(ctx); err != nil {
+		// Roll back the handlers Init registered before failing: a failed
+		// plugin must not keep receiving events.
+		r.unregisterHandlers(ctx)
 		status.Err = fmt.Sprintf("Init: %v", err)
 		return
 	}
@@ -185,6 +188,9 @@ func (r *Runtime) loadPlugin(dir string) {
 	if iv, err := script.funcValue("main.Import"); err == nil {
 		imp, ok := iv.Interface().(func(*Context) ([]plugin.ImportDoc, error))
 		if !ok {
+			// Init already succeeded, but the plugin as a whole is a load
+			// failure — roll its handlers back too.
+			r.unregisterHandlers(ctx)
 			status.Err = "Import must have signature func(*plugin.Context) ([]plugin.ImportDoc, error)"
 			return
 		}
@@ -402,6 +408,18 @@ func (r *Runtime) safeImport(src *sourceEntry) (docs []plugin.ImportDoc, err err
 type Context struct {
 	db *sql.DB
 	rt *Runtime
+	// initLog, when non-nil, records every On() registration so a failed
+	// plugin Init can be rolled back — without it, a plugin whose Init
+	// registered handlers and then returned an error stayed marked as load-
+	// failed while its handlers kept receiving events.
+	initLog []handlerTicket
+}
+
+// handlerTicket remembers one On() registration: the event name and the
+// handler-slice length before the append.
+type handlerTicket struct {
+	event string
+	index int
 }
 
 func (r *Runtime) newContext() *Context {
@@ -414,8 +432,33 @@ func (c *Context) DB() *sql.DB { return c.db }
 // On registers a handler for a runtime event.
 func (c *Context) On(name string, handler plugin.EventHandler) {
 	c.rt.mu.Lock()
+	if c.initLog != nil {
+		c.initLog = append(c.initLog, handlerTicket{event: name, index: len(c.rt.handlers[name])})
+	}
 	c.rt.handlers[name] = append(c.rt.handlers[name], handler)
 	c.rt.mu.Unlock()
+}
+
+// unregisterHandlers rolls back every On() registration recorded on the
+// context's init log (used when a plugin's Init fails mid-way).
+func (r *Runtime) unregisterHandlers(ctx *Context) {
+	if ctx.initLog == nil {
+		return
+	}
+	r.mu.Lock()
+	for i := len(ctx.initLog) - 1; i >= 0; i-- {
+		t := ctx.initLog[i]
+		if hs, ok := r.handlers[t.event]; ok && t.index <= len(hs) {
+			hs = hs[:t.index]
+			if len(hs) == 0 {
+				delete(r.handlers, t.event)
+			} else {
+				r.handlers[t.event] = hs
+			}
+		}
+	}
+	r.mu.Unlock()
+	ctx.initLog = nil
 }
 
 // RegisterKnowledgeSource registers a Go-native importer (kept for interface

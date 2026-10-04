@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 
 	"repo-nest/internal/app"
@@ -33,11 +34,7 @@ func main() {
 
 	// Detect git user
 	gitUser := platform.GetGitUserName()
-	if gitUser != "" {
-		log.Printf("Git user detected: %s", gitUser)
-	} else {
-		log.Println("No git user detected; personal stats will be empty")
-	}
+	log.Printf("Git user for personal stats: %s", gitUser)
 
 	// Create the service core and the thin Wails binding layer over it. Scan
 	// roots are seeded through the service (shared with the MCP server) so the
@@ -65,14 +62,21 @@ func main() {
 					// on macOS, AddScriptToExecuteOnDocumentCreated on
 					// Windows), which page CSP does not govern. worker-src
 					// blob: covers Mermaid's ELK layout workers. connect-src
-					// intentionally omits https: — the app makes no remote API
-					// calls, so an injected script gets no exfiltration channel
-					// (remote note images remain allowed via img-src https:).
-					// unsafe-eval is intentionally omitted; if dynamic eval is
-					// needed, refactor to use explicit Function() calls with a
-					// nonce instead.
+					// allows no remote host: the app makes no remote API calls,
+					// and neither ws: nor wss: is listed because the shipped
+					// frontend opens no WebSocket (vite HMR is a dev-server
+					// concern and never runs behind this handler). Two channels
+					// remain open by choice: img-src https: (remote note
+					// images) and 'self' fetches — both can exfiltrate data to
+					// a host the app already talks to, which is none, so an
+					// injected script's practical exfil routes are the same
+					// ones a <img src="https://..."> tag has; CSP narrows the
+					// blast radius, it is not a hard exfil wall. unsafe-eval is
+					// intentionally omitted; if dynamic eval is needed,
+					// refactor to use explicit Function() calls with a nonce
+					// instead.
 					w.Header().Set("Content-Security-Policy",
-						"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' ws: wss:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+						"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
 					w.Header().Set("X-Content-Type-Options", "nosniff")
 					w.Header().Set("X-Frame-Options", "DENY")
 					w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
@@ -123,6 +127,12 @@ func init() {
 }
 
 func ensurePath() {
+	// The motivating case is macOS: an app launched from Finder inherits a
+	// minimal PATH, so git is not found. The standard dirs are Unix paths —
+	// prepending them on Windows would just add permanent junk entries.
+	if runtime.GOOS != "darwin" {
+		return
+	}
 	path := os.Getenv("PATH")
 	if path == "" {
 		os.Setenv("PATH", "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")

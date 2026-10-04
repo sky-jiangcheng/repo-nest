@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"repo-nest/internal/db"
@@ -117,8 +118,16 @@ func (s *Service) RefreshProjectHistory(ctx context.Context, projectID int64) er
 
 // refreshProjectStatsForDate performs the on-demand single-day refresh used
 // when the dashboard requests a project's stats for today/yesterday and the
-// database has no row yet.
+// database has no row yet. Deduplicated by (project, date): the dashboard
+// polls, so without the guard every poll for a date with no rows yet would
+// spawn another full round of git subprocesses per repository.
 func (s *Service) refreshProjectStatsForDate(projectID int64, date string) {
+	key := strconv.FormatInt(projectID, 10) + "|" + date
+	if _, loaded := s.statsRefreshInFlight.LoadOrStore(key, true); loaded {
+		return
+	}
+	defer s.statsRefreshInFlight.Delete(key)
+
 	repos, err := db.GetRepositoriesByProjectID(s.db, projectID)
 	if err != nil {
 		return

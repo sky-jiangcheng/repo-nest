@@ -78,3 +78,52 @@ func TestReadSchemaVersion_InvalidValue(t *testing.T) {
 		t.Fatalf("expected error for invalid schema version, got nil")
 	}
 }
+
+// A multi-statement migration must be atomic: a statement that hard-fails
+// rolls back the statements before it, instead of leaving a half-applied
+// batch that the version stamp (never written on failure) would retry
+// against an inconsistent schema.
+func TestMigrationApplyRollsBackBatchOnFailure(t *testing.T) {
+	database := setupTestDB(t)
+	defer database.Close()
+
+	m := migration{id: 999, sql: []string{
+		"CREATE TABLE mig_tx_probe (id INTEGER PRIMARY KEY)",
+		"INSERT INTO no_such_table_for_migration_test VALUES (1)",
+	}}
+	if err := m.apply(database); err == nil {
+		t.Fatal("apply should fail on the nonexistent table")
+	}
+	var n int
+	if err := database.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE name = 'mig_tx_probe'").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatal("statement before the failure should have been rolled back")
+	}
+}
+
+// PRAGMA statements run outside the batch transaction (foreign_keys cannot
+// change inside one), so a migration mixing PRAGMAs and DDL still applies.
+func TestMigrationApplyWithPragmas(t *testing.T) {
+	database := setupTestDB(t)
+	defer database.Close()
+
+	m := migration{id: 998, sql: []string{
+		"PRAGMA foreign_keys = OFF",
+		"CREATE TABLE mig_pragma_probe (id INTEGER PRIMARY KEY)",
+		"PRAGMA foreign_keys = ON",
+	}}
+	if err := m.apply(database); err != nil {
+		t.Fatalf("apply with PRAGMAs: %v", err)
+	}
+	var n int
+	if err := database.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE name = 'mig_pragma_probe'").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatal("probe table should exist after the migration")
+	}
+}

@@ -3,14 +3,22 @@ package db
 import "database/sql"
 
 // CreateTodo inserts a new todo for a project, assigning the next sort_order.
+// The MAX+INSERT pair runs in a transaction: two interleaved creates used to
+// be able to observe the same MAX and hand out a duplicate sort_order.
 func CreateTodo(db *sql.DB, projectID int64, title string) (*Todo, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback() //nolint:errcheck
+
 	var sortOrder int
-	if err := db.QueryRow(
+	if err := tx.QueryRow(
 		"SELECT COALESCE(MAX(sort_order), -1) + 1 FROM project_todos WHERE project_id = ?", projectID).
 		Scan(&sortOrder); err != nil {
 		return nil, err
 	}
-	res, err := db.Exec(
+	res, err := tx.Exec(
 		"INSERT INTO project_todos (project_id, title, sort_order) VALUES (?, ?, ?)",
 		projectID, title, sortOrder)
 	if err != nil {
@@ -18,6 +26,9 @@ func CreateTodo(db *sql.DB, projectID int64, title string) (*Todo, error) {
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return getTodoByID(db, id)

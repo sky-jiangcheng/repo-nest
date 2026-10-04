@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"log"
 	"strconv"
 
@@ -111,11 +112,15 @@ func (s *Service) GetProjects(date string, starredOnly bool) []ProjectResponse {
 	// Only auto-refresh for today or yesterday to avoid triggering git scans
 	// on historical dates. Run it off the request path so the first open of
 	// the dashboard/overview never blocks on git subprocesses; the next load
-	// sees the back-filled rows.
+	// sees the back-filled rows. bgGo (not a bare `go`): a panic in a bare
+	// background goroutine kills the whole process, and Shutdown must wait
+	// for it before the database handle closes.
 	today := s.git.GetTodayDate()
 	yesterday := s.git.GetYesterdayDate()
 	if date == today || date == yesterday {
-		go s.refreshMissingStatsForDate(projects, date)
+		s.bgGo("refresh missing stats", func(_ context.Context) {
+			s.refreshMissingStatsForDate(projects, date)
+		})
 	}
 
 	return s.enrichProjects(projects, date)

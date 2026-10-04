@@ -14,7 +14,6 @@ import type {
   NoteCount,
   NoteVersion,
   NoteWithProject,
-  PluginStatus,
   Project,
   ProjectDetail,
   ProjectOverview,
@@ -444,10 +443,6 @@ export function exportMemoryJSON(limit: number): Promise<string> {
 
 // --- Plugins -------------------------------------------------------------------------------
 
-export function getPluginStatuses(): Promise<PluginStatus[]> {
-  return call<PluginStatus[]>({ method: 'GetPluginStatuses', path: '/plugins' }).then(d => d ?? [])
-}
-
 export function getKnowledgeSources(): Promise<SourceStatus[]> {
   return call<SourceStatus[]>({ method: 'GetKnowledgeSources', path: '/plugins/sources' }).then(d => d ?? [])
 }
@@ -460,12 +455,4 @@ export function triggerKnowledgeImport(name: string): Promise<ImportRun> {
     path: '/plugins/import',
     init: jsonInit('POST', { source: name }),
   }).then(d => d ?? empty)
-}
-
-export function reloadPlugins(): Promise<PluginStatus[]> {
-  return call<PluginStatus[]>({
-    method: 'ReloadPlugins',
-    path: '/plugins/reload',
-    init: { method: 'POST' },
-  }).then(d => d ?? [])
 }

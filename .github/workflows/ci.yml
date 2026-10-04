@@ -41,7 +41,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          # go.mod declares `go 1.25.5`; setup-go resolves the newest 1.25.x.
+          # go.mod declares `go 1.26.0`; setup-go resolves the newest 1.26.x.
           go-version: '1.26'
           # Cache GOMODCACHE keyed on go.sum, so unchanged deps are not
           # re-downloaded on every run.

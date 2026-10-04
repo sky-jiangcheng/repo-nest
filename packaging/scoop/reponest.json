@@ -1,9 +1,9 @@
 {
-  "version": "1.14.0",
+  "version": "1.14.1",
   "description": "Local-first code project context base",
   "homepage": "https://github.com/sky-jiangcheng/repo-nest",
   "license": "MIT",
-  "url": "https://github.com/sky-jiangcheng/repo-nest/releases/download/v1.14.0/reponest-windows-amd64.zip",
+  "url": "https://github.com/sky-jiangcheng/repo-nest/releases/download/v1.14.1/reponest-windows-amd64.zip",
   "hash": "sha256:50a51ecedf5160fc2df51189441b122f47d668aa9a9306810cdafb0c9133abdd",
   "bin": "reponest.exe",
   "checkver": {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -171,6 +170,13 @@ var techManifest = map[string]Tech{
 // maxScanFiles bounds the language-counting walk so huge monorepos stay fast.
 const maxScanFiles = 20000
 
+// maxLanguageFileBytes skips files larger than this during line counting. A
+// multi-megabyte data file (vendored JSON dataset, minified bundle, generated
+// lockfile with a countable extension) would otherwise be read line-by-line
+// in full — the walk is bounded by file COUNT, not size. Skipping it barely
+// moves the language stats and keeps mining fast.
+const maxLanguageFileBytes = 1 << 20 // 1 MiB
+
 // skipDirs are directory names we never descend into when counting languages.
 var skipDirs = map[string]bool{
 	".git": true, "node_modules": true, "vendor": true, "dist": true,
@@ -257,6 +263,9 @@ func DetectLanguages(repoPath string) ([]LanguageStat, error) {
 		}
 		ext := strings.ToLower(filepath.Ext(path))
 		if lang, ok := extLanguage[ext]; ok {
+			if info, ierr := d.Info(); ierr == nil && info.Size() > maxLanguageFileBytes {
+				return nil
+			}
 			if f, ferr := os.Open(path); ferr == nil {
 				lineCount := 0
 				scanner := bufio.NewScanner(f)
@@ -265,7 +274,11 @@ func DetectLanguages(repoPath string) ([]LanguageStat, error) {
 					lineCount++
 				}
 				f.Close()
-				counts[lang] += lineCount
+				// A read error (I/O failure, ErrTooLong) makes the count a
+				// partial number; adding it would misstate the tree.
+				if scanner.Err() == nil {
+					counts[lang] += lineCount
+				}
 			}
 		}
 		scanned++
@@ -442,7 +455,16 @@ func parseCargoDeps(repoPath string) ([]Dependency, error) {
 
 // DetectContributors returns the top N contributors by commit count.
 func DetectContributors(repoPath string, limit int) ([]TopContributor, error) {
-	cmd := exec.Command("git", "-C", repoPath, "shortlog", "-sn", "--no-merges", fmt.Sprintf("-n%d", limit))
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// `HEAD` is required: with no rev argument `git shortlog` reads its log
+	// from stdin, and with a nil (non-TTY) stdin that is /dev/null — always
+	// empty output, so the contributor list was silently empty forever. The
+	// old `-n<limit>` flag was also wrong: shortlog forwards it to rev-list,
+	// where it means --max-count (only the last N commits are scanned), not
+	// "top N authors". Truncation to `limit` happens in Go after the count.
+	cmd := exec.CommandContext(ctx, "git", "-C", repoPath, "shortlog", "-sn", "--no-merges", "HEAD")
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, nil
@@ -464,6 +486,9 @@ func DetectContributors(repoPath string, limit int) ([]TopContributor, error) {
 		}
 	}
 	sort.Slice(contributors, func(i, j int) bool { return contributors[i].Count > contributors[j].Count })
+	if limit > 0 && len(contributors) > limit {
+		contributors = contributors[:limit]
+	}
 	return contributors, nil
 }
 

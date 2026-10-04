@@ -1,7 +1,10 @@
 package service
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -11,11 +14,22 @@ import (
 	"repo-nest/internal/stats"
 )
 
+// ErrProjectNotFound marks the "no such project" case distinctly from a
+// storage failure: GetProjectByID's error used to collapse into a plain
+// "project not found", so a full disk or a locked database surfaced as 404
+// and neither an operator nor an agent could tell "absent" from "broken".
+// Transports (httpapi maps it to 404, everything else to 500) should check
+// it with errors.Is.
+var ErrProjectNotFound = errors.New("project not found")
+
 // GetProjectDetail returns a project with all its repositories and stats.
 func (s *Service) GetProjectDetail(id int64) (*ProjectDetailResponse, error) {
 	project, err := db.GetProjectByID(s.db, id)
 	if err != nil {
-		return nil, fmt.Errorf("project not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrProjectNotFound
+		}
+		return nil, fmt.Errorf("load project %d: %w", id, err)
 	}
 	repos, _ := db.GetRepositoriesByProjectID(s.db, id)
 
@@ -45,9 +59,13 @@ func (s *Service) GetProjectStats(id int64, date string) []domain.DailyStat {
 		return nil
 	}
 	// On-demand refresh runs in the background so this call never blocks on git.
-	// The next load returns the back-filled rows.
+	// The next load returns the back-filled rows. refreshProjectStatsForDate
+	// deduplicates by (project, date), so a dashboard polling this endpoint
+	// cannot stack up one git process storm per load.
 	if len(statsList) == 0 {
-		go s.refreshProjectStatsForDate(id, date)
+		s.bgGo(fmt.Sprintf("stats refresh project %d %s", id, date), func(_ context.Context) {
+			s.refreshProjectStatsForDate(id, date)
+		})
 	}
 	return statsList
 }
@@ -68,6 +86,9 @@ func (s *Service) UpdateProjectLevel(id int64, direction string) (*LevelUpdateRe
 		return nil, fmt.Errorf("direction must be 'up' or 'down'")
 	}
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrProjectNotFound
+		}
 		return nil, err
 	}
 	return &LevelUpdateResult{Success: true, NewLevel: newLevel}, nil
@@ -108,7 +129,10 @@ type ProjectOverview struct {
 func (s *Service) GetProjectOverview(projectID int64) (*ProjectOverview, error) {
 	project, err := db.GetProjectByID(s.db, projectID)
 	if err != nil {
-		return nil, fmt.Errorf("project not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrProjectNotFound
+		}
+		return nil, fmt.Errorf("load project %d: %w", projectID, err)
 	}
 	repos, _ := db.GetRepositoriesByProjectID(s.db, projectID)
 
@@ -134,14 +158,9 @@ func (s *Service) GetProjectOverview(projectID int64) (*ProjectOverview, error) 
 	// Mine fresh when no cache was found — trigger async so the API returns quickly.
 	if !resp.Cached {
 		resp.Mining = true
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Printf("mineAndCache: recovered from panic: %v", r)
-				}
-			}()
+		s.bgGo(fmt.Sprintf("mine project %d", projectID), func(_ context.Context) {
 			s.mineAndCache(cacheRepoID, project.RootPath, repos)
-		}()
+		})
 	}
 	// Recent commits are always fresh.
 	repoPaths := make([]string, 0, len(repos))

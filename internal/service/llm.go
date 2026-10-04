@@ -76,7 +76,7 @@ func (s *Service) GenerateLLMsTxt() string {
 			if meta.ReadmeExcerpt != "" {
 				excerpt := meta.ReadmeExcerpt
 				if len(excerpt) > 400 {
-					excerpt = excerpt[:400] + "..."
+					excerpt = truncateBytes(excerpt, 400) + "..."
 				}
 				// The excerpt is verbatim file content from the scanned repo —
 				// possibly attacker-controlled (prompt injection channel). Mark
@@ -104,7 +104,7 @@ func (s *Service) GenerateLLMsTxt() string {
 		b.WriteString(fmt.Sprintf("- Updated: %s\n\n", n.UpdatedAt))
 		content := strings.TrimSpace(n.Content)
 		if len(content) > 1000 {
-			content = content[:1000] + "\n\n..."
+			content = truncateBytes(content, 1000) + "\n\n..."
 		}
 		b.WriteString(content)
 		b.WriteString("\n\n---\n\n")

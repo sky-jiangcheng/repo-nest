@@ -302,6 +302,17 @@ func (s *Service) runCollectedScan(ctx context.Context) (out ScanResult, err err
 		return ScanResult{ReposFound: len(repos)}, fmt.Errorf("commit scan transaction: %w", err)
 	}
 
+	// The committed cleanup may have cascade-deleted notes with their
+	// projects. If the derived vector index exists, prune the orphans it
+	// left behind so KNN's recall budget is not spent on dead ids.
+	if db.VectorIndexReady(s.db) {
+		if n, err := db.PruneNoteEmbeddings(s.db); err != nil {
+			log.Printf("prune orphaned embeddings: %v", err)
+		} else if n > 0 {
+			log.Printf("pruned %d orphaned embedding(s) after scan cleanup", n)
+		}
+	}
+
 	// Re-read after commit: projects found by this scan were just marked
 	// collected, so they now show up and get their history backfilled in the
 	// same run instead of waiting for a second scan.

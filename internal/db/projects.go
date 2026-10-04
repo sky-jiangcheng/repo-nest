@@ -183,7 +183,9 @@ func MarkProjectCollectedTx(tx *sql.Tx, projectID int64) error {
 func SplitProjectDown(db *sql.DB, id int64) (int, error) {
 	project, err := GetProjectByID(db, id)
 	if err != nil {
-		return 0, fmt.Errorf("project not found")
+		// sql.ErrNoRows is preserved so callers can distinguish "absent"
+		// from a storage failure (do not collapse into a bare message).
+		return 0, fmt.Errorf("project not found: %w", err)
 	}
 	repos, err := GetRepositoriesByProjectID(db, id)
 	if err != nil {
@@ -236,7 +238,9 @@ func SplitProjectDown(db *sql.DB, id int64) (int, error) {
 func MergeProjectUp(db *sql.DB, id int64) (int, error) {
 	project, err := GetProjectByID(db, id)
 	if err != nil {
-		return 0, fmt.Errorf("project not found")
+		// sql.ErrNoRows is preserved so callers can distinguish "absent"
+		// from a storage failure (do not collapse into a bare message).
+		return 0, fmt.Errorf("project not found: %w", err)
 	}
 
 	tx, err := db.Begin()
@@ -247,7 +251,13 @@ func MergeProjectUp(db *sql.DB, id int64) (int, error) {
 
 	parentDir := filepath.Dir(project.RootPath)
 	if parentDir != "" && parentDir != "/" && parentDir != "." {
-		rows, err := tx.Query("SELECT id, root_path FROM projects WHERE id != ? AND root_path LIKE ?", id, parentDir+"/%")
+		// Sibling match is an exact filepath.Dir comparison over all projects.
+		// This used to pre-filter with root_path LIKE parentDir || '/%', but
+		// the LIKE pattern is never escaped: a '%' or '_' in the directory
+		// name over-matched (saved only by the exact re-check), and on Windows
+		// the '\' in every path acted as the LIKE escape character, so the
+		// pattern matched nothing and merge silently became a no-op.
+		rows, err := tx.Query("SELECT id, root_path FROM projects WHERE id != ?", id)
 		if err != nil {
 			return 0, fmt.Errorf("failed to query siblings: %w", err)
 		}

@@ -50,8 +50,25 @@ interface CalloutBlock {
   content: string
 }
 
-function parseCallouts(lines: string[]): CalloutBlock[] {
+interface CalloutExtraction {
+  callouts: CalloutBlock[]
+  // cleaned is the source with every callout's consumed lines replaced by one
+  // unique placeholder line each.
+  cleaned: string
+}
+
+// extractCallouts does in ONE line-based pass what parseCallouts plus the
+// placeholder regex used to do in two: it collects the callout blocks and
+// rewrites the source with each block's exact lines spliced out. The old
+// regex (>\s*\[!TYPE\]\s*[\s\S]*?(?=\n>|$)) either swallowed every line after
+// a callout (the \s* + $ lookahead ate a trailing blank line and ran to the
+// end of the document) or stopped early and left residue lines that rendered
+// a second time. Splicing the very line ranges the parser consumed makes both
+// failure modes impossible.
+function extractCallouts(content: string): CalloutExtraction {
+  const lines = content.split('\n')
   const callouts: CalloutBlock[] = []
+  const out: string[] = []
   let current: CalloutBlock | null = null
   for (const line of lines) {
     const m = line.match(/^>\s*\[!(\w+)\]\s*(.*)$/)
@@ -59,19 +76,26 @@ function parseCallouts(lines: string[]): CalloutBlock[] {
       if (current) callouts.push(current)
       const type = m[1].toUpperCase() as CalloutType
       if (!CALLOUT_TYPES.includes(type)) {
+        // Unknown callout type: not a block we own, leave the line as-is.
         current = null
+        out.push(line)
         continue
       }
       current = { type, title: m[2].trim() || type.toLowerCase(), content: '' }
+      out.push(`%%CALLOUT_${callouts.length}_${Math.random().toString(36).slice(2)}%%`)
     } else if (current && line.startsWith('>')) {
       current.content += line.slice(1).trimEnd() + '\n'
+      // Consumed: emit nothing.
     } else {
-      if (current) callouts.push(current)
-      current = null
+      if (current) {
+        callouts.push(current)
+        current = null
+      }
+      out.push(line)
     }
   }
   if (current) callouts.push(current)
-  return callouts
+  return { callouts, cleaned: out.join('\n') }
 }
 
 function stripCalloutLines(content: string): string {
@@ -138,8 +162,18 @@ function highlightCodeBlocks(html: string): string {
 // renderInlineMath renders $...$ and $$...$$ in HTML text. The KaTeX output is
 // injected after the main DOMPurify pass, so it is sanitized here to keep the
 // final string free of raw HTML (e.g. from \href or \htmlClass).
+//
+// Code segments are stashed before the replacements and restored after them:
+// <pre>/<code> content is full of literal dollar signs (shell $VAR, prices,
+// regexes), and without the stash `` $1 + $2$ `` inside a code block was
+// rewritten into a KaTeX span, corrupting the code.
 function renderInlineMath(html: string): string {
-  const withMath = html
+  const stash: string[] = []
+  const stashed = html.replace(/<(pre|code)\b[\s\S]*?<\/\1>/g, (m) => {
+    stash.push(m)
+    return `%%CODE_STASH_${stash.length - 1}%%`
+  })
+  const withMath = stashed
     .replace(/\$\$([\s\S]+?)\$\$/g, (_match, expr: string) => {
       try {
         return katex.renderToString(expr.trim(), { displayMode: true, throwOnError: false })
@@ -154,7 +188,19 @@ function renderInlineMath(html: string): string {
         return `$${expr}$`
       }
     })
-  return DOMPurify.sanitize(withMath)
+  const restored = withMath.replace(/%%CODE_STASH_(\d+)%%/g, (_m, i: string) => stash[Number(i)] ?? '')
+  return DOMPurify.sanitize(restored)
+}
+
+// injectCallouts swaps each extraction placeholder for its rendered callout
+// HTML. Placeholders are index-scoped (`%%CALLOUT_<i>_<rand>%%`), so N callouts
+// — even N of the same type — each get exactly their own block.
+function injectCallouts(html: string, callouts: CalloutBlock[]): string {
+  for (let i = 0; i < callouts.length; i++) {
+    const placeholderRegex = new RegExp(`%%CALLOUT_${i}_\\w+%%`)
+    html = html.replace(placeholderRegex, renderCallout(callouts[i]))
+  }
+  return html
 }
 
 // renderMarkdown renders markdown to HTML synchronously (no mermaid).
@@ -163,21 +209,11 @@ function renderInlineMath(html: string): string {
 export function renderMarkdown(content: string): string {
   if (!content) return ''
 
-  // Extract callout blocks
-  const callouts = parseCallouts(content.split('\n'))
-  let cleaned = content
-  for (const c of callouts) {
-    const placeholder = `%%CALLOUT_${c.type}_${Math.random().toString(36).slice(2)}%%`
-    const re = new RegExp(
-      '>\\s*\\[!' + c.type + '\\]\\s*[\\s\\S]*?(?=\\n>|$)',
-      'g'
-    )
-    cleaned = cleaned.replace(re, placeholder)
-  }
+  const { callouts, cleaned } = extractCallouts(content)
 
   // Strip frontmatter, render, sanitize
-  cleaned = cleaned.replace(/^---[\s\S]*?---\n?/, '')
-  const raw = marked.parse(cleaned)
+  const stripped = cleaned.replace(/^---\n[\s\S]*?\n---\n?/, '')
+  const raw = marked.parse(stripped)
   let html: string
   if (typeof raw === 'string') {
     html = raw
@@ -186,12 +222,7 @@ export function renderMarkdown(content: string): string {
   }
   html = DOMPurify.sanitize(html)
 
-  // Inject callouts
-  for (const c of callouts) {
-    const calloutHtml = renderCallout(c)
-    const placeholderRegex = new RegExp(`%%CALLOUT_${c.type}_\\w+%%`)
-    html = html.replace(placeholderRegex, calloutHtml)
-  }
+  html = injectCallouts(html, callouts)
 
   // Syntax highlight code blocks
   html = highlightCodeBlocks(html)
@@ -208,24 +239,14 @@ export function renderMarkdown(content: string): string {
 export async function renderMarkdownAsync(content: string): Promise<string> {
   if (!content) return ''
 
-  // Extract callout blocks
-  const callouts = parseCallouts(content.split('\n'))
-  let cleaned = content
-  for (const c of callouts) {
-    const placeholder = `%%CALLOUT_${c.type}_${Math.random().toString(36).slice(2)}%%`
-    const re = new RegExp(
-      '>\\s*\\[!' + c.type + '\\]\\s*[\\s\\S]*?(?=\\n>|$)',
-      'g'
-    )
-    cleaned = cleaned.replace(re, placeholder)
-  }
+  const { callouts, cleaned } = extractCallouts(content)
 
   // Render mermaid blocks first (async)
-  cleaned = await renderMermaidBlocks(cleaned)
+  const withMermaid = await renderMermaidBlocks(cleaned)
 
   // Strip frontmatter, render, sanitize
-  cleaned = cleaned.replace(/^---[\s\S]*?---\n?/, '')
-  const raw = marked.parse(cleaned)
+  const stripped = withMermaid.replace(/^---\n[\s\S]*?\n---\n?/, '')
+  const raw = marked.parse(stripped)
   let html: string
   if (typeof raw === 'string') {
     html = raw
@@ -234,12 +255,7 @@ export async function renderMarkdownAsync(content: string): Promise<string> {
   }
   html = DOMPurify.sanitize(html)
 
-  // Inject callouts
-  for (const c of callouts) {
-    const calloutHtml = renderCallout(c)
-    const placeholderRegex = new RegExp(`%%CALLOUT_${c.type}_\\w+%%`)
-    html = html.replace(placeholderRegex, calloutHtml)
-  }
+  html = injectCallouts(html, callouts)
 
   // Syntax highlight code blocks
   html = highlightCodeBlocks(html)
@@ -275,7 +291,10 @@ async function renderMermaidBlocks(text: string): Promise<string> {
     }
   }
   for (const r of replacements) {
-    result = result.replace(r.original, r.svg)
+    // Function-form replacement: the string form interprets $&/$'/$$ patterns
+    // inside `svg` (diagram labels with a dollar sign corrupted the output)
+    // and only replaced the first occurrence of identical content.
+    result = result.replace(r.original, () => r.svg)
   }
   return result
 }
@@ -283,7 +302,7 @@ async function renderMermaidBlocks(text: string): Promise<string> {
 // stripMarkdown returns a single-line plain-text excerpt of markdown content.
 export function stripMarkdown(content: string, max = 140): string {
   const cleaned = stripCalloutLines(content)
-    .replace(/^---[\s\S]*?---\n?/, '')
+    .replace(/^---\n[\s\S]*?\n---\n?/, '')
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`[^`]*`/g, ' ')
     .replace(/[#>*_\-[\]()!]/g, ' ')

@@ -268,17 +268,56 @@ type migration struct {
 
 func (m migration) apply(db *sql.DB) error {
 	stmts := stmtList(m.sql)
+	// Non-PRAGMA statements of one migration run inside a single transaction,
+	// so a multi-step migration cannot leave the schema half-applied if the
+	// process dies between statements — v4 drops and renames the projects
+	// table, and a crash between those two steps used to require manual
+	// repair (the version stamp would not be written, so the next start would
+	// re-run the migration against a database whose projects table was gone).
+	// PRAGMA foreign_keys cannot change inside a transaction, so PRAGMAs run
+	// outside one (committing whatever batch is open first). With the
+	// single-connection pool the tx and the bare Exec never contend.
+	var tx *sql.Tx
+	commit := func() error {
+		if tx == nil {
+			return nil
+		}
+		err := tx.Commit()
+		tx = nil
+		return err
+	}
 	for _, s := range stmts {
-		if _, err := db.Exec(s); err != nil {
-			// SQLite returns "duplicate column name" when a column already exists.
-			// Treat that as already-applied rather than a hard failure.
+		upper := strings.ToUpper(strings.TrimSpace(s))
+		if strings.HasPrefix(upper, "PRAGMA") {
+			if err := commit(); err != nil {
+				return err
+			}
+			if _, err := db.Exec(s); err != nil && !isAlreadyExistsErr(err) {
+				return err
+			}
+			continue
+		}
+		if tx == nil {
+			var err error
+			tx, err = db.Begin()
+			if err != nil {
+				return err
+			}
+		}
+		if _, err := tx.Exec(s); err != nil {
+			_ = tx.Rollback()
+			tx = nil
+			// SQLite reports "duplicate column name" when a column already
+			// exists; treat that as already-applied rather than a hard
+			// failure. The rolled-back batch re-runs cleanly on the next
+			// open because every statement is idempotent under that rule.
 			if isAlreadyExistsErr(err) {
 				continue
 			}
 			return err
 		}
 	}
-	return nil
+	return commit()
 }
 
 func stmtList(s any) []string {

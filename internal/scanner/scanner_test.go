@@ -130,3 +130,62 @@ func TestScanRepositoriesMaxEntriesKeepsFound(t *testing.T) {
 		t.Errorf("MaxEntries should keep the repos found, got %+v", repos)
 	}
 }
+
+// cancelAfterN is a context whose Err() reports context.Canceled from the
+// Nth call on. It makes mid-walk cancellation deterministic: WalkDir never
+// consults Done(), and ScanRepositories polls Err() once per walked entry,
+// so counting calls pins the exact callback where the cancellation lands.
+type cancelAfterN struct {
+	context.Context
+	remaining int
+}
+
+func (c *cancelAfterN) Err() error {
+	if c.remaining <= 0 {
+		return context.Canceled
+	}
+	c.remaining--
+	return nil
+}
+
+// A cancellation that lands DURING a single root's walk must surface as an
+// error. The pre-fix callback returned filepath.SkipAll, which WalkDir
+// silently converts to nil, so the partial walk came back looking like a
+// complete scan — and the stale-data cleanup then deleted every repository
+// the walk never reached.
+func TestScanRepositoriesMidWalkCancellationReturnsError(t *testing.T) {
+	root := t.TempDir()
+	makeRepo(t, filepath.Join(root, "alpha"))
+	makeRepo(t, filepath.Join(root, "beta"))
+	// Land the cancellation after the walk has processed a few entries but
+	// before it finishes the root.
+	ctx := &cancelAfterN{Context: context.Background(), remaining: 3}
+
+	repos, err := ScanRepositories(ctx, []string{root}, 3)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("mid-walk cancellation must return context.Canceled, got %v (repos %+v)", err, repos)
+	}
+}
+
+// A symlinked scan root used to end the walk after one entry (WalkDir Lstats
+// the root, a symlink is not a directory) and silently found zero repos.
+// Resolving the root itself must make discovery work again; the root-repo
+// check already followed symlinks via os.Stat, so the two paths now agree.
+func TestScanRepositoriesFollowsSymlinkedRoot(t *testing.T) {
+	realRoot := t.TempDir()
+	makeRepo(t, filepath.Join(realRoot, "alpha"))
+	makeRepo(t, filepath.Join(realRoot, "beta"))
+
+	linkRoot := filepath.Join(t.TempDir(), "dev-link")
+	if err := os.Symlink(realRoot, linkRoot); err != nil {
+		t.Skipf("cannot create symlinks on this platform: %v", err)
+	}
+
+	repos, err := ScanRepositories(context.Background(), []string{linkRoot}, 2)
+	if err != nil {
+		t.Fatalf("ScanRepositories: %v", err)
+	}
+	if len(repos) != 2 {
+		t.Fatalf("symlinked root should discover 2 repos, got %+v", repos)
+	}
+}

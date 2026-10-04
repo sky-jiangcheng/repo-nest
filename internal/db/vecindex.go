@@ -260,3 +260,20 @@ func encodeVector(vec []float32) (string, error) {
 	}
 	return b.String(), nil
 }
+
+// PruneNoteEmbeddings removes every embedding whose note no longer exists.
+// Notes deleted through the project cascade (CleanupStaleDataTx) have no
+// single note id to delete, so callers with a derived index present run this
+// after the deleting transaction commits. Returns how many orphans were
+// removed.
+func PruneNoteEmbeddings(db *sql.DB) (int64, error) {
+	res, err := db.Exec("DELETE FROM " + vecTableName + " WHERE rowid NOT IN (SELECT id FROM project_notes)")
+	if err != nil {
+		return 0, fmt.Errorf("db: prune embeddings: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
+}

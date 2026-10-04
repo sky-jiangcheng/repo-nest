@@ -49,6 +49,45 @@ describe('renderMarkdown', () => {
     expect(result).toContain('This is a note')
   })
 
+  // Regression: the old placeholder regex (>\s*\[!TYPE\]\s*[\s\S]*?(?=\n>|$))
+  // swallowed the blank line after the callout and then ran to the end of the
+  // document — everything after the callout silently vanished from the render.
+  it('keeps content that follows a callout followed by a blank line', () => {
+    const result = renderMarkdown('> [!NOTE]\n> callout content\n\nNormal paragraph after.')
+    expect(result).toContain('callout content')
+    expect(result).toContain('Normal paragraph after.')
+  })
+
+  // Regression: the old regex stopped at the first \n> boundary, leaving the
+  // tail lines of the callout in the source to render a second time as an
+  // ordinary blockquote.
+  it('does not duplicate callout tail lines when followed by plain text', () => {
+    const result = renderMarkdown('> [!NOTE]\n> c1\n> c2\nText after.')
+    expect(result.match(/c2/g)?.length).toBe(1)
+    expect(result).toContain('Text after.')
+  })
+
+  // Two callouts of the same type must each render their own block (the
+  // placeholder is index-scoped, not type-scoped).
+  it('renders two same-type callouts independently', () => {
+    const result = renderMarkdown('> [!NOTE]\n> first\n\nbetween\n\n> [!NOTE]\n> second\n\ntail')
+    expect(result.match(/callout-note/g)?.length).toBe(2)
+    expect(result).toContain('first')
+    expect(result).toContain('between')
+    expect(result).toContain('second')
+    expect(result).toContain('tail')
+    expect(result).not.toContain('%%CALLOUT')
+  })
+
+  // Unknown callout types stay ordinary blockquotes and must not swallow
+  // following content.
+  it('leaves unknown callout types as blockquotes', () => {
+    const result = renderMarkdown('> [!FOO]\n> mystery\n\nafter')
+    expect(result).not.toContain('callout-foo')
+    expect(result).toContain('mystery')
+    expect(result).toContain('after')
+  })
+
   it('renders code blocks with syntax highlighting', () => {
     const result = renderMarkdown('```js\nconsole.log("hi")\n```')
     expect(result).toContain('<pre><code')
@@ -58,6 +97,28 @@ describe('renderMarkdown', () => {
   it('renders inline code', () => {
     const result = renderMarkdown('use `npm install`')
     expect(result).toContain('<code>npm install</code>')
+  })
+
+  // Regression: $...$ replacement used to run over the whole HTML string,
+  // including <pre>/<code> content — a code block containing `$1 + $2$` was
+  // rewritten into a KaTeX span and the code became garbage.
+  it('leaves dollar signs inside code blocks untouched', () => {
+    const result = renderMarkdown('```js\nconst price = $1 + $2$\n```\n\nafter')
+    expect(result).toContain('$1 + $2$')
+    expect(result).not.toContain('katex-mock')
+    expect(result).toContain('after')
+  })
+
+  it('leaves dollar signs inside inline code untouched', () => {
+    const result = renderMarkdown('run `export $HOME/bin` now')
+    expect(result).toContain('$HOME/bin')
+    expect(result).not.toContain('katex-mock')
+  })
+
+  it('still renders math outside code', () => {
+    const result = renderMarkdown('E = $mc^2$ and `cost $5`')
+    expect(result).toContain('katex-mock')
+    expect(result).toContain('$5')
   })
 
   it('renders links', () => {

@@ -38,10 +38,14 @@ func GroupRepositories(repos []scanner.RepoInfo) []ProjectGroup {
 		return sorted[i].Path < sorted[j].Path
 	})
 
-	// Build a set of all repo paths for quick lookup
+	// Build a set of all repo paths for quick lookup, with the depth each
+	// repo was discovered at (Rule 3 synthesizes a group for the parent repo;
+	// carrying the real depth keeps the synthesized RepoInfo honest).
 	repoSet := make(map[string]bool)
+	depthByPath := make(map[string]int)
 	for _, r := range repos {
 		repoSet[r.Path] = true
+		depthByPath[r.Path] = r.Depth
 	}
 
 	// Track which repos have been assigned to a group
@@ -55,13 +59,18 @@ func GroupRepositories(repos []scanner.RepoInfo) []ProjectGroup {
 
 		parentDir := filepath.Dir(repo.Path)
 
-		// Check if parent is also a git repo (Rule 3)
+		// Check if parent is also a git repo (Rule 3). Reachable only with
+		// overlapping scan roots (the child repo scanned as its own root sorts
+		// depth-0, ahead of the parent discovered deeper from an outer root).
+		// Both groups below share the parent's RootPath; SyncProjectTx upserts
+		// by root_path, so the database ends up with ONE project holding both
+		// repos — a merge, not a duplication.
 		if repoSet[parentDir] && !assigned[parentDir] {
 			// Parent is a repo, make it a separate project
 			parentGroup := ProjectGroup{
 				Name:          filepath.Base(parentDir),
 				RootPath:      parentDir,
-				Repos:         []scanner.RepoInfo{{Path: parentDir, Depth: 0}},
+				Repos:         []scanner.RepoInfo{{Path: parentDir, Depth: depthByPath[parentDir]}},
 				IsAutoGrouped: true,
 			}
 			groups = append(groups, parentGroup)

@@ -249,7 +249,11 @@ function ProjectDetailPage() {
             </div>
           </div>
 
-          <ProjectPanel projectId={Number(id)} autoNewNote={searchParams.get('newNote') === '1'} />
+          {/* key remounts the panel (notes/todos/drafts) when the project
+              changes: /project/:id reuses this page instance, and without the
+              key the previous project's open draft was persisted into the new
+              project's localStorage key — and could be saved there. */}
+          <ProjectPanel key={Number(id)} projectId={Number(id)} autoNewNote={searchParams.get('newNote') === '1'} />
         </div>
       </div>
 

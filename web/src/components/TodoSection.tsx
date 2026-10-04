@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { listTodos, createTodo, toggleTodo, deleteTodo, reorderTodos, type Todo } from '../api/client'
 import { useConfirmClick } from '../hooks/useConfirmClick'
+import ErrorBanner from './ErrorBanner'
 import Icon from './Icon'
 
 interface Props {
@@ -12,12 +13,23 @@ function TodoSection({ projectId }: Props) {
   const { t } = useTranslation()
   const [todos, setTodos] = useState<Todo[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [title, setTitle] = useState('')
   const [adding, setAdding] = useState(false)
 
+  // Sequence guard: a late response for the previous project must not
+  // overwrite the current list (see NoteSection for the same pattern).
+  const fetchSeqRef = useRef(0)
   const fetchTodos = useCallback(() => {
-    listTodos(projectId).then(setTodos).finally(() => setLoading(false))
-  }, [projectId])
+    const seq = ++fetchSeqRef.current
+    listTodos(projectId)
+      .then(todos => { if (fetchSeqRef.current === seq) setTodos(todos) })
+      .catch(e => {
+        // A failed load must not masquerade as the "no todos" empty state.
+        if (fetchSeqRef.current === seq) setError(`${t('project.loadFailed')}: ${e instanceof Error ? e.message : ''}`)
+      })
+      .finally(() => { if (fetchSeqRef.current === seq) setLoading(false) })
+  }, [projectId, t])
 
   useEffect(() => { fetchTodos() }, [fetchTodos])
 
@@ -79,6 +91,8 @@ function TodoSection({ projectId }: Props) {
   return (
     <div className="panel-section">
       <h3>{t('todo.title')} ({todos.filter(x => !x.completed).length}/{todos.length})</h3>
+
+      {error && <ErrorBanner message={error} onRetry={fetchTodos} />}
 
       <div className="todo-add">
         <input

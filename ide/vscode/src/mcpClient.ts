@@ -14,6 +14,10 @@ interface Pending {
   reject: (err: Error) => void;
 }
 
+// Tool calls (reponest_context, handoff writes) are second-scale against the
+// local service; 60s is generous headroom while still bounding a hang.
+const REQUEST_TIMEOUT_MS = 60_000;
+
 export class McpStdioClient {
   private proc: ChildProcess | null = null;
   private buffer = "";
@@ -75,7 +79,17 @@ export class McpStdioClient {
     const id = this.nextId++;
     const body = JSON.stringify({ jsonrpc: "2.0", id, method, params });
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
+      // Bound every request: a wedged or half-dead server process used to
+      // leave the promise (and the withProgress spinner) pending forever.
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`reponest-mcp request timed out: ${method}`));
+      }, REQUEST_TIMEOUT_MS);
+      timer.unref?.();
+      this.pending.set(id, {
+        resolve: (v: unknown) => { clearTimeout(timer); resolve(v); },
+        reject: (e: Error) => { clearTimeout(timer); reject(e); },
+      });
       proc.stdin?.write(body + "\n");
     });
   }

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http/httptest"
@@ -79,3 +80,53 @@ func TestRPCErrorPaths(t *testing.T) {
 		t.Fatalf("GET code=%d, want 405", rec.Code)
 	}
 }
+
+// The bridge must never expose the Wails lifecycle hooks: a single POST
+// {"method":"Shutdown"} used to close the database on the live server.
+func TestRPCBlocksLifecycleMethods(t *testing.T) {
+	h := newRPCHandler(t)
+	for _, method := range []string{"Shutdown", "Startup", "Service"} {
+		if code, out := rpc(t, h, `{"method":"`+method+`"}`); code != 403 {
+			t.Fatalf("%s: code=%d out=%v, want 403", method, code, out)
+		}
+	}
+}
+
+// Oversized request bodies are rejected with 413 before any decoding work.
+func TestRPCBodySizeLimit(t *testing.T) {
+	h := newRPCHandler(t)
+	big := `{"method":"Echo","args":["` + strings.Repeat("a", maxRPCBodyBytes+16) + `"]}`
+	if code, _ := rpc(t, h, big); code != 413 {
+		t.Fatalf("oversized body code=%d, want 413", code)
+	}
+}
+
+// A method whose context parameter is omitted gets the request context, not a
+// nil interface (which would panic the method on first ctx use).
+func TestRPCNilContextBecomesRequestContext(t *testing.T) {
+	h := newRPCHandler(t)
+	if code, out := rpc(t, h, `{"method":"CtxEcho"}`); code != 200 || out["result"] == "" {
+		t.Fatalf("CtxEcho: code=%d out=%v", code, out)
+	}
+}
+
+func (fakeBound) CtxEcho(ctx context.Context) string {
+	if ctx == nil {
+		return "nil"
+	}
+	if ctx.Err() != nil {
+		return "err"
+	}
+	return "ctx"
+}
+
+// A future signature drift (non-error second return) must degrade to 501, not
+// panic the handler.
+func TestRPCUnsupportedSignature(t *testing.T) {
+	h := newRPCHandler(t)
+	if code, _ := rpc(t, h, `{"method":"BadSignature"}`); code != 501 {
+		t.Fatalf("BadSignature code=%d, want 501", code)
+	}
+}
+
+func (fakeBound) BadSignature() (string, int) { return "x", 1 }

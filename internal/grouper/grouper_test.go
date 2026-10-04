@@ -89,3 +89,48 @@ func TestIsDirectChild(t *testing.T) {
 		}
 	}
 }
+
+// Overlapping roots reach the "parent is also a repo" rule: when a repo is
+// discovered as its own root (depth 0) it sorts BEFORE its parent repo
+// (discovered deeper from an outer root), so the child is processed first and
+// the parent branch fires. Locks the grouping behaviour: parent and child
+// become two separate auto-grouped projects instead of one merged group.
+func TestGroupRepositories_OverlappingRootsParentAndChild(t *testing.T) {
+	repos := []scanner.RepoInfo{
+		// /outer walks discover the parent repo at depth 1; its own walk
+		// stops at the repo boundary, so the nested child repo is only
+		// discovered by scanning /outer/parent/child as a root (depth 0).
+		{Path: "/w/outer/parent", Depth: 1},
+		{Path: "/w/outer/parent/child", Depth: 0},
+	}
+	groups := GroupRepositories(repos)
+	if len(groups) != 2 {
+		t.Fatalf("expected the Rule-3 pair (parent + child group), got %+v", groups)
+	}
+	// Both groups carry the parent's RootPath — the synthesized parent group
+	// and the sibling group under it. This is the documented quirk: the DB
+	// layer upserts projects by root_path, so the effective outcome is one
+	// project rooted at /w/outer/parent holding both repos.
+	seen := map[string]bool{}
+	reposSeen := map[string]bool{}
+	for _, g := range groups {
+		if g.RootPath != "/w/outer/parent" {
+			t.Fatalf("expected every group to root at the parent repo, got %+v", g)
+		}
+		seen[g.RootPath] = true
+		for _, r := range g.Repos {
+			reposSeen[r.Path] = true
+			// The synthesized parent RepoInfo carries its real discovered
+			// depth, not a hardcoded 0.
+			if r.Path == "/w/outer/parent" && r.Depth != 1 {
+				t.Fatalf("parent repo depth should be the discovered value 1, got %d", r.Depth)
+			}
+		}
+	}
+	if !reposSeen["/w/outer/parent"] || !reposSeen["/w/outer/parent/child"] {
+		t.Fatalf("both repos must survive grouping, got %v", reposSeen)
+	}
+	if len(seen) != 1 {
+		t.Fatalf("expected a single effective root path, got %v", seen)
+	}
+}

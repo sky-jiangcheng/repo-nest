@@ -8,6 +8,7 @@
 package platform
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,7 +30,13 @@ const legacyDirName = "gitbuddy"
 // Windows: all drive letters except C: (the system drive).
 // macOS / Linux: the user's home directory.
 func DefaultScanRoots() []string {
-	home, _ := os.UserHomeDir()
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		// An empty home would seed the literal "" as a scan root — a dead
+		// entry the user cannot remove later (every write re-validates).
+		// Seed nothing instead; the user adds a root themselves.
+		return nil
+	}
 
 	switch runtime.GOOS {
 	case "windows":
@@ -65,13 +72,18 @@ func getWindowsDrives() []string {
 	return drives
 }
 
-// GetGitUserName returns the git user.name from global or local config.
+// GetGitUserName returns the git user.name from the user's GLOBAL config.
+// It deliberately ignores repo-local config: the value splits "mine" vs "all"
+// across every scanned repository, so a per-repo setting is meaningless here —
+// and reading the ambient config made the result depend on the process's
+// working directory, which is arbitrary for the headless server (spawned by a
+// plugin) and could disagree with the desktop app on the same machine.
 func GetGitUserName() string {
-	cmd := exec.Command("git", "config", "user.name")
+	cmd := exec.Command("git", "config", "--global", "user.name")
 	out, err := cmd.Output()
 	if err != nil {
 		// fallback to OS username
-		if u, e := os.UserHomeDir(); e == nil {
+		if u, e := os.UserHomeDir(); e == nil && u != "" {
 			return filepath.Base(u)
 		}
 		return "unknown"
@@ -119,7 +131,10 @@ func fallbackDir() string {
 		if err != nil {
 			// MkdirTemp failing means the temp root itself is unusable; keep
 			// going with a best-effort name rather than failing the app.
-			dir = filepath.Join(os.TempDir(), dirName+"-degraded")
+			// The pid suffix keeps the path unpredictable per process — the
+			// fixed spelling this replaces is exactly the pre-created path the
+			// comment above (CWE-379) warns about.
+			dir = filepath.Join(os.TempDir(), fmt.Sprintf("%s-degraded-%d", dirName, os.Getpid()))
 		}
 		fallbackDirOnce.path = dir
 	})
@@ -142,6 +157,9 @@ func GetDbPath() string {
 // GetPluginsDir returns the directory that holds plugin directories
 // (one subdirectory per plugin, each containing plugin.go).
 func GetPluginsDir() string {
+	// Trigger the legacy rename here too (not only in GetDbPath): the call
+	// order of the two accessors must not determine whether the rename runs.
+	migrateLegacyOnce.Do(migrateLegacyData)
 	if configDir, err := os.UserConfigDir(); err == nil {
 		dir := filepath.Join(configDir, dirName, "plugins")
 		if err := os.MkdirAll(dir, 0750); err == nil {

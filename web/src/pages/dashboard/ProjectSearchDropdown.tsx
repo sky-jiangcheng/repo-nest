@@ -22,6 +22,10 @@ export default function ProjectSearchDropdown({ onToggleStar }: Props) {
   const [projectHits, setProjectHits] = useState<Project[] | null>(null)
   const [searching, setSearching] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
+  // Sequence guard: the debounce serialises the requests, but responses can
+  // still arrive out of order — without the guard a slow older response
+  // overwrote the newer results and prematurely cleared the "searching" flag.
+  const searchSeqRef = useRef(0)
 
   const runSearch = useDebouncedCallback((q: string) => {
     if (!q.trim()) {
@@ -30,10 +34,12 @@ export default function ProjectSearchDropdown({ onToggleStar }: Props) {
       setSearching(false)
       return
     }
+    const seq = ++searchSeqRef.current
     Promise.all([
       searchAll(q).catch(() => [] as SearchHit[]),
       searchProjects(q).catch(() => [] as Project[]),
     ]).then(([hits, projects]) => {
+      if (searchSeqRef.current !== seq) return
       setNoteHits(hits)
       setProjectHits(projects)
       setSearching(false)

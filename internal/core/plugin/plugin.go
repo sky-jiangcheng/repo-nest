@@ -12,7 +12,6 @@ package plugin
 
 import (
 	"database/sql"
-	"errors"
 )
 
 // Plugin is the base interface every RepoNest plugin must implement.
@@ -70,7 +69,3 @@ type ImportDoc struct {
 	Kind      string // note kind: knowledge | log | idea | other
 	Source    string // provenance, e.g. "claude"
 }
-
-// ErrUnknownEvent is returned by the runtime when a handler registers for an
-// event name it does not recognize.
-var ErrUnknownEvent = errors.New("plugin: unknown event")

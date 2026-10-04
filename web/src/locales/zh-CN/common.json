@@ -4,7 +4,9 @@
     "dashboard": "仪表盘",
     "settings": "设置",
     "search": "搜索",
-    "searchLabel": "打开搜索 (⌘K)"
+    "searchLabel": "打开搜索 (⌘K)",
+    "main": "主导航",
+    "language": "切换语言"
   },
   "dashboard": {
     "title": "仪表盘",
@@ -13,7 +15,6 @@
     "workday": "工作日",
     "weekend": "周末愉快，无达标要求",
     "goalReached": "今日目标已达成",
-    "goalMissing": "还差 {{needed}} 行达标",
     "personalAdded": "个人新增",
     "files": "文件",
     "repos": "个仓库",
@@ -93,7 +94,8 @@
     "importFailed": "导入失败：",
     "importDone": "导入完成：新增 {{created}}，更新 {{updated}}，跳过 {{skipped}}",
     "notesTitle": "知识笔记",
-    "resultCount": "{{count}} 条笔记"
+    "resultCount": "{{count}} 条笔记",
+    "pinFailed": "置顶失败"
   },
   "settings": {
     "title": "设置",
@@ -109,10 +111,8 @@
     "addRoot": "添加新目录：",
     "add": "添加",
     "added": "扫描目录已添加，重新扫描后生效",
-    "addFailed": "添加失败",
     "remove": "移除",
     "removed": "扫描目录已移除，重新扫描后生效",
-    "removeFailed": "移除失败",
     "noRoots": "暂无扫描目录，请添加",
     "rejectedRoots": "以下目录未被接受：{{msg}}",
     "rootRejectReason": {
@@ -154,12 +154,7 @@
     "autoImportLabel": "启动时自动导入知识源",
     "autoImportOn": "应用启动时自动导入所有知识源",
     "autoImportOff": "仅在手动点击时导入",
-    "loaded": "已加载",
     "loadFailed": "加载失败",
-    "noPlugins": "暂无插件。可将插件目录放入配置目录的 plugins/ 下后点击「重新加载」。",
-    "reload": "重新加载",
-    "pluginsReloaded": "插件已重新加载",
-    "reloadFailed": "插件重载失败",
     "noSources": "暂无知识导入源。",
     "importNow": "立即导入",
     "actionsDesc": "手动触发全量重新扫描，刷新所有仓库的统计数据。",
@@ -176,7 +171,6 @@
     "removeFailedMsg": "移除失败: {{msg}}",
     "rescanFailedMsg": "扫描失败: {{msg}}",
     "reloadFailedMsg": "插件重载失败",
-    "unnnamed": "(未命名)",
     "fromPlugin": "来自 {{name}}",
     "gotoKnowledge": "前往知识库查看",
     "autoImportOnHint": "应用启动时自动导入所有知识源",
@@ -323,7 +317,13 @@
     "overviewEmpty": "等待首次挖掘",
     "overviewEmptyHint": "打开详情即自动提取，稍后刷新即可",
     "notFoundTitle": "项目不存在",
-    "notFoundDesc": "该项目可能已被重新扫描移除，或链接中的 ID 有误。"
+    "notFoundDesc": "该项目可能已被重新扫描移除，或链接中的 ID 有误。",
+    "saveFailed": "保存失败",
+    "star": "星标项目",
+    "unstar": "取消星标",
+    "refreshHistory": "刷新统计历史",
+    "refreshingHistory": "正在刷新…",
+    "loadFailed": "加载失败"
   },
   "common": {
     "unknownError": "未知错误",
@@ -387,7 +387,9 @@
     "month": "本月",
     "pageError": "页面加载出错",
     "workday": "工作日",
-    "weekend": "周末"
+    "weekend": "周末",
+    "date": "日期",
+    "importFailed": "导入失败"
   },
   "status": {
     "time": "当前时间：",

@@ -172,3 +172,57 @@ func TestGetHeatmapDataProjectFilter(t *testing.T) {
 		t.Fatalf("project heatmap should sum project A commits (3), got %+v", filtered)
 	}
 }
+
+// Regression: the sibling pre-filter used root_path LIKE parentDir || '/%'
+// with an unescaped pattern. A '%' or '_' in the parent directory name
+// over-matched (harmlessly, thanks to the exact re-check), but on Windows the
+// '\' in every stored path acted as the LIKE escape character, so nothing
+// matched and MergeProjectUp silently merged nothing. Matching is now an
+// exact filepath.Dir comparison, so metacharacters in the path are inert.
+func TestMergeProjectUpWithMetacharactersInPath(t *testing.T) {
+	database := setupTestDB(t)
+
+	// Parent directory name carries '%' and '_' — the old LIKE pattern
+	// treated both as wildcards. Windows-style backslash separators can't be
+	// exercised on a darwin/linux test machine, but the same escaping defect
+	// applies: an exact comparison has no metacharacters at all.
+	parent := "/tmp/work_space%100"
+	target := mustExecProject(t, database, "alpha", parent+"/alpha")
+	repoA := mustExecRepo(t, database, parent+"/alpha", target)
+	sibling := mustExecProject(t, database, "beta", parent+"/beta")
+	repoB := mustExecRepo(t, database, parent+"/beta", sibling)
+	stranger := mustExecProject(t, database, "elsewhere", "/tmp/other/beta")
+	mustExecRepo(t, database, "/tmp/other/beta", stranger)
+
+	newLevel, err := MergeProjectUp(database, target)
+	if err != nil {
+		t.Fatalf("MergeProjectUp: %v", err)
+	}
+	if newLevel != 1 {
+		t.Errorf("expected new level 1, got %d", newLevel)
+	}
+
+	// The true sibling's repos, notes and todos move to the target and the
+	// sibling project is deleted; the look-alike under /tmp/other survives.
+	var n int
+	if err := database.QueryRow("SELECT COUNT(*) FROM projects WHERE id = ?", sibling).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("sibling under the same parent should be merged away")
+	}
+	if err := database.QueryRow("SELECT COUNT(*) FROM projects WHERE id = ?", stranger).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("project under a different parent must survive the merge")
+	}
+	if err := database.QueryRow(
+		"SELECT COUNT(*) FROM repositories WHERE id IN (?, ?) AND project_id = ?",
+		repoA, repoB, target).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("both repos should belong to the merged project, got %d", n)
+	}
+}

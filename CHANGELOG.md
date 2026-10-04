@@ -4,6 +4,54 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [Unreleased]
+
+## [1.14.1] - 2026-10-05
+
+### 修复
+
+- **abeval A/B 评测两臂同源、质量门恒失败且污染用户配置**（P0）：lexical/hybrid 两个闭包本应经 `semantic_search` 配置区分，但配置在 `Compare` 之前一次性置 1，而 `semanticEnabled()` 每次搜索实时读库——两臂实际都在语义开启下运行，recall delta 恒为 0，gate 永远 FAIL；且无论 pass/fail 都把用户真实库的 `semantic_search` 永久留成 1（与 vector-init「不替用户开启语义检索」的承诺矛盾）。改为每臂调用时自证配置、进入时记录原值、退出（含 SIGINT/SIGTERM）恢复；新增 `db.DeleteConfig` 支持恢复「本来不存在」状态
+- **callout 渲染吞掉其后全部正文 / 或重复渲染**（P0）：占位符提取正则 `>\s*\[!TYPE\]\s*[\s\S]*?(?=\n>|$)` 两种破法——callout 后接空行+段落时贪婪匹配吃到文档末尾，之后正文静默消失；后接非 `>` 行时提前截断，剩余行作为普通 blockquote 二次渲染。改为单遍行状态机 `extractCallouts`：解析器消费哪几行就精确删除哪几行，占位符按索引唯一化（同类型多个 callout 各自独立渲染）。补 5 个回归测试
+- **扫描中途取消错误被 `filepath.SkipAll` 吞掉，部分结果冒充完整扫描**（P1）：WalkDir 把回调返回的 `SkipAll` 转成 nil，取消后单 root 返回 (部分 repos, nil)，`CleanupStaleDataTx` 用部分路径集清理会把未走到的仓库当「已消失」删掉。回调改传 `ctx.Err()` 原样传播，walk 结束后无条件补一次 ctx 检查；新增 mid-walk 取消回归测试
+- **`/api/rpc` 反射桥暴露 Wails 生命周期方法**（P1）：一发 `{"method":"Shutdown"}` 即可关闭整个服务的数据库句柄（进程存活、端口在听、后续请求全失败）。新增生命周期方法黑名单（Startup/Shutdown/Service → 403）、`(T, error)` 签名预校验（违约降级 501 而非 panic）、context 参数缺省时以请求 ctx 替换 nil
+- **`/api/rpc` 请求体无上限**（P1）：`Args []json.RawMessage` 会把任意大的 body 缓进内存，本机进程一个 POST 即可 OOM 服务。加 1 MiB `MaxBytesReader` + `ContentLength` 预检，超限 413
+- **后台 goroutine panic 杀死整个进程 / 关闭路径与后台写入竞态**（P1）：stats 按需刷新、mining、auto-import 都是裸 `go`，net/http 只 recover handler 自身 goroutine，一处 panic 全进程退出；且 auto-import 不受 Shutdown 管理，DB 可能在其写入中关闭。新增 `Service.bgGo` 统一收口（recover + WaitGroup 跟踪），`Shutdown` 先取消后台任务再等待（3s 兜底）后才允许 `Close()`
+- **stats 按需刷新无去重**（P1）：仪表盘轮询「无数据的日期」时每次 load 都会为每个项目再拉起一轮 git 子进程。`refreshProjectStatsForDate` 按 (projectID, date) `LoadOrStore` 去重
+- **`diff.Lines` 最坏情况 OOM**（P1）：LCS dp 表按 (m+1)×(n+1) 分配，100 KB 笔记（字节上限内）若由空行/超短行组成可达 ~10 万行，dp 表 ≈ 80 GB 直接 fatal OOM。先 trim 公共前后缀（真实编辑场景大幅缩表），再设 16M cell 预算门（int32），超限降级为「全删全增」；新增病态输入与长笔记单行编辑回归测试
+- **TopContributors 恒为空**（P1）：`git shortlog` 无 rev 参数且 Stdin 为 nil 时从 /dev/null 读 log，输出恒空；`-n<limit>` 实为 rev-list `--max-count`（只扫最后 N 个提交）而非「前 N 作者」。加 `HEAD`、Go 侧截断、30s 超时；新增真实 git 仓库回归测试
+- **删除笔记不清理向量索引**（P1）：`DeleteNoteEmbedding` 此前只有健康检查 probe 在用，删除的笔记在 `note_embeddings` 留孤儿向量，消耗 KNN k=20 召回预算（结果被内连接悄悄丢弃），只有手动全量 rebuild 才恢复。`DeleteNote` 现在同步删 embedding（best-effort）；扫描 cleanup 级联删项目后按需执行新增的 `PruneNoteEmbeddings`
+- **cmd/abeval 等 CLI 入口未调 `platform.SetPrivateUmask`**（P3，顺手）：abeval 已补齐，与 umask 注释承诺一致
+
+### 变更（P2 批次）
+
+- **schema 迁移批内原子**：多步迁移的非 PRAGMA 语句在同一事务内执行——v4 会 DROP 并 RENAME projects 表，进程死在中间会把库留在「projects 表已删、版本号未盖」的状态，下次启动硬失败需手工修复。PRAGMA（foreign_keys 不能在事务内改）在批外执行。新增回滚语义与 PRAGMA 混排两个单测
+- **`MergeProjectUp` 兄弟项目匹配去掉 LIKE 预过滤**：原 `root_path LIKE parentDir || '/%'` 从不转义——父目录名含 `%`/`_` 会过匹配（被精确复检兜住），而 Windows 路径里的 `\` 会充当 LIKE 转义符导致**什么都匹配不到、合并在 Windows 上静默无效**。改为全量遍历 + 精确 `filepath.Dir` 比较，新增含元字符路径的回归测试
+- **符号链接扫描根可被发现**：WalkDir 对 root 做 Lstat，symlink root 整个 walk 只访问一项、静默 0 结果（而 root-本身是仓库的检查走 `os.Stat` 又能发现，行为自相矛盾）。`scanRoot` 开头只对 root 本身做 `EvalSymlinks`（树内 symlink 维持不下钻防环），新增回归测试
+- **桌面 CSP 收紧**：`connect-src` 去掉 `ws: wss:`（`ws:` 按 CSP3 规则同时匹配任意主机的 `wss:`，而发布的前端不使用任何 WebSocket，二者纯属给注入脚本留外传通道）；注释改为如实承认 `img-src https:` 是余下通道，不再声称「无外传通道」
+- **`cmd/server` 优雅关闭**：SIGINT/SIGTERM 此前直接终止，defer 清理从不执行。改为 `signal.NotifyContext` + `srv.Shutdown` 排空 → `svc.Shutdown()`（等后台任务）→ 关库；补 `WriteTimeout`/`IdleTimeout`；并补 `EnsureDefaultScanRoots()`（原注释声称「与桌面 App 相同启动序列」但没有 seed，全新 headless 安装 TriggerScan 会失败）
+- **HTTP 状态码不再把故障说成不存在**：`GetProjectDetail`/`GetProjectOverview`/`UpdateProjectLevel` 引入 `service.ErrProjectNotFound` 哨兵，db 层拆分/合并保留 `sql.ErrNoRows` 包装；httpapi 对 404 之外的错误返回 500——此前磁盘满/DB 锁死一律表现为 404
+- **`GetGitUserName` 改读 `--global`**：原 `git config user.name` 会读进程 CWD 所在仓库的 local config，headless server 由插件拉起时 CWD 任意，导致「我的」统计拆分随启动目录漂移
+- **platform 测试与真实用户目录隔离**：`TestMain` 把 HOME/XDG 重定向到临时树——原测试会真实创建 `~/Library/Application Support/reponest` 并可能触发一次真实的 legacy 目录改名
+- **`prune-releases.sh` 尊重 `--delete-tags`**：`gh release delete --cleanup-tag` 原来无条件传入，普通 `--yes` 运行会删掉所有被裁剪 release 的 git tag，而输出却声称「tag 将保留」。改为仅在 `--delete-tags` 时传
+- **数学渲染排除代码块**：`$...$` 替换此前作用于整段 HTML——代码块/行内代码里的 `$1 + $2$`、`$VAR` 会被改写成 KaTeX 公式垃圾。`<pre>/<code>` 段先抽离占位、数学渲染后还原再消毒，新增 3 个回归测试
+- **i18n 补齐缺失 key**：`project.saveFailed`（此前保存失败显示字面量 key）、`project.star/unstar`（星标按钮 tooltip 一直显示 "project.star"）、`project.refreshHistory/refreshingHistory`、`common.date`、`common.importFailed`、`knowledge.pinFailed`、`nav.main`、`nav.language`；BlockEditor 7 处硬编码中文（拖拽排序/上移/下移/下方插入块/删除块/插入块/添加块）改用既有 `blockEditor.*` key（key 早就在、组件没用）；语言切换按钮改用 `nav.language`（此前复用搜索的 aria-label，读屏用户会把语言切换器当成搜索），主导航 aria-label 同步修正
+- **API 文档补 `/api/rpc` 章节**（中英）：此前文档只描述 6 个只读端点，实际存在一个能力等同桌面 UI 的全量写面，安全评估会严重低估暴露面。补请求/响应契约、状态码、生命周期黑名单与 1 MiB 上限
+
+### 变更（P3 批次与前端竞态补漏）
+
+- **补上上一轮遗漏的前端竞态修复**（上轮汇总误报为已完成，本轮实际落地）：`useProjectDetail` 加载加序号守卫（/project/:id 复用页面实例，晚到的旧项目响应会覆盖新页面）；`NoteSection`/`TodoSection` 的列表加载同样加序号守卫，且加载失败不再伪装成「暂无」空态而是显示 ErrorBanner（TodoSection 此前根本没有错误展示）；`ProjectSearchDropdown` 搜索响应乱序守卫；`useNoteMutations.run` 返回成功/失败布尔，`handlePin` 改按返回值回滚（原 `lastOpRef` 检查会让任何一次更早的失败导致之后每次成功的 pin 都被错误回滚）；`ProjectPanel` 加 `key={projectId}` 修跨项目草稿泄漏（A 项目开着草稿切到 B 项目，草稿会被写进并保存到 B 名下）
+- **CJK 截断不再出现乱码**：`context.go`/`llm.go` 的 4 处按字节截断改用 rune 边界安全的 `truncateBytes`；`makeSnippet` 的起点与 idx<0 分支同样补 UTF-8 边界钳制
+- **`CreateTodo` 的 MAX+INSERT 包进事务**：并发创建此前可能拿到同一个 sort_order
+- **grouper Rule 3 分支锁死行为**：补重叠 roots（父仓库目录 + 内嵌仓库根）回归测试，明确该分支产出的两个 group 共享 RootPath、DB 端按 root_path upsert 合并为一个项目；合成的父 RepoInfo 带真实 depth 而非硬编码 0
+- **插件 Init 失败回滚 handlers**：`Context.On` 在 Init 期间记账，Init 失败或 Import 签名不符时按票据截回——此前加载失败的插件仍持续接收事件
+- **MCP `notes_update` 原子化**：合并省略字段后一次 `UpdateNoteFull` 写回（原 UpdateNote + UpdateNoteMeta 两步，元数据失败会留下「新内容 + 旧标题标签」的中间态）
+- **`DetectLanguages` 单文件 1 MiB 上限 + `scanner.Err()` 检查**：巨型数据文件不再被逐行读完，读取失败的文件不再贡献部分计数
+- **`writeJSON` 先 marshal 后发头**：编码失败不再给客户端空 body 的 200
+- **platform 三项**：`DefaultScanRoots` 在 home 不可得时不再播种空字符串根；`fallbackDir` 回退路径加 pid 后缀（消除与自身引用的 CWE-379 相矛盾的固定拼写）；`GetPluginsDir` 也触发 legacy 目录改名（不再依赖 GetDbPath 先被调用）
+- **扫描器 `.git` 文件取舍写进注释**：worktree/submodule（`.git` 为文件）不识别是当前的有意取舍，注释说明原因与支持路径
+- **前端清理**：mermaid SVG 注入改函数式替换（`$` 模式不再破坏图形、重复内容不再只换第一处）；frontmatter 剥离正则收紧为 `^---\n…\n---`（以 `---` 水平线开头的正文不再被整段吃掉）；删除无调用的 `getPluginStatuses`/`reloadPlugins` 端点与 9 个死 locale key；Heatmap 复用共享 `toDateStr`
+- **外围**：VS Code 扩展 MCP 客户端每个请求 60s 超时（卡死的服务器此前会让进度条永久挂起）；dsh 插件只在连接级失败时重试（HTTP 错误状态与 abort 立即抛出）；ci.yml 修正 go 版本注释（1.25 → 1.26）
+
 ## [1.14.0] - 2026-10-04
 
 ### 修复
@@ -568,7 +616,8 @@
 
 - 首个正式版本：Wails 桌面应用骨架、GitHub Actions 多平台构建发布
 
-[Unreleased]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.9.5...HEAD
+[Unreleased]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.14.1...HEAD
+[1.14.1]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.14.0...v1.14.1
 [1.9.5]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.9.4...v1.9.5
 [1.7.9]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.8...v1.7.9
 [1.7.8]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.7...v1.7.8

@@ -113,10 +113,21 @@ fi
 echo "Deleting..."
 FAILED=0
 printf '%s\n' "$CANDIDATES" | while IFS=$'\t' read -r tag _n _size _pre _date; do
-  if gh release delete "$tag" --repo "$REPO" --yes --cleanup-tag >/dev/null 2>&1; then
-    echo "  deleted $tag"
+  # --cleanup-tag is passed ONLY when the operator asked for it: it was
+  # previously unconditional, so a plain --yes run deleted every pruned
+  # release's git tag while the output claimed tags were kept.
+  if [ "$DELETE_TAGS" -eq 1 ]; then
+    if gh release delete "$tag" --repo "$REPO" --yes --cleanup-tag >/dev/null 2>&1; then
+      echo "  deleted $tag (tag removed)"
+    else
+      echo "  FAILED  $tag" >&2
+    fi
   else
-    echo "  FAILED  $tag" >&2
+    if gh release delete "$tag" --repo "$REPO" --yes >/dev/null 2>&1; then
+      echo "  deleted $tag (tag kept)"
+    else
+      echo "  FAILED  $tag" >&2
+    fi
   fi
 done
 

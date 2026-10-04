@@ -33,6 +33,18 @@ A JSON API for external runtimes such as the DeepSeek Harness dsh-plugin. It sha
 
 ---
 
+## `/api/rpc` (JSON-RPC bridge)
+
+`/api/rpc` is a **full write surface**: it exposes the same `App` object the desktop UI binds (every exported method of `internal/app`) over JSON-RPC, and the web frontend's transport uses it in browser/standalone mode. Its capability equals the desktop UI — beyond the read-only endpoints listed above, `CreateNote`, `DeleteNote`, `UpdateConfig`, `UpdateScanRoots`, `TriggerScan`, `ReloadPlugins` and every other method are callable through it. Any security assessment must count this endpoint in the exposure.
+
+- **Request**: `POST /api/rpc` with `{"method": "<App method name>", "args": [positional JSON args]}`; `args` may be omitted (missing parameters become zero values; a `context.Context` parameter receives the request context)
+- **Response**: `{"result": <first return value>}`; a method returning `(T, error)` with a non-nil error yields `422` + `{"error": "..."}`
+- **Status codes**: `400` bad args / `403` blocked lifecycle method / `404` unknown method / `405` not POST / `413` body over 1 MiB / `501` unsupported signature (variadic or non-`(T, error)` pair) / `503` binding unavailable
+- **Lifecycle blocklist**: `Startup`, `Shutdown`, `Service` are Wails runtime internals and return `403` (previously a single `{"method":"Shutdown"}` could silently close the server's database handle)
+- **Body limit**: 1 MiB (legitimate payloads — a note or handoff record — sit far below it)
+
+---
+
 ## Projects
 
 | Method | Signature | Description |

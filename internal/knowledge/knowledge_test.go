@@ -2,6 +2,7 @@ package knowledge
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -243,5 +244,76 @@ require (
 	}
 	if len(deps) != 2 {
 		t.Errorf("expected 2 deps (single + block), got %v", deps)
+	}
+}
+
+// initGitRepo creates a real git repository with one commit per (author,
+// message) pair, so git-backed detectors run against a genuine history.
+func initGitRepo(t *testing.T, commits map[string]string) string {
+	t.Helper()
+	root := t.TempDir()
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=tester", "GIT_AUTHOR_EMAIL=tester@example.com",
+			"GIT_COMMITTER_NAME=tester", "GIT_COMMITTER_EMAIL=tester@example.com",
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+	run("init", "-q", "-b", "main")
+	run("config", "user.name", "tester")
+	run("config", "user.email", "tester@example.com")
+	for msg, author := range commits {
+		if err := os.WriteFile(filepath.Join(root, "file.txt"), []byte(msg), 0640); err != nil {
+			t.Fatal(err)
+		}
+		run("add", ".")
+		// Per-commit author via env: map iteration order is random, so the
+		// counts must be asserted through the parser, not map order.
+		cmd := exec.Command("git", "commit", "-q", "-m", msg)
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME="+author, "GIT_AUTHOR_EMAIL="+author+"@example.com",
+			"GIT_COMMITTER_NAME="+author, "GIT_COMMITTER_EMAIL="+author+"@example.com",
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git commit: %v: %s", err, out)
+		}
+	}
+	return root
+}
+
+// Regression: shortlog without a rev argument reads its log from stdin, which
+// is /dev/null for a nil exec.Cmd — the output was always empty and the
+// contributor list was silently empty forever. `-n<limit>` also meant
+// rev-list --max-count (scan only N commits), not "top N authors".
+func TestDetectContributorsReturnsAuthors(t *testing.T) {
+	root := initGitRepo(t, map[string]string{
+		"first":  "alice",
+		"second": "alice",
+		"third":  "bob",
+	})
+
+	got, err := DetectContributors(root, 5)
+	if err != nil {
+		t.Fatalf("DetectContributors: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 contributors, got %+v", got)
+	}
+	if got[0].Author != "alice" || got[0].Count != 2 {
+		t.Errorf("top contributor should be alice (2 commits), got %+v", got[0])
+	}
+	if got[1].Author != "bob" || got[1].Count != 1 {
+		t.Errorf("second contributor should be bob (1 commit), got %+v", got[1])
+	}
+
+	// limit truncates after counting, not before.
+	if got, err := DetectContributors(root, 1); err != nil || len(got) != 1 {
+		t.Errorf("limit=1 should truncate to the top author, got %+v err=%v", got, err)
 	}
 }

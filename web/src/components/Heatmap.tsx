@@ -1,3 +1,4 @@
+import { toDateStr } from '../utils/dates'
 import { useTranslation } from 'react-i18next'
 import { useEffect, useState, useMemo } from 'react'
 import { getHeatmapData, type HeatmapDay } from '../api/client'
@@ -30,10 +31,6 @@ function getLevel(day: HeatmapDay | null): number {
 }
 
 /** Local calendar date as YYYY-MM-DD (never UTC, so cells match the user's day). */
-function toDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 function generateGrid(days: HeatmapDay[], daysToShow: number): (HeatmapDay | null)[][] {
   const dayMap = new Map<string, HeatmapDay>()
   for (const d of days) {

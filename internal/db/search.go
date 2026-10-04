@@ -264,7 +264,7 @@ func makeSnippet(content, query string) string {
 	}
 	idx := strings.Index(strings.ToLower(escaped), strings.ToLower(escQuery))
 	if idx < 0 {
-		return highlightQuery(escaped[:searchSnippetWindow], escQuery)
+		return highlightQuery(escaped[:clampToRuneStart(escaped, searchSnippetWindow)], escQuery)
 	}
 	start := idx - searchSnippetWindow/2
 	if start < 0 {
@@ -274,15 +274,27 @@ func makeSnippet(content, query string) string {
 	if end > len(escaped) {
 		end = len(escaped)
 	}
-	// Clamp end to the last valid UTF-8 boundary so we don't split a multi-byte
-	// character (common with CJK text where each rune is 3 bytes). The
-	// end < len(escaped) guard is essential: when end == len(escaped) the
-	// slice already ends on a valid boundary and escaped[end] would panic.
+	// Clamp both ends to valid UTF-8 boundaries so we don't split a
+	// multi-byte character (common with CJK text where each rune is 3 bytes).
+	// The `end < len(escaped)` guard is essential: when end == len(escaped)
+	// the slice already ends on a valid boundary and escaped[end] would panic.
 	for end > start && end < len(escaped) && !utf8.RuneStart(escaped[end]) {
 		end--
 	}
+	for start < end && !utf8.RuneStart(escaped[start]) {
+		start++
+	}
 	snippet := escaped[start:end]
 	return highlightQuery(snippet, escQuery)
+}
+
+// clampToRuneStart backs an end offset up to the start of the rune containing
+// it, so escaped[:n] never ends mid-rune.
+func clampToRuneStart(s string, n int) int {
+	for n > 0 && n < len(s) && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return n
 }
 
 // highlightQuery wraps all occurrences of query in the snippet with <mark> tags.

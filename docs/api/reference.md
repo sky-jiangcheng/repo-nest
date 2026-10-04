@@ -33,6 +33,18 @@ RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 
 ---
 
+## `/api/rpc`（JSON-RPC 桥）
+
+`/api/rpc` 是一个**全量写面**：它把桌面 App 绑定的同一个 `App` 对象（`internal/app` 的全部导出方法）以 JSON-RPC 形式暴露出去，浏览器/独立前端模式下前端 transport 就走这条路。能力等同桌面 UI——下表列出的只读端点之外，`CreateNote`、`DeleteNote`、`UpdateConfig`、`UpdateScanRoots`、`TriggerScan`、`ReloadPlugins` 等全部方法都可经它调用。做安全评估时必须把它计入暴露面。
+
+- **请求**：`POST /api/rpc`，体 `{"method": "<App 导出方法名>", "args": [按位置排列的 JSON 参数]}`；`args` 可省略（缺省参数为零值，`context.Context` 参数以请求上下文填充）
+- **响应**：`{"result": <第一个返回值>}`；方法返回 `(T, error)` 且 error 非 nil 时为 `422` + `{"error": "..."}`
+- **状态码**：`400` 参数不合法 / `403` 生命周期方法被拒 / `404` 方法不存在 / `405` 非 POST / `413` 请求体超过 1 MiB / `501` 不支持的签名（变参或非 `(T, error)` 双返回）/ `503` 绑定对象不可用
+- **生命周期方法黑名单**：`Startup`、`Shutdown`、`Service` 属 Wails 运行时内部钩子，经 RPC 调用返回 `403`（此前一发 `{"method":"Shutdown"}` 即可无崩溃痕迹地关闭整个服务的数据库句柄）
+- **请求体上限**：1 MiB（合法载荷——单条笔记/交接记录——远低于此）
+
+---
+
 ## 项目
 
 | 方法 | 签名 | 说明 |

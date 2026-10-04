@@ -22,6 +22,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -56,9 +57,18 @@ type handler struct {
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
+	// Marshal BEFORE writing headers: a marshal failure after WriteHeader
+	// left the client with an empty body and a success status code.
+	data, err := json.Marshal(v)
+	if err != nil {
+		data = []byte(`{"error":"response encoding failed"}`)
+		if status == http.StatusOK {
+			status = http.StatusInternalServerError
+		}
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	_, _ = w.Write(data)
 }
 
 func (h *handler) health(w http.ResponseWriter, r *http.Request) {
@@ -132,18 +142,30 @@ func (h *handler) project(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// notFoundOr500 keeps the status code honest: a service error that is the
+	// documented "no such project" case maps to 404, and anything else (a
+	// full disk, a locked database, a corrupt table) maps to 500 instead of
+	// masquerading as "absent".
+	notFoundOr500 := func(w http.ResponseWriter, err error) {
+		if errors.Is(err, service.ErrProjectNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
 	switch {
 	case len(parts) == 1 || parts[1] == "detail" || parts[1] == "":
 		detail, err := h.svc.GetProjectDetail(id)
 		if err != nil {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+			notFoundOr500(w, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, detail)
 	case parts[1] == "overview":
 		ov, err := h.svc.GetProjectOverview(id)
 		if err != nil {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+			notFoundOr500(w, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, ov)

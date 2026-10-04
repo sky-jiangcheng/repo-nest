@@ -21,7 +21,7 @@ interface VersionHistoryHandle extends VersionHistoryState {
  * `run` wrapper to integrate with the ErrorBanner retry mechanism.
  */
 export function useNoteVersionHistory(
-  run: (op: () => Promise<void>, errMsg: string) => Promise<void>
+  run: (op: () => Promise<void>, errMsg: string) => Promise<boolean>
 ): VersionHistoryHandle {
   const [versionHistory, setVersionHistory] = useState<NoteVersion[] | null>(null)
   const [currentNoteId, setCurrentNoteId] = useState<number | null>(null)

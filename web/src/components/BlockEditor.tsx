@@ -310,7 +310,7 @@ export default function BlockEditor({ value, onChange, placeholder }: BlockEdito
             <span
               className="block-drag-handle"
               draggable
-              title="拖拽排序"
+              title={t('blockEditor.dragSort')}
               onDragStart={() => handleDragStart(index)}
               onDragOver={handleDragOver}
               onDrop={() => handleDrop(index)}
@@ -320,10 +320,10 @@ export default function BlockEditor({ value, onChange, placeholder }: BlockEdito
             </span>
             <span className="block-type">{typeLabel(t, block.type)}</span>
             <div className="block-actions">
-              <button type="button" className="block-btn" title="上移" aria-label="上移" onClick={() => moveBlock(index, -1)} disabled={index === 0}><Icon name="arrow-up" size={14} /></button>
-              <button type="button" className="block-btn" title="下移" aria-label="下移" onClick={() => moveBlock(index, 1)} disabled={index === blocks.length - 1}><Icon name="arrow-down" size={14} /></button>
-              <button type="button" className="block-btn" title="下方插入块" aria-label="下方插入块" onClick={() => addBlockAfter(index)}><Icon name="plus" size={14} /></button>
-              <button type="button" className="block-btn block-btn-danger" title="删除块" aria-label="删除块" onClick={() => deleteBlock(index)}><Icon name="close" size={14} /></button>
+              <button type="button" className="block-btn" title={t('blockEditor.moveUp')} aria-label={t('blockEditor.moveUp')} onClick={() => moveBlock(index, -1)} disabled={index === 0}><Icon name="arrow-up" size={14} /></button>
+              <button type="button" className="block-btn" title={t('blockEditor.moveDown')} aria-label={t('blockEditor.moveDown')} onClick={() => moveBlock(index, 1)} disabled={index === blocks.length - 1}><Icon name="arrow-down" size={14} /></button>
+              <button type="button" className="block-btn" title={t('blockEditor.insertAfter')} aria-label={t('blockEditor.insertAfter')} onClick={() => addBlockAfter(index)}><Icon name="plus" size={14} /></button>
+              <button type="button" className="block-btn block-btn-danger" title={t('blockEditor.deleteBlock')} aria-label={t('blockEditor.deleteBlock')} onClick={() => deleteBlock(index)}><Icon name="close" size={14} /></button>
             </div>
           </div>
           <textarea
@@ -336,8 +336,8 @@ export default function BlockEditor({ value, onChange, placeholder }: BlockEdito
             placeholder={placeholder ?? t('project.contentBlockPlaceholder', { defaultValue: 'Type content or / for blocks' })}
           />
           {palette && palette.blockId === block.id && (
-            <div className="block-palette" role="listbox" aria-label="插入块">
-              <div className="block-palette-head">插入块</div>
+            <div className="block-palette" role="listbox" aria-label={t('blockEditor.insert')}>
+              <div className="block-palette-head">{t('blockEditor.insert')}</div>
               {paletteItems.map((item, i) => (
                 <button
                   key={item.label}
@@ -356,7 +356,7 @@ export default function BlockEditor({ value, onChange, placeholder }: BlockEdito
           )}
         </div>
       ))}
-      <button type="button" className="block-add" onClick={() => addBlockAfter(blocks.length - 1)}><Icon name="plus" size={14} /> 添加块</button>
+      <button type="button" className="block-add" onClick={() => addBlockAfter(blocks.length - 1)}><Icon name="plus" size={14} /> {t('blockEditor.addBlock')}</button>
     </div>
   )
 }

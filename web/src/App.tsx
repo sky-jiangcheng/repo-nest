@@ -60,7 +60,7 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
 
   return (
     <header>
-      <nav className="navbar" aria-label={t('nav.search', { defaultValue: 'main navigation' })}>
+      <nav className="navbar" aria-label={t('nav.main')}>
         <div className="nav-left">
           <Link to="/" className="nav-brand">
             {/* The real brand mark, not a text glyph — see BrandMark. 26px:
@@ -86,9 +86,9 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
             <button
               className="nav-lang-btn"
               onClick={() => setLangOpen(v => !v)}
-              aria-label={t('nav.searchLabel', { defaultValue: 'Language switch' })}
+              aria-label={t('nav.language')}
               aria-expanded={langOpen}
-              title={t('nav.searchLabel', { defaultValue: 'Switch language' })}
+              title={t('nav.language')}
             >
               <Icon name="globe" size={14} />
               <span className="lang-label">{currentLang === 'zh-CN' ? '中文' : 'EN'}</span>

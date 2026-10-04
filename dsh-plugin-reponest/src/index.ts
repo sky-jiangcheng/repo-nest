@@ -45,7 +45,10 @@ export function apply(ctx: Context) {
     ctx.logger.warn('[reponest] REPONEST_SERVER_BIN not set; expecting an already-running server at ' + base)
   }
 
-  // HTTP helper with retries to cover server cold-start latency.
+  // HTTP helper with retries to cover server cold-start latency. Only
+  // connection-level failures are retried: an HTTP error status means the
+  // server is up and the request is wrong (retrying 4xx/5xx five times just
+  // delayed the error), and an abort means the caller gave up.
   async function call(path: string, init?: RequestInit, signal?: AbortSignal): Promise<any> {
     let lastErr: unknown
     for (let i = 0; i < 5; i++) {
@@ -53,15 +56,23 @@ export function apply(ctx: Context) {
         const res = await fetch(base + path, { ...init, signal })
         if (!res.ok) {
           const body = await res.text()
-          throw new Error(`reponest api ${res.status}: ${body.slice(0, 200)}`)
+          throw new HttpError(`reponest api ${res.status}: ${body.slice(0, 200)}`, res.status)
         }
         return await res.json()
       } catch (e) {
+        if (signal?.aborted) throw e
+        if (e instanceof HttpError) throw e
         lastErr = e
         await new Promise((r) => setTimeout(r, 600))
       }
     }
     throw lastErr
+  }
+
+  class HttpError extends Error {
+    constructor(message: string, readonly status: number) {
+      super(message)
+    }
   }
 
   ctx.tools.register(defineTool({

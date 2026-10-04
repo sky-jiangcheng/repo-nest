@@ -310,25 +310,26 @@ func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 			return makeTextResult(fmt.Sprintf("refusing to update note %d: it is a session handoff (tagged 'handoff') — the protocol record between sessions, protected from plain overwrites. Write a new handoff with reponest_handoff; if this record itself is wrong, edit it from the desktop app.", note.ID)), nil
 		}
 
+		// Merge omitted fields from the stored note and write everything back
+		// in ONE UpdateNoteFull. The old two-call path (UpdateNote then
+		// UpdateNoteMeta) was non-atomic: a metadata failure left the note
+		// with new content and old title/tags. Omitted-field semantics are
+		// unchanged ("keep what is there").
+		mergedContent, mergedTitle, mergedTags, mergedKind := note.Content, note.Title, note.Tags, note.Kind
 		if content != "" {
-			if err := svc.UpdateNote(note.ID, content); err != nil {
-				return makeTextResult(fmt.Sprintf("error: %v", err)), nil
-			}
+			mergedContent = content
 		}
-		if title != "" || tags != "" || category != "" {
-			mergedTitle, mergedTags, mergedKind := note.Title, note.Tags, note.Kind
-			if title != "" {
-				mergedTitle = title
-			}
-			if tags != "" {
-				mergedTags = tags
-			}
-			if category != "" {
-				mergedKind = category
-			}
-			if err := svc.UpdateNoteMeta(note.ID, mergedTitle, mergedTags, mergedKind, note.Pinned); err != nil {
-				return makeTextResult(fmt.Sprintf("error updating metadata: %v", err)), nil
-			}
+		if title != "" {
+			mergedTitle = title
+		}
+		if tags != "" {
+			mergedTags = tags
+		}
+		if category != "" {
+			mergedKind = category
+		}
+		if err := svc.UpdateNoteFull(note.ID, mergedContent, mergedTitle, mergedTags, mergedKind, note.Pinned); err != nil {
+			return makeTextResult(fmt.Sprintf("error: %v", err)), nil
 		}
 		updated, err := svc.GetNote(note.ID)
 		if err != nil {
