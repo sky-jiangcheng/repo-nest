@@ -211,7 +211,14 @@ func (a *App) GetConfig() (*service.ConfigData, error) { return a.svc.GetConfig(
 func (a *App) UpdateConfig(key, value string) error { return a.svc.UpdateConfig(key, value) }
 
 // UpdateScanRoots replaces the entire scan root list atomically.
-func (a *App) UpdateScanRoots(scanRoots []string) error { return a.svc.UpdateScanRoots(scanRoots) }
+//
+// The submitted list is normalised first (see service.normalizeScanRoots): only
+// real directories are stored, in canonical form, deduplicated. Entries that
+// could not be accepted are reported in the result rather than failing the call,
+// so a caller keeps the roots it asked for and learns which ones were dropped.
+func (a *App) UpdateScanRoots(scanRoots []string) (*service.ScanRootsResult, error) {
+	return a.svc.UpdateScanRoots(scanRoots)
+}
 
 // --- AI-facing exports --------------------------------------------------------
 

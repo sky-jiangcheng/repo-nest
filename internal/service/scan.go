@@ -15,9 +15,9 @@ import (
 
 // ScanResult holds the result of a scan operation.
 type ScanResult struct {
-	Success    bool   `json:"success"`
-	ReposFound int    `json:"repos_found"`
-	Projects   int    `json:"projects"`
+	Success    bool `json:"success"`
+	ReposFound int  `json:"repos_found"`
+	Projects   int  `json:"projects"`
 	// SyncErrors counts project groups whose DB sync failed while others
 	// succeeded. A partial sync used to report plain success, leaving the
 	// agent to believe the knowledge base was complete.
@@ -52,11 +52,19 @@ func (s *Service) EnsureDefaultScanRoots() {
 		_ = db.SetConfig(s.db, "scan_roots_seeded", "1")
 		return
 	}
+	// Defaults go through the same normalisation as user input. On Windows the
+	// platform default is every drive letter, so absent or unmounted drives are
+	// expected here; storing those verbatim would leave dead roots in the config
+	// that the user cannot remove later, because every write re-validates.
 	if defaults := platform.DefaultScanRoots(); len(defaults) > 0 {
-		if err := db.ReplaceScanRoots(s.db, defaults); err != nil {
+		roots, rejected := normalizeScanRoots(defaults)
+		if err := db.ReplaceScanRoots(s.db, roots); err != nil {
 			log.Printf("seed default scan roots error: %v", err)
 		} else {
-			log.Printf("seeded %d default scan root(s)", len(defaults))
+			log.Printf("seeded %d default scan root(s)", len(roots))
+			for _, r := range rejected {
+				log.Printf("skipped default scan root %s: %s", r.Path, r.Reason)
+			}
 		}
 	}
 	_ = db.SetConfig(s.db, "scan_roots_seeded", "1")
@@ -182,7 +190,22 @@ func (s *Service) runCollectedScan(ctx context.Context) (out ScanResult, err err
 		maxDepth = 2
 	}
 
-	roots, _ := db.GetScanRoots(s.db)
+	// A read error must not be mistaken for "no roots configured" — it would
+	// turn a transient DB problem into a scan refusal. Fail loudly instead.
+	roots, err := db.GetScanRoots(s.db)
+	if err != nil {
+		return ScanResult{}, fmt.Errorf("read scan roots: %w", err)
+	}
+	// With no roots configured, ScanRepositories returns zero repos and the
+	// stale-data cleanup below treats "scanned nothing" as "everything is
+	// gone" — wiping every repository, stat and orphaned project in the
+	// knowledge base. A scan that can only ever return nothing must not be
+	// allowed to reach the destructive path: the user has not configured
+	// anything yet, or deliberately cleared the list, and neither means
+	// "delete my data".
+	if len(roots) == 0 {
+		return ScanResult{}, fmt.Errorf("no scan roots configured: add at least one directory in Settings before scanning")
+	}
 	repos, err := scanner.ScanRepositories(ctx, roots, maxDepth)
 	if err != nil {
 		// Cancellation or a genuine walk failure — never present a partial
@@ -244,6 +267,31 @@ func (s *Service) runCollectedScan(ctx context.Context) (out ScanResult, err err
 	// when it is empty.
 	if syncErrs > 0 && syncErrs == len(groups) {
 		return ScanResult{}, fmt.Errorf("scan sync failed for all %d discovered project group(s)", len(groups))
+	}
+
+	// A scan that walked the configured roots and came back with nothing, while
+	// the knowledge base already holds repositories, means the walk failed —
+	// the root is unreadable, a symlink target vanished, an external volume is
+	// unmounted. It does NOT mean the user deleted every repo. Reconciling
+	// against that empty result would delete all of them, and stats computed
+	// from git history cannot be rebuilt without re-walking every project.
+	// Abort instead; the next successful scan reconciles normally.
+	if len(scannedPaths) == 0 {
+		existing, err := db.GetCollectedProjectIDs(ctx, s.db)
+		if err != nil {
+			log.Printf("count collected projects before cleanup: %v", err)
+		}
+		if len(existing) > 0 {
+			return ScanResult{}, fmt.Errorf(
+				"scan found 0 repositories under %d configured root(s) but %d project(s) are on record; "+
+					"refusing to delete them — check that the roots exist and are readable",
+				len(roots), len(existing))
+		}
+		// Genuinely empty knowledge base with genuinely empty scan: nothing to
+		// lose, so fall through. CleanupStaleDataTx still refuses the empty
+		// path set, which is the right outcome — there is nothing to clean.
+		return ScanResult{}, fmt.Errorf("scan found 0 repositories under %d configured root(s): %w",
+			len(roots), db.ErrNoScannedPaths)
 	}
 
 	if err := db.CleanupStaleDataTx(tx, scannedPaths); err != nil {

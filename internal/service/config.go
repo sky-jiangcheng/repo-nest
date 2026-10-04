@@ -122,9 +122,29 @@ func (s *Service) UpdateConfig(key, value string) error {
 }
 
 // UpdateScanRoots replaces the entire scan root list atomically.
-func (s *Service) UpdateScanRoots(scanRoots []string) error {
-	if err := db.ReplaceScanRoots(s.db, scanRoots); err != nil {
-		return fmt.Errorf("failed to update scan roots: %w", err)
+//
+// The submitted list is normalised first (see normalizeScanRoots): only real
+// directories are stored, in canonical form, deduplicated. Entries that could
+// not be accepted come back in Rejected instead of failing the whole call — the
+// caller keeps the roots it asked for and learns exactly which ones were
+// dropped and why.
+//
+// Storing the normalised list (rather than echoing the input back) is what
+// keeps the persisted config and the scan itself in agreement: a root the
+// scanner never visits must never appear to be configured.
+func (s *Service) UpdateScanRoots(scanRoots []string) (*ScanRootsResult, error) {
+	roots, rejected := normalizeScanRoots(scanRoots)
+	if err := db.ReplaceScanRoots(s.db, roots); err != nil {
+		return nil, fmt.Errorf("failed to update scan roots: %w", err)
 	}
-	return nil
+	// Both slices are always emitted as arrays, never null: the settings page
+	// iterates them directly, and a null here throws a TypeError in the very tab
+	// the user is looking at when the update succeeds.
+	if roots == nil {
+		roots = []string{}
+	}
+	if rejected == nil {
+		rejected = []ScanRootRejection{}
+	}
+	return &ScanRootsResult{ScanRoots: roots, Rejected: rejected}, nil
 }

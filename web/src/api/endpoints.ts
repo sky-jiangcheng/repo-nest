@@ -137,8 +137,24 @@ export function updateConfig(key: string, value: string): Promise<{ success: boo
   })
 }
 
-export function updateScanRoots(scan_roots: string[]): Promise<{ success: boolean }> {
-  return call<{ success: boolean }>({
+/**
+ * Why one submitted scan root was refused. `reason` is a stable code the UI maps
+ * to localised text; `detail` is the backend's English fallback.
+ */
+export interface ScanRootRejection {
+  path: string
+  reason: 'empty' | 'relative' | 'not_found' | 'not_a_directory' | 'duplicate' | 'inaccessible' | string
+  detail: string
+}
+
+/** What the backend actually stored, plus anything it refused and why. */
+export interface ScanRootsResult {
+  scan_roots: string[]
+  rejected: ScanRootRejection[]
+}
+
+export function updateScanRoots(scan_roots: string[]): Promise<ScanRootsResult> {
+  return call<ScanRootsResult>({
     method: 'UpdateScanRoots',
     args: [scan_roots],
     path: '/config',

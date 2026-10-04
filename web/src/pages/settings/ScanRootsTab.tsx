@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { updateScanRoots, type AppConfig } from '../../api/client'
+import { updateScanRoots, type AppConfig, type ScanRootRejection } from '../../api/client'
 
 interface Props {
   data: AppConfig | null
@@ -8,20 +8,69 @@ interface Props {
   showMessage: (msg: string) => void
 }
 
+/**
+ * Strip trailing slashes and collapse the rest, so the input box shows the same
+ * spelling that will actually be stored. The backend does the authoritative
+ * normalisation (filepath.Clean); this only keeps the field from looking like it
+ * stored something different from what was typed.
+ */
+function normalizeInput(raw: string): string {
+  const trimmed = raw.trim().replace(/[/\\]+$/, '')
+  return trimmed
+}
+
+/** Stable, collision-free React key for a root path. */
+function rootKey(path: string, index: number): string {
+  return `${index}:${path}`
+}
+
 export default function ScanRootsTab({ data, onChange, showMessage }: Props) {
   const { t } = useTranslation()
   const [newRoot, setNewRoot] = useState('')
   const [saving, setSaving] = useState(false)
 
+  /**
+   * Render a list whose entries are unique. The backend now guarantees this, but
+   * the list is also keyed by path, and a duplicate key is a hard React error
+   * rather than a cosmetic glitch — so dedupe on the way in as a last line of
+   * defence. Keeps an older cached config or a partially-applied write from
+   * taking the whole tab down.
+   */
+  const roots = useMemo(() => {
+    const seen = new Set<string>()
+    return (data?.scan_roots ?? []).filter((r) => {
+      const key = r.toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [data?.scan_roots])
+
+  /** Show what the backend refused, and why, instead of silently dropping it. */
+  const reportRejections = (rejected?: ScanRootRejection[]) => {
+    if (!rejected || rejected.length === 0) return false
+    const detail = rejected
+      .map((r) => `${r.path} — ${t(`settings.rootRejectReason.${r.reason}`, { defaultValue: r.reason })}`)
+      .join('；')
+    showMessage(t('settings.rejectedRoots', { msg: detail }))
+    return true
+  }
+
   const handleAddRoot = async () => {
-    if (!newRoot.trim() || !data) return
+    const candidate = normalizeInput(newRoot)
+    if (!candidate || !data) return
     setSaving(true)
     try {
-      const updated = [...(data.scan_roots ?? []), newRoot.trim()]
-      await updateScanRoots(updated)
-      onChange({ ...data, scan_roots: updated })
+      const submitted = [...roots, candidate]
+      // Trust the server's list over the locally-assembled one: it may have
+      // normalised or refused entries, and mirroring that keeps the rendered
+      // list identical to what is persisted.
+      const result = await updateScanRoots(submitted)
+      const stored = result?.scan_roots ?? submitted
+      onChange({ ...data, scan_roots: stored })
       setNewRoot('')
       showMessage(t('settings.added'))
+      reportRejections(result?.rejected)
     } catch (e: unknown) {
       showMessage(t('settings.addFailedMsg', { msg: e instanceof Error ? e.message : t('common.unknownError') }))
     } finally {
@@ -33,10 +82,12 @@ export default function ScanRootsTab({ data, onChange, showMessage }: Props) {
     if (!data) return
     setSaving(true)
     try {
-      const updated = (data.scan_roots ?? []).filter((r) => r !== path)
-      await updateScanRoots(updated)
-      onChange({ ...data, scan_roots: updated })
+      const updated = roots.filter((r) => r !== path)
+      const result = await updateScanRoots(updated)
+      const stored = result?.scan_roots ?? updated
+      onChange({ ...data, scan_roots: stored })
       showMessage(t('settings.removed'))
+      reportRejections(result?.rejected)
     } catch (e: unknown) {
       showMessage(t('settings.removeFailedMsg', { msg: e instanceof Error ? e.message : t('common.unknownError') }))
     } finally {
@@ -55,7 +106,7 @@ export default function ScanRootsTab({ data, onChange, showMessage }: Props) {
             type="text"
             value={newRoot}
             onChange={(e) => setNewRoot(e.target.value)}
-            placeholder="/Users/you/Projects"
+            placeholder="/path/to/your/code"
             className="form-input"
           />
           <button className="btn btn-primary" onClick={handleAddRoot} disabled={saving}>
@@ -64,15 +115,15 @@ export default function ScanRootsTab({ data, onChange, showMessage }: Props) {
         </div>
       </div>
       <ul className="root-list">
-        {data?.scan_roots?.map((root) => (
-          <li key={root} className="root-item">
+        {roots.map((root, i) => (
+          <li key={rootKey(root, i)} className="root-item">
             <span className="root-path">{root}</span>
             <button className="btn btn-danger btn-sm" onClick={() => handleRemoveRoot(root)} disabled={saving}>
               {t('settings.remove')}
             </button>
           </li>
         ))}
-        {(!data?.scan_roots || data.scan_roots.length === 0) && (
+        {roots.length === 0 && (
           <li className="root-item empty">{t('settings.noRoots')}</li>
         )}
       </ul>
