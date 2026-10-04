@@ -4,6 +4,19 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [1.14.0] - 2026-10-04
+
+### 修复
+
+- **headless 模式知识源未注册**：`cmd/server` 不执行服务启动流程，而内置知识源注册与启动自动导入都挂在 `service.Startup()` 上，导致 `GetKnowledgeSources` 返回空数组、`TriggerKnowledgeImport` / `ImportClaudeMemory` 报 `unknown knowledge source "claude"`。headless 模式下导入能力实际不可用。改为在构造 `httpapi` handler 前调用 `svc.Startup()`；该方法已有 `sync.Once` 守卫且遵循 `auto_import` 配置项，重复调用安全。实测 5 个源全部可见、`TriggerKnowledgeImport` 正常返回统计
+
+### 文档
+
+- **知识源导入文档与实现对齐**（按文档实测「导入项目 → 生成知识库」全链路后修订）：`plugins/overview.md` 原只记录 `claude` 一个源，实现实际内置 5 个。补齐 5 个源的读取路径、触发方式（`claude` 启动自动，其余 4 个手动）、单文件 100 KB 上限、`MEMORY.md` 跳过规则，以及项目归属的三级匹配规则（项目名精确 → 仓库路径结尾 → 项目名包含）
+- **补上两个隐性前置条件**：文档需先扫描入库项目，否则导入按项目名匹配不到会全部计入 `skipped`；`openclaw` 与 `hermes` 的文件本身不含项目线索，目标项目由 `openclaw_project` / `hermes_project` 配置键指定，未配置时**静默全部跳过**（导入不报错但一条笔记都不生成，仅 `skipped` 计数可辨）
+- **补充导入统计口径**：`{created, updated, skipped}` 含义，并说明重复导入得到 `created=0 / updated=N` 是幂等生效的证据而非无数据
+- **`getting-started.md` 补第 6 步「导入已有的 agent 记忆（可选）」**，原五步路径完全未提导入；并建议在扫描完成后再导入以提高命中率
+
 ## [1.13.0] - 2026-10-04
 
 ### 修复
@@ -65,6 +78,7 @@
 - **`parseTimestamp` 时间戳解析鲁棒性（P29）**：`internal/stats` 的 `parseTimestamp` 原只认 `2006-01-02 15:04:05` 且静默忽略错误，现支持裸 unix 秒（git `%at`）、RFC 3339 / ISO 8601（git `%aI`/`%cI`）、git `%ai`（带 `-0700`）、date-only（`%ad --date=short`）与 git 默认作者日期（含空格补零的日）；不可解析仍返回 0 以保持 latest-commit 比较契约。新增覆盖 10 种格式 + 4 种非法输入的单测
 - **记忆导入器内容裁剪（代码审核发现）**：`openclaw`/`hermes` 先按 `MaxNoteContentLen` 截正文再前置来源头 → 合成结果可能超限被 upsertDoc 拒；`codex`/`opencode` 用 `content[:Max]` 会切断 CJK rune。统一 `memsrc.ClipToBytes`（按 rune 边界、不切碎）裁**整条合成内容**，四 importer 一致；补 ClipToBytes 单测 + openclaw 超大 CJK 正文回归
 
+[1.14.0]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.12.0...v1.13.0
 
 ## [1.12.0] - 2026-10-02
