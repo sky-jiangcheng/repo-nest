@@ -15,9 +15,9 @@ import (
 
 // ScanResult holds the result of a scan operation.
 type ScanResult struct {
-	Success    bool   `json:"success"`
-	ReposFound int    `json:"repos_found"`
-	Projects   int    `json:"projects"`
+	Success    bool `json:"success"`
+	ReposFound int  `json:"repos_found"`
+	Projects   int  `json:"projects"`
 	// SyncErrors counts project groups whose DB sync failed while others
 	// succeeded. A partial sync used to report plain success, leaving the
 	// agent to believe the knowledge base was complete.

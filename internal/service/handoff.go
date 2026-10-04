@@ -18,7 +18,7 @@ const handoffTag = "handoff"
 // on top of these (the rendered Markdown is written through CreateNoteWithMeta).
 const (
 	maxHandoffSummaryLen = 4_000
-	maxHandoffItems      = 20   // items per section
+	maxHandoffItems      = 20    // items per section
 	maxHandoffItemLen    = 1_000 // bytes per bullet
 )
 

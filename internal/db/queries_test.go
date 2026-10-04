@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -616,29 +617,52 @@ func TestCleanupStaleDataTx_PreservesProjectsWithNotes(t *testing.T) {
 	}
 }
 
-func TestCleanupStaleDataTx_EmptyPaths(t *testing.T) {
+// An empty scanned-path set used to mean "delete every repository and stat".
+// That is indistinguishable from "the scan walk failed" — an unreadable root,
+// a vanished symlink, an unmounted volume — and the deleted stats cannot be
+// rebuilt without re-walking git history in every project. The cleanup now
+// refuses instead, so this asserts the refusal AND that nothing was deleted.
+func TestCleanupStaleDataTx_RefusesEmptyPathsAndKeepsData(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	tx, _ := db.Begin()
+	p1 := createTestProject(t, db, "keeper")
+	db.Exec("INSERT INTO repositories (path, project_id) VALUES (?, ?)", "/repos/keeper", p1) //nolint:errcheck
+	var rID int64
+	db.QueryRow("SELECT id FROM repositories WHERE path = '/repos/keeper'").Scan(&rID)
+	db.Exec("INSERT INTO daily_stats (repository_id, stat_date, author, lines_added) VALUES (?, ?, ?, ?)",
+		rID, "2024-01-01", "all", 100) //nolint:errcheck
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
 	defer tx.Rollback() //nolint:errcheck
 
-	// Create an orphaned project (no repos, notes, todos)
-	_, err := tx.Exec("INSERT INTO projects (name, root_path, is_auto_grouped) VALUES ('orphan', '/orphan', 1)")
-	if err != nil {
-		t.Fatalf("failed to insert orphan project: %v", err)
+	if err := CleanupStaleDataTx(tx, []string{}); !errors.Is(err, ErrNoScannedPaths) {
+		t.Fatalf("expected ErrNoScannedPaths, got %v", err)
 	}
 
-	// Empty paths should still clean up orphaned projects
-	err = CleanupStaleDataTx(tx, []string{})
-	if err != nil {
-		t.Fatalf("CleanupStaleDataTx with empty paths should not error: %v", err)
+	// Roll the transaction back before querying through the pool. A ":memory:"
+	// database has a single connection, so a read on the still-open tx would
+	// hold the only connection and block forever.
+	if err := tx.Rollback(); err != nil {
+		t.Fatalf("rollback: %v", err)
 	}
 
+	// The committed data must be intact — this is the whole point of refusing.
 	var count int
-	tx.QueryRow("SELECT COUNT(*) FROM projects WHERE name = 'orphan'").Scan(&count)
-	if count != 0 {
-		t.Error("orphaned project should be deleted even with empty scanned paths")
+	if err := db.QueryRow("SELECT COUNT(*) FROM repositories WHERE path = '/repos/keeper'").Scan(&count); err != nil {
+		t.Fatalf("count repos after rollback: %v", err)
+	}
+	if count != 1 {
+		t.Error("repository must survive after rollback")
+	}
+	if err := db.QueryRow("SELECT COUNT(*) FROM daily_stats WHERE repository_id = ?", rID).Scan(&count); err != nil {
+		t.Fatalf("count daily stats after rollback: %v", err)
+	}
+	if count != 1 {
+		t.Error("daily stats must survive a refused cleanup")
 	}
 }
 
