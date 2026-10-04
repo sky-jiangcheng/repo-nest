@@ -4,7 +4,27 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [1.13.0] - 2026-10-04
+
+### 修复
+
+- **扫描根归一化与逐条拒绝**（设置→扫描目录 实测修复）：新增 `normalizeScanRoots`，逐条 trim、展开 `~`、拒绝相对路径、`filepath.Clean` 消尾斜杠与 `.`/`..`、`os.Stat` 校验存在性与目录类型，并按平台语义去重（Windows/macOS 折叠大小写，Linux 不折叠）。修复四个实测问题：重复路径致 React 同 key 崩溃、尾斜杠被当作不同目录而重复遍历、不存在的路径被静默接受、缺少「需重新扫描」提示。设计上采用**逐条拒绝并回报**而非整单硬校验——Windows 默认根是所有盘符，盘符不存在是真实场景，整单硬校验会让用户想移除另一个根时被死路径整体卡死。`EnsureDefaultScanRoots` 走同一归一化，避免无效默认根落库后卡死用户后续写入。新增表驱动单测 16 例
+- **扫描空根/零结果不再删库**：`CleanupStaleDataTx` 把「扫到 0 个仓库」当作「所有仓库都被删了」，会清空全部 repositories、daily_stats 与孤立项目；而零结果有多种非删除成因（根未配置、根不可读、软链目标消失、外置卷未挂载），且统计由 git 历史算出、不重读每个项目无法重建，属不可恢复丢失。改为两道守卫：扫描根为空直接拒绝；已配置根但零结果且库中已有项目时拒绝并报出根数与在册项目数。同时 `GetScanRoots` 的读取错误不再被当作「未配置根」
+- **`TestCleanupStaleDataTx_RefusesEmptyPathsAndKeepsData` 连接池死锁**：事务仍开启时用 `db.QueryRow` 读取，`:memory:` SQLite 连接池上限为 1，连接被 tx 占住导致读操作永久阻塞（整包 600s 超时）。改为先显式 `tx.Rollback()` 再经连接池读取，补上原先被忽略的 `Scan` 错误检查。25s 超时挂死 → 0.07s 通过
+- **`.impeccable.md` 字符损坏**：一个中文字被写成 3 个 `U+FFFD` 替换字符，已还原
+
+### 变更
+
+- **设计系统重构与 404 页**：design-system CSS 体系拆分重排（tokens / layout / components / features）；新增 404 页、品牌标记组件与跟随系统的主题 hook；Dashboard / Knowledge / ProjectDetail / Settings 视觉与交互调整，设置页标签新增描述文案
+- **文档站品牌标记单一事实源**：`scripts/build-docs.mjs` 从 `build/icon.svg` 内联品牌标记到侧栏，避免文档、桌面应用与产物图标各自漂移
+- **API 契约变更**：`UpdateScanRoots` 由返回 `error` 改为返回 `(*ScanRootsResult, error)`，携带实际落库的路径列表与被拒项及原因
+
+### 技术
+
+- **`internal/service/scan.go` 与 `handoff.go` 补 `gofmt`**：均为注释列对齐的纯空白差异，全仓 `gofmt -l` 现为空
+
 ## [Unreleased]
+
 
 ### 新增
 
@@ -44,6 +64,8 @@
 
 - **`parseTimestamp` 时间戳解析鲁棒性（P29）**：`internal/stats` 的 `parseTimestamp` 原只认 `2006-01-02 15:04:05` 且静默忽略错误，现支持裸 unix 秒（git `%at`）、RFC 3339 / ISO 8601（git `%aI`/`%cI`）、git `%ai`（带 `-0700`）、date-only（`%ad --date=short`）与 git 默认作者日期（含空格补零的日）；不可解析仍返回 0 以保持 latest-commit 比较契约。新增覆盖 10 种格式 + 4 种非法输入的单测
 - **记忆导入器内容裁剪（代码审核发现）**：`openclaw`/`hermes` 先按 `MaxNoteContentLen` 截正文再前置来源头 → 合成结果可能超限被 upsertDoc 拒；`codex`/`opencode` 用 `content[:Max]` 会切断 CJK rune。统一 `memsrc.ClipToBytes`（按 rune 边界、不切碎）裁**整条合成内容**，四 importer 一致；补 ClipToBytes 单测 + openclaw 超大 CJK 正文回归
+
+[1.13.0]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.12.0...v1.13.0
 
 ## [1.12.0] - 2026-10-02
 

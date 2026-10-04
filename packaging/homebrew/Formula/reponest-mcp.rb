@@ -9,7 +9,7 @@
 class ReponestMcp < Formula
   desc "MCP stdio server exposing the RepoNest local knowledge base to AI agents"
   homepage "https://github.com/sky-jiangcheng/repo-nest"
-  version "1.12.0"
+  version "1.13.0"
   license "MIT"
 
   if OS.mac? && Hardware::CPU.arm?
