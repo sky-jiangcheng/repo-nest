@@ -4,36 +4,65 @@
 
 .root-list {
   list-style: none;
-  margin-top: 14px;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-width: 720px;
 }
 
 .root-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   padding: 10px 14px;
   background: var(--bg-tertiary);
-  border-radius: var(--radius-md);
-  margin-bottom: 6px;
   font-size: 13px;
+}
+
+/* Hairline separators instead of stacked cards: a list of paths reads as one
+   block, and per-row rounding made long lists look like loose chips. */
+.root-item + .root-item {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.root-item:hover:not(.empty) {
+  background: var(--bg-hover);
 }
 
 .root-path {
   font-family: var(--font-mono);
-  word-break: break-all;
-  margin-right: 12px;
-  color: var(--text-secondary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  min-width: 0;
 }
 
+/* Empty state: centred, with breathing room and a dashed affordance so it
+   reads as "nothing here yet" rather than as a broken row. */
 .root-item.empty {
-  color: var(--text-muted);
+  justify-content: center;
+  color: var(--text-tertiary);
   font-family: inherit;
+  background: transparent;
+  padding: 24px 14px;
+  /* Dashed + borderless: the empty row must not read as another input, and it
+     sits inside an already-bordered card, so a solid box would nest frames. */
+  border-top: none;
+}
+
+.root-list:has(.root-item.empty) {
+  border-style: dashed;
+  border-color: var(--border-default);
+  background: transparent;
 }
 
 /* --- Grouped subsections (Plugins tab) --- */
 .settings-group {
-  margin-bottom: 22px;
-  padding-bottom: 20px;
+  margin-bottom: 26px;
+  padding-bottom: 24px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -44,16 +73,46 @@
 }
 
 .settings-group-title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 12px;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+
+/* The plugin/source explanatory paragraph sits above the first group, so it
+   needs a separating rule and bottom breathing room rather than the default
+   section rhythm. The rule spans the card while the copy itself is capped, so
+   the divider does not stop at an arbitrary mid-card offset. */
+.settings-section > .section-desc {
+  margin: -8px 0 24px;
+  max-width: 72ch;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-section > .section-desc code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--bg-tertiary);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.settings-group > .section-desc,
+.settings-group > .form-hint {
+  max-width: 72ch;
 }
 
 /* --- Plugins --- */
 .plugin-list {
   list-style: none;
-  margin-top: 12px;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-width: 720px;
 }
 
 .plugin-item {
@@ -63,14 +122,24 @@
   gap: 12px;
   padding: 10px 14px;
   background: var(--bg-tertiary);
-  border-radius: var(--radius-md);
-  margin-bottom: 6px;
   font-size: 13px;
   flex-wrap: wrap;
 }
 
+.plugin-item + .plugin-item {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.plugin-item:hover {
+  background: var(--bg-hover);
+}
+
 .plugin-item.plugin-err {
   border-left: 3px solid var(--danger);
+}
+
+.plugin-import-btn {
+  flex-shrink: 0;
 }
 
 .plugin-info {
@@ -88,8 +157,8 @@
 .plugin-path {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--text-muted);
-  word-break: break-all;
+  color: var(--text-tertiary);
+  overflow-wrap: anywhere;
 }
 
 .plugin-error {
@@ -103,24 +172,30 @@
   word-break: break-all;
 }
 
-/* --- Theme options --- */
+/* --- Theme options ---
+   The three choices differ only in surface colour, so a 40x28 two-tone
+   diagonal was far too small a sample to tell them apart — light/dark/system
+   read as "three small grey rectangles". Each swatch is now a miniature of
+   the app itself (page, card, text line, accent), drawn in that theme's real
+   palette, so the difference is legible at a glance instead of by reading
+   the label. */
 .theme-options {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 400px;
+  max-width: 560px;
 }
 
 .theme-option {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 16px;
+  padding: 12px 16px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
   text-align: left;
   font-family: inherit;
   color: inherit;
@@ -128,43 +203,94 @@
 
 .theme-option:hover {
   border-color: var(--text-muted);
-  background: var(--bg-tertiary);
+  background: var(--bg-hover);
 }
 
-.theme-option-active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+.theme-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
+.theme-option-active,
 .theme-option-active:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
 
+/* Swatch: a 64x44 schematic of the app's own layout. Fixed light-mode
+   colours per option — these previews must NOT follow the active theme, or
+   choosing "dark" would repaint its own preview and the comparison collapses. */
 .theme-preview {
-  width: 40px;
-  height: 28px;
+  position: relative;
+  width: 64px;
+  height: 44px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
-.theme-preview[data-preview="light"] {
-  background: linear-gradient(135deg, #ffffff 50%, #f2f2ef 50%);
+/* Page ground. The "system" swatch is split down the middle because that is
+   literally what the mode does — half the OS is light, half is dark. */
+.theme-preview[data-preview="light"] { background: #f5f5f3; }
+.theme-preview[data-preview="dark"] { background: #1a1a1a; }
+.theme-preview[data-preview="system"] { background: linear-gradient(90deg, #f5f5f3 0 50%, #1a1a1a 50% 100%); }
+
+/* Card block — the lightest surface in each theme. Kept low-contrast so the
+   accent strokes below stay the thing the eye lands on. */
+.theme-preview::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 7px;
+  right: 5px;
+  bottom: 7px;
+  border-radius: 3px;
+  opacity: 0.9;
 }
 
-.theme-preview[data-preview="dark"] {
-  background: linear-gradient(135deg, #222222 50%, #2a2a2a 50%);
+.theme-preview[data-preview="light"]::before { background: #ffffff; border: 1px solid #e0ded8; }
+.theme-preview[data-preview="dark"]::before { background: #2a2a2a; border: 1px solid #3a3a3a; }
+.theme-preview[data-preview="system"]::before {
+  background: linear-gradient(90deg, #ffffff 0 50%, #2a2a2a 50% 100%);
+  border: 1px solid transparent;
 }
 
-.theme-preview[data-preview="system"] {
-  background: linear-gradient(135deg, #ffffff 50%, #222222 50%);
+/* Text lines — three strokes of decreasing length so the swatch reads as a
+   content block rather than a coloured rectangle. */
+.theme-preview::after {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 15px;
+  width: 30px;
+  height: 2px;
+  border-radius: 1px;
+  /* Accent-coloured: the one hue that actually differs between themes. */
+  background: #2563eb;
+  box-shadow:
+    0 6px 0 0 currentColor,
+    0 12px 0 0 rgba(0, 0, 0, 0.22);
+}
+
+.theme-preview[data-preview="light"]::after { color: #6a6a6a; }
+.theme-preview[data-preview="dark"]::after { color: #949494; }
+.theme-preview[data-preview="system"]::after {
+  /* Each stroke takes the hue of the half it sits in: left side light, right
+     side dark. Drawn as two masked gradients so the split stays crisp at the
+     same 50% line as the swatch ground. */
+  color: transparent;
+  background:
+    linear-gradient(90deg, #6a6a6a 0 50%, #949494 50% 100%) no-repeat 0 6px / 100% 2px,
+    linear-gradient(90deg, #2563eb 0 50%, #60a5fa 50% 100%) no-repeat 0 0 / 100% 2px;
+  box-shadow: 0 12px 0 0 rgba(0, 0, 0, 0.28);
 }
 
 .theme-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .theme-label {

@@ -61,7 +61,6 @@
   },
   "knowledge": {
     "title": "Knowledge Base",
-    "desc": "Cross-project knowledge: {{count}} notes with full-text search, tags and pinning.",
     "quickCreate": "Quick Note",
     "importClaude": "Import Claude Memory",
     "importing": "Importing…",
@@ -93,7 +92,9 @@
     "exportFailed": "Export failed:",
     "importFailed": "Import failed:",
     "importDone": "Done: +{{created}} ~{{updated}} -{{skipped}}",
-    "notesTitle": "Knowledge notes"
+    "notesTitle": "Knowledge notes",
+    "resultCount": "{{count}} note",
+    "resultCount_other": "{{count}} notes"
   },
   "settings": {
     "title": "Settings",
@@ -200,7 +201,18 @@
     "groupImport": "Knowledge import",
     "groupTargets": "Global-memory sources · target project",
     "groupCapture": "Claude session capture",
-    "captureProjectLabel": "Capture by project ID"
+    "captureProjectLabel": "Capture by project ID",
+    "subtitle": "Manage scan scope, metrics and knowledge sources",
+    "groupRescan": "Rescan",
+    "importClaudeAction": "Start import",
+    "tabDesc": {
+      "scan": "RepoNest discovers local Git repositories under these directories",
+      "standards": "Set the daily line goal and scan depth used by the dashboard",
+      "authors": "Identifies you in commit records so personal output is counted",
+      "appearance": "Choose light, dark, or follow the system",
+      "plugins": "Manage knowledge sources, global-memory targets and session capture",
+      "actions": "Trigger a full rescan or import past memories on demand"
+    }
   },
   "project": {
     "title": "Project Details",
@@ -310,7 +322,9 @@
     "groupLevelHint": "Adjust aggregation granularity: a lower number merges a wider project scope",
     "scope": "Scope",
     "overviewEmpty": "Awaiting first mining",
-    "overviewEmptyHint": "Auto-extracted when you open the page; refresh to see it."
+    "overviewEmptyHint": "Auto-extracted when you open the page; refresh to see it.",
+    "notFoundTitle": "Project not found",
+    "notFoundDesc": "This project may have been removed by a rescan, or the ID in the link is wrong."
   },
   "common": {
     "unknownError": "Unknown error",
@@ -372,7 +386,9 @@
     "yesterday": "Yesterday",
     "week": "This week",
     "month": "This month",
-    "pageError": "Page failed to load"
+    "pageError": "Page failed to load",
+    "workday": "Workday",
+    "weekend": "Weekend"
   },
   "status": {
     "time": "Current time:",
@@ -504,5 +520,10 @@
     "empty": "No todos yet — type and press Enter",
     "moveUp": "Move up",
     "moveDown": "Move down"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "desc": "There is no page at this address. It may have been moved, or the link may be mistyped.",
+    "backHome": "Back to home"
   }
 }

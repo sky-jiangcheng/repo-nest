@@ -88,6 +88,22 @@
   letter-spacing: -0.01em;
   color: var(--text-primary);
   margin-top: 1px;
+  /* Line counts are statistics, and statistics must not jitter as they
+     update: without tabular figures a 3-digit value is a different width from
+     a 4-digit one and the row visibly reflows on every scan. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Same declarations as .detail-stat .stat-value, declared at equal specificity
+   so the semantic ink wins. Previously `.detail-stat .stat-value` (0,2,0)
+   outranked a bare `.green`/`.red` (0,1,0) and the added/deleted numbers
+   rendered in neutral ink — the one place the colour was carrying meaning. */
+.detail-stat .stat-value.green { color: var(--success); }
+.detail-stat .stat-value.red { color: var(--danger); }
+
+.detail-stat .stat-value.zero {
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .detail-stat .stat-value.minor {
@@ -192,7 +208,7 @@
 }
 
 .repo-stats .stat-tag {
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--font-mono);
   color: var(--text-secondary);
 }
@@ -377,7 +393,7 @@
 
 .dep-source {
   color: var(--text-tertiary);
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
 }
 
@@ -508,16 +524,19 @@
   font-size: 12px;
   font-family: var(--font-mono);
   color: var(--text-secondary);
+  /* Same 28px band as the flanking icon buttons, so the label is centred
+     against them rather than sitting 4px short on a 19px line box. */
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
   min-width: 84px;
   text-align: center;
 }
 
-.btn-icon {
-  padding: 2px 9px;
-  line-height: 1;
-  font-size: 15px;
-}
-
+/* The −/+ stepper reuses the global .btn-icon (28×28 square). A local override
+   here set `padding: 2px 9px; font-size: 15px`, which made these two buttons a
+   different size from every other icon button in the app — the exact "same
+   control, slightly different" read the shared class exists to prevent. */
 .btn-block {
   width: 100%;
   justify-content: center;

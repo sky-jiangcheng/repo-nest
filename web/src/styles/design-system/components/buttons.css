@@ -2,21 +2,37 @@
    Buttons
    ============================================ */
 
+/* Every button is a fixed-height box driven by --control-h, not by whatever
+   line-height the element happens to inherit.
+
+   The reason: `.btn` is applied to both <button> and <a>. A <button> uses the
+   UA's `line-height: normal` while an <a> inherits the body's 1.6 — so the
+   same class rendered 36px on a button and 38.8px on a link. Side by side in
+   an action row they read as the same control at slightly different sizes,
+   which is exactly the "off by a hair" feel. One explicit height + one
+   explicit line-height makes every button identical regardless of tag. */
 .btn {
+  --control-h: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
+  height: var(--control-h);
+  padding: 0 16px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-secondary);
   font-size: 13px;
+  line-height: 1;
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast);
   text-decoration: none;
   color: var(--text-primary);
   font-family: inherit;
+  /* Buttons must never wrap: a two-line button is taller than its row and
+     knocks the baseline out of alignment with its neighbours. */
+  white-space: nowrap;
 }
 
 .btn:hover {
@@ -63,8 +79,13 @@
   border-color: transparent;
 }
 
+/* The small variant steps down to a 28px control. It is a fixed height for
+   the same reason as .btn — .btn-sm was `padding: 5px 12px` on a 12px font,
+   which lands within a pixel or two of its neighbours' heights depending on
+   the tag. */
 .btn-sm {
-  padding: 5px 12px;
+  --control-h: 28px;
+  padding: 0 12px;
   font-size: 12px;
   border-radius: var(--radius-sm);
 }
@@ -75,23 +96,64 @@
   border-color: var(--accent);
 }
 
+/* Segmented filter chip — the selected state of a range switch (近7天/近30天/全部,
+   昨日/今日). A filled primary button here would put three or more saturated
+   blocks on one page and none of them would read as the primary action; the
+   selected chip is tinted instead, so the eye can find "what range am I
+   looking at" without the page competing with itself. */
+.seg-chip {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+}
+
+.seg-chip:hover:not(.seg-chip-active) {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.seg-chip-active,
+.seg-chip-active:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.seg-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .btn-icon {
   border: none;
   background: none;
   cursor: pointer;
-  padding: 4px 8px;
+  /* Square hit area, fixed size — these sit in dense rows (level −/+, note
+     actions) where a 24px-tall icon button next to a 28px chip looked
+     accidental. 28px matches .btn-sm, which is its usual neighbour. */
+  width: 28px;
+  height: 28px;
+  padding: 0;
   font-size: 12px;
   color: var(--text-muted);
   border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
   font-family: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .btn-icon svg {
   display: block;
+}
+
+.btn-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .btn-icon:hover:not(:disabled) {

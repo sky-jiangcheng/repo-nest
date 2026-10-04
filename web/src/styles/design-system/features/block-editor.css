@@ -58,7 +58,7 @@
 }
 
 .block-type {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   background: var(--bg-secondary);
   border: 1px solid var(--border-default);
@@ -97,7 +97,7 @@
 }
 
 .block-btn-danger:hover {
-  color: #cf222e;
+  color: var(--danger);
 }
 
 .block-input {

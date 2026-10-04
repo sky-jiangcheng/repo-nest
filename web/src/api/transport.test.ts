@@ -25,14 +25,21 @@ describe('call routing', () => {
     expect(result).toEqual({ ok: true })
   })
 
-  it('falls back to HTTP fetch against /api when Wails is absent', async () => {
+  it('falls back to the /api/rpc bridge when Wails is absent', async () => {
+    // Browser/standalone mode posts every binding to one JSON-RPC endpoint
+    // (httpapi /api/rpc), so there is no per-method REST path — `path` is
+    // carried for the desktop/Wails call signature only.
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ items: [1] }),
+      json: async () => ({ result: { items: [1] } }),
     })
     vi.stubGlobal('fetch', fetchMock)
-    const result = await call<{ items: number[] }>({ method: 'ListProjects', path: '/projects' })
-    expect(fetchMock).toHaveBeenCalledWith('/api/projects', undefined)
+    const result = await call<{ items: number[] }>({ method: 'ListProjects', args: [], path: '/projects' })
+    expect(fetchMock).toHaveBeenCalledWith('/api/rpc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ method: 'ListProjects', args: [] }),
+    })
     expect(result).toEqual({ items: [1] })
   })
 

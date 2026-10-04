@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="build/icon.svg" width="88" alt="RepoNest" />
+</p>
+
 # RepoNest: Local Git Knowledge Base
 
 本地优先的**跨 agent 项目记忆层**：自动发现本地 Git 项目，把散落在终端和记忆里的项目上下文，变成可检索、可复用、任何 agent 都能读写的记忆。

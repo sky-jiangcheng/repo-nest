@@ -97,7 +97,7 @@
 
 .search-group-header {
   padding: 8px 14px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -149,7 +149,7 @@
 }
 
 .hit-type {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   padding: 1px 7px;
   border-radius: 8px;
@@ -161,7 +161,7 @@
 .hit-type-todo { background: var(--warning-soft); color: var(--warning); }
 
 .hit-type-mini {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 6px;

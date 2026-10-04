@@ -15,11 +15,17 @@
   --border-subtle: #e0ded8;
   --border-default: #ccc9c1;
 
-  /* Text */
+  /* Text. --text-tertiary carries 12-13px secondary copy throughout the app,
+     so it is dark enough to clear WCAG AA (4.5:1) against every surface it
+     lands on -- card white, page grey and the --bg-tertiary row fill -- rather
+     than the lighter grey it replaced, which only reached 3.5:1. It still
+     reads a step quieter than --text-secondary, so the ramp survives.
+     --text-muted is reserved for genuinely non-essential decoration
+     (placeholders, disabled affordances) and stays below AA by design. */
   --text-primary: #1a1a1a;
   --text-secondary: #555555;
-  --text-tertiary: #888888;
-  --text-muted: #aaaaaa;
+  --text-tertiary: #6a6a6a;
+  --text-muted: #8a8a8a;
   --text-danger: #8b4a4a;
 
   /* Accents / semantic */
@@ -78,8 +84,8 @@
   /* Text */
   --text-primary: #e8e8e8;
   --text-secondary: #a0a0a0;
-  --text-tertiary: #707070;
-  --text-muted: #555555;
+  --text-tertiary: #949494;
+  --text-muted: #757575;
   --text-danger: #d97373;
 
   /* Accents / semantic */

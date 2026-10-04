@@ -10,15 +10,15 @@ import (
 // reconcile against an empty set of scanned paths.
 //
 // The empty case is not "the user deleted every repository" — it is
-// indistinguishable from "the scan found nothing because the walk failed": an
-// unreadable root, a symlink whose target vanished, an external volume that is
-// not mounted. Treating it as authoritative deleted every repository and stat in
-// the knowledge base, and that data cannot be reconstructed without re-reading
-// git history in every project.
+// indistinguishable from "the scan found nothing because the walk failed, the
+// roots are unreadable, or the disk was unmounted". Treating it as
+// authoritative deleted every repository and stat in the knowledge base, and
+// that data cannot be reconstructed without re-reading git history from every
+// project.
 //
-// Callers must treat this as a hard error, not as a no-op: silently skipping the
-// cleanup would let genuinely-removed repos linger forever, which is the milder
-// and recoverable failure.
+// Callers must treat this as a hard error, not as a no-op: silently skipping
+// the cleanup would let genuinely-removed repos linger forever, which is the
+// milder and recoverable failure.
 var ErrNoScannedPaths = errors.New("refusing to clean up: scan produced no repository paths")
 
 // CleanupStaleDataTx removes repositories (and their stats) whose paths are not

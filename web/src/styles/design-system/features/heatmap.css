@@ -25,7 +25,7 @@
 }
 
 .heatmap-simple .heatmap-stat-label {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .heatmap-simple .heatmap-stat-value {
@@ -91,7 +91,7 @@
   align-items: center;
   gap: 4px;
   margin-top: 10px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-tertiary);
   font-weight: 500;
 }
@@ -144,7 +144,7 @@
 }
 
 .heatmap-stat-label {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-tertiary);
   text-transform: none;
   letter-spacing: 0;
@@ -172,7 +172,7 @@
 
 .heatmap-month-label {
   position: absolute;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-tertiary);
   white-space: nowrap;
   font-weight: 500;
@@ -193,7 +193,7 @@
 .heatmap-day-labels span {
   height: 11px;
   line-height: 11px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-tertiary);
   text-align: right;
   width: 22px;
@@ -253,7 +253,7 @@
   align-items: center;
   gap: 4px;
   margin-top: 12px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-tertiary);
   font-weight: 500;
 }

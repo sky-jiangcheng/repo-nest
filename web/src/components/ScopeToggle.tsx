@@ -17,7 +17,7 @@ export default function ScopeToggle({ scope, onChange }: Props) {
         <button
           key={opt}
           type="button"
-          className={`btn btn-sm ${scope === opt ? 'btn-active' : ''}`}
+          className={`btn btn-sm seg-chip ${scope === opt ? 'seg-chip-active' : ''}`}
           aria-pressed={scope === opt}
           onClick={() => onChange(opt)}
         >

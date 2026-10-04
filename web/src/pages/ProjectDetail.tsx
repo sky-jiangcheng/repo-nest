@@ -62,6 +62,29 @@ function ProjectDetailPage() {
   }
 
   if (error || !project) {
+    // A missing project is not a transient failure: retrying the same request
+    // will fail identically, so it gets a dead-end state with a way out rather
+    // than a retry button. The backend message ("project not found") is
+    // untranslated, so the not-found case is detected from it and re-rendered
+    // in the UI language.
+    const notFound = !error || /not found|不存在/i.test(error)
+    if (notFound) {
+      return (
+        <div className="project-detail">
+          <div className="empty-state">
+            <div className="empty-icon"><Icon name="search" size={34} /></div>
+            <h3>{t('project.notFoundTitle')}</h3>
+            <p>{t('project.notFoundDesc')}</p>
+            <div className="empty-actions">
+              <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
+                {t('project.backToDashboard')}
+              </button>
+            </div>
+          </div>
+          <StatusBar />
+        </div>
+      )
+    }
     return (
       <div className="project-detail">
         <button className="btn btn-secondary back-btn" onClick={() => navigate('/dashboard')}>&larr; {t('project.backToDashboard')}</button>
@@ -129,11 +152,11 @@ function ProjectDetailPage() {
             </div>
             <div className="detail-stat">
               <span className="stat-label">{t('project.added')}</span>
-              <span className="stat-value green">{totals.added}</span>
+              <span className={totals.added > 0 ? 'stat-value green' : 'stat-value zero'}>{totals.added}</span>
             </div>
             <div className="detail-stat">
               <span className="stat-label">{t('project.deleted')}</span>
-              <span className="stat-value red">{totals.deleted}</span>
+              <span className={totals.deleted > 0 ? 'stat-value red' : 'stat-value zero'}>{totals.deleted}</span>
             </div>
           </div>
 
@@ -191,16 +214,27 @@ function ProjectDetailPage() {
                       <div className="repo-header">
                         <div className="repo-path">{repo.path.split('/').slice(-2).join('/')}</div>
                         <div className="repo-totals">
-                          <span className="green">+{repoTotals.added}</span>
-                          <span className="red">-{repoTotals.deleted}</span>
+                          {/* Sign only when non-zero: "+0"/"-0" on every idle
+                              repo turns the list into visual noise. */}
+                          <span className={repoTotals.added > 0 ? 'green' : 'muted-num'}>
+                            {repoTotals.added > 0 ? `+${repoTotals.added}` : '0'}
+                          </span>
+                          <span className={repoTotals.deleted > 0 ? 'red' : 'muted-num'}>
+                            {repoTotals.deleted > 0 ? `-${repoTotals.deleted}` : '0'}
+                          </span>
                         </div>
                       </div>
                       {repo.stats && repo.stats.length > 0 && (
                         <div className="repo-stats">
                           {repo.stats.slice(0, 5).map((stat) => (
                             <span key={stat.id} className="stat-tag" title={`${stat.stat_date} · ${stat.author}`}>
-                              {stat.author}: <span className="green">+{stat.lines_added}</span>{' '}
-                              <span className="red">-{stat.lines_deleted}</span>
+                              {stat.author}:{' '}
+                              <span className={stat.lines_added > 0 ? 'green' : 'muted-num'}>
+                                {stat.lines_added > 0 ? `+${stat.lines_added}` : '0'}
+                              </span>{' '}
+                              <span className={stat.lines_deleted > 0 ? 'red' : 'muted-num'}>
+                                {stat.lines_deleted > 0 ? `-${stat.lines_deleted}` : '0'}
+                              </span>
                             </span>
                           ))}
                           {repo.stats.length > 5 && (

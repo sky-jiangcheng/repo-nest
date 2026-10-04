@@ -16,6 +16,19 @@ import type { ReactElement } from 'react'
 /** Record of every Wails binding method invoked during a test. */
 const wailsCalls: string[] = []
 
+/**
+ * Budget for assertions that wait on a lazily-imported page.
+ *
+ * These tests mount the real <App />, so the first paint pulls in the whole
+ * Knowledge chunk — which drags in markdown, mermaid and katex. Under jsdom
+ * their transform dominates: this wait measures ~5s, right on the vitest
+ * default, so the suite fails on a loaded machine with no UI change at all.
+ *
+ * Note the per-test timeout argument matters as much as waitFor's own — the
+ * test-level 5s cap aborts the test before a longer waitFor can resolve.
+ */
+const LAZY_CHUNK_TIMEOUT = 30_000
+
 function installWailsBindings() {
   // Only the methods the shell touches on first paint. Anything unmocked
   // rejects, which would surface as an error banner — exactly what we assert
@@ -70,30 +83,36 @@ describe('App desktop shell', () => {
   it('renders translated nav labels instead of raw i18n keys', async () => {
     await mountApp()
     // Nav renders synchronously — it must never show "nav.knowledge".
-    expect(await screen.findByText(/^(Knowledge|知识库)$/, {}, { timeout: 5000 })).toBeTruthy()
+    // getAllBy + "at least one" rather than findByText: pages now render a
+    // visible <h1> that repeats the section name ("知识库" in both the nav and
+    // the page title), and findByText throws when a query matches more than one.
+    await waitFor(
+      () => expect(screen.getAllByText(/^(Knowledge|知识库)$/).length).toBeGreaterThan(0),
+      { timeout: LAZY_CHUNK_TIMEOUT },
+    )
     // The lazy Knowledge page resolves next; its h1 comes from knowledge.title.
     await waitFor(
       () => expect(screen.getAllByText(/Knowledge Base|知识库/).length).toBeGreaterThan(0),
-      { timeout: 5000 },
+      { timeout: LAZY_CHUNK_TIMEOUT },
     )
     const body = document.body.textContent ?? ''
     // A leaked key looks like "nav.knowledge" / "knowledge.title".
     expect(body).not.toMatch(/\b(nav|knowledge|status)\.[a-zA-Z]+/)
-  })
+  }, LAZY_CHUNK_TIMEOUT)
 
   it('routes backend calls through the Wails binding, not HTTP fetch', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
     await mountApp()
-    await waitFor(() => expect(wailsCalls).toContain('ListAllNotes'), { timeout: 5000 })
+    await waitFor(() => expect(wailsCalls).toContain('ListAllNotes'), { timeout: LAZY_CHUNK_TIMEOUT })
     expect(fetchSpy).not.toHaveBeenCalled()
     fetchSpy.mockRestore()
-  })
+  }, LAZY_CHUNK_TIMEOUT)
 
   it('shows no error banner', async () => {
     await mountApp()
-    await waitFor(() => expect(wailsCalls).toContain('ListAllNotes'), { timeout: 5000 })
+    await waitFor(() => expect(wailsCalls).toContain('ListAllNotes'), { timeout: LAZY_CHUNK_TIMEOUT })
     const body = document.body.textContent ?? ''
     expect(body).not.toMatch(/did not match the expected pattern/)
     expect(document.querySelector('.conn-banner')).toBeNull()
-  })
+  }, LAZY_CHUNK_TIMEOUT)
 })

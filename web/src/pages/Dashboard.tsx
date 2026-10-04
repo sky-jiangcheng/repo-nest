@@ -46,7 +46,10 @@ function Dashboard() {
                   : t('dashboard.weekend', { defaultValue: 'Happy weekend' })}
               </div>
               <div className="hero-sub">
-                {t('dashboard.personalAdded')} <strong className="green">+{myAdded}</strong> ·
+                {t('dashboard.personalAdded')}{' '}
+                <strong className={myAdded > 0 ? 'green' : 'muted-num'}>
+                  {myAdded > 0 ? `+${myAdded}` : '0'}
+                </strong>{' · '}
                 {t('dashboard.filesShort')} <strong>{summary?.my_files || 0}</strong> ·
                 {t('dashboard.reposInvolved', { count: summary?.repo_count || 0 })}
               </div>
@@ -113,7 +116,7 @@ function Dashboard() {
         ) : sorted.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">
-              <Icon name={showStarredOnly ? 'star' : 'search'} size={40} filled={showStarredOnly} />
+              <Icon name={showStarredOnly ? 'star' : 'search'} size={32} filled={showStarredOnly} />
             </div>
             <h3>{showStarredOnly ? t('dashboard.starredOnly', { defaultValue: 'No starred projects' }) : t('dashboard.noProjects', { defaultValue: 'No project data' })}</h3>
             <p>
@@ -123,7 +126,10 @@ function Dashboard() {
             </p>
             <div className="empty-actions">
               {showStarredOnly ? (
-                <button className="btn btn-primary" onClick={() => setShowStarredOnly(false)}>{t('dashboard.viewAllProjects')}</button>
+                // Clearing a filter is a secondary, reversible action — a filled
+                // primary button overstates it and competes with the real
+                // primary actions elsewhere on the page.
+                <button className="btn btn-secondary" onClick={() => setShowStarredOnly(false)}>{t('dashboard.viewAllProjects')}</button>
               ) : (
                 <>
                   <button className="btn btn-primary" onClick={() => setConfirmScan(true)}>{t('dashboard.startScan')}</button>

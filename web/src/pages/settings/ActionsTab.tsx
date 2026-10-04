@@ -38,22 +38,28 @@ export default function ActionsTab({ showMessage }: Props) {
 
   return (
     <div className="settings-section">
-      <h2>{t('settings.tabs.actions')}</h2>
-      <p className="section-desc">{t('settings.actionsDesc')}</p>
-      <div className="action-row">
-        <button className="btn btn-primary" onClick={handleRescan} disabled={saving}>
-          {t('settings.rescanAll')}
-        </button>
-      </div>
+      {/* Two independent maintenance actions, split into groups so neither
+          reads as the page's single primary action. */}
+      <section className="settings-group">
+        <h2 className="settings-group-title">{t('settings.groupRescan')}</h2>
+        <p className="section-desc">{t('settings.actionsDesc')}</p>
+        <div className="action-row">
+          <button className="btn btn-primary" onClick={handleRescan} disabled={saving}>
+            {saving ? t('common.scanning') : t('settings.rescanAll')}
+          </button>
+        </div>
+      </section>
 
-      <h2 style={{ marginTop: 24 }}>{t('settings.importClaudeTitle')}</h2>
-      <p className="section-desc" dangerouslySetInnerHTML={{ __html: t('settings.importClaudeDesc') }} />
-      <div className="action-row">
-        <button className="btn btn-primary" onClick={handleImport} disabled={importing}>
-          {importing ? t('settings.importing') : t('settings.importClaudeTitle')}
-        </button>
-        <Link to="/knowledge" className="btn btn-secondary">{t('settings.gotoKnowledge')}</Link>
-      </div>
+      <section className="settings-group">
+        <h2 className="settings-group-title">{t('settings.importClaudeTitle')}</h2>
+        <p className="section-desc" dangerouslySetInnerHTML={{ __html: t('settings.importClaudeDesc') }} />
+        <div className="action-row">
+          <button className="btn btn-primary" onClick={handleImport} disabled={importing}>
+            {importing ? t('settings.importing') : t('settings.importClaudeAction')}
+          </button>
+          <Link to="/knowledge" className="btn btn-secondary">{t('settings.gotoKnowledge')}</Link>
+        </div>
+      </section>
     </div>
   )
 }

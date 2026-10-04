@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { setLanguage, getCurrentLanguage } from './i18n'
 import { getConnectionKind, subscribeConnection, startHealthPoll } from './api/transport'
 import Icon from './components/Icon'
+import BrandMark from './components/BrandMark'
 
 // Lazy-loaded pages. The initial route (Knowledge) is still eagerly loaded by
 // the browser, but subsequent navigations only fetch the chunks that are needed.
@@ -16,6 +17,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Knowledge = lazy(() => import('./pages/Knowledge'))
+const NotFound = lazy(() => import('./pages/NotFound'))
 
 type LanguageOption = 'zh-CN' | 'en'
 
@@ -61,8 +63,11 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
       <nav className="navbar" aria-label={t('nav.search', { defaultValue: 'main navigation' })}>
         <div className="nav-left">
           <Link to="/" className="nav-brand">
-            <span className="nav-brand-mark">▦</span>
-            RepoNest
+            {/* The real brand mark, not a text glyph — see BrandMark. 26px:
+                the mark is a compact nest-and-card silhouette, and below
+                ~24px the bowl's inner arc closes up and it reads as a blob. */}
+            <BrandMark size={26} className="nav-brand-mark" />
+            <span className="nav-brand-name">RepoNest</span>
           </Link>
           <div className="nav-links">
             <Link to="/" className={navClass(pathname === '/' || pathname === '/knowledge')}>
@@ -246,6 +251,9 @@ function RoutedApp() {
           <Route path="/project/:id" element={<ProjectDetail />} />
           <Route path="/knowledge" element={<Knowledge />} />
           <Route path="/settings" element={<Settings />} />
+          {/* Catch-all: without it an unmatched URL renders nothing at all —
+              a blank page below the navbar that reads like a crash. */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
     </ErrorBoundary>

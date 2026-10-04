@@ -51,6 +51,26 @@ export function applyTheme(mode: ThemeMode) {
   document.documentElement.setAttribute('data-theme', effective)
 }
 
+/**
+ * Read a design token's computed value from the document root.
+ *
+ * Canvas-rendered UI (Chart.js) and inline SVG attributes cannot use CSS
+ * classes, so they need the token's real value — including the dark-theme
+ * override. Reading it from the cascade (rather than hardcoding a hex per
+ * theme) is what keeps those surfaces in sync with the stylesheet.
+ * Returns '' when the token is unknown or there is no DOM.
+ */
+export function cssVar(name: string): string {
+  if (typeof window === 'undefined') return ''
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
+
+/** Current effective theme, read from the attribute applyTheme() sets. */
+export function getCurrentTheme(): 'light' | 'dark' {
+  if (typeof document === 'undefined') return 'light'
+  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
+}
+
 export function listenSystemTheme(callback: (theme: 'light' | 'dark') => void) {
   const mql = window.matchMedia('(prefers-color-scheme: dark)')
   const handler = (e: MediaQueryListEvent | MediaQueryList) => {

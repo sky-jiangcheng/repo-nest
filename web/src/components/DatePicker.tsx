@@ -12,15 +12,17 @@ function DatePicker({ value, onChange }: Props) {
   const yesterday = getYesterday()
 
   return (
-    <div className="date-picker">
+    <div className="date-picker" role="group" aria-label={t('common.date', { defaultValue: 'Date' })}>
       <button
-        className={`btn btn-sm ${value === yesterday ? 'btn-active' : ''}`}
+        className={`btn btn-sm seg-chip ${value === yesterday ? 'seg-chip-active' : ''}`}
+        aria-pressed={value === yesterday}
         onClick={() => onChange(yesterday)}
       >
         {t('common.yesterday')}
       </button>
       <button
-        className={`btn btn-sm ${value === today ? 'btn-active' : ''}`}
+        className={`btn btn-sm seg-chip ${value === today ? 'seg-chip-active' : ''}`}
+        aria-pressed={value === today}
         onClick={() => onChange(today)}
       >
         {t('common.today')}
@@ -29,6 +31,7 @@ function DatePicker({ value, onChange }: Props) {
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        aria-label={t('common.date', { defaultValue: 'Date' })}
         className="form-input date-input"
       />
     </div>

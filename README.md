@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="build/icon.svg" width="88" alt="RepoNest" />
+</p>
+
 # RepoNest: Local Git Knowledge Base
 
 **The local-first memory layer for AI coding agents.** Your agents (Claude Code, Cursor, OpenCode...) read code brilliantly and forget everything the moment the session ends — why a decision was made, what gotcha was discovered, what to do next. RepoNest keeps that knowledge on your machine, searchable, and hands it back to *any* agent in one tool call.

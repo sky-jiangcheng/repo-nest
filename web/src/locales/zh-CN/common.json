@@ -61,7 +61,6 @@
   },
   "knowledge": {
     "title": "知识库",
-    "desc": "跨项目汇总 {{count}} 条笔记，支持全文搜索、标签筛选与置顶。",
     "quickCreate": "快速创建笔记",
     "importClaude": "导入 Claude 记忆",
     "importing": "导入中…",
@@ -93,7 +92,8 @@
     "exportFailed": "导出失败：",
     "importFailed": "导入失败：",
     "importDone": "导入完成：新增 {{created}}，更新 {{updated}}，跳过 {{skipped}}",
-    "notesTitle": "知识笔记"
+    "notesTitle": "知识笔记",
+    "resultCount": "{{count}} 条笔记"
   },
   "settings": {
     "title": "设置",
@@ -200,7 +200,18 @@
     "groupImport": "知识导入",
     "groupTargets": "全局记忆源 · 目标项目",
     "groupCapture": "Claude 会话捕捉",
-    "captureProjectLabel": "按项目 ID 捕捉"
+    "captureProjectLabel": "按项目 ID 捕捉",
+    "subtitle": "管理扫描范围、统计口径与知识源",
+    "groupRescan": "重新扫描",
+    "importClaudeAction": "开始导入",
+    "tabDesc": {
+      "scan": "RepoNest 从这里列出的目录发现本地 Git 仓库",
+      "standards": "设定每日代码量目标与扫描深度，作为仪表盘的达标口径",
+      "authors": "用于在提交记录中识别你的身份，统计个人代码量",
+      "appearance": "选择浅色、深色或跟随系统",
+      "plugins": "管理知识导入源、全局记忆归属项目与会话捕捉",
+      "actions": "手动触发全量扫描或导入历史记忆"
+    }
   },
   "project": {
     "title": "项目详情",
@@ -310,7 +321,9 @@
     "groupLevelHint": "调整聚合粒度：数字越小，归并的项目范围越大",
     "scope": "范围",
     "overviewEmpty": "等待首次挖掘",
-    "overviewEmptyHint": "打开详情即自动提取，稍后刷新即可"
+    "overviewEmptyHint": "打开详情即自动提取，稍后刷新即可",
+    "notFoundTitle": "项目不存在",
+    "notFoundDesc": "该项目可能已被重新扫描移除，或链接中的 ID 有误。"
   },
   "common": {
     "unknownError": "未知错误",
@@ -372,7 +385,9 @@
     "yesterday": "昨日",
     "week": "本周",
     "month": "本月",
-    "pageError": "页面加载出错"
+    "pageError": "页面加载出错",
+    "workday": "工作日",
+    "weekend": "周末"
   },
   "status": {
     "time": "当前时间：",
@@ -504,5 +519,10 @@
     "empty": "暂无待办，输入内容按回车添加",
     "moveUp": "上移",
     "moveDown": "下移"
+  },
+  "notFound": {
+    "title": "页面不存在",
+    "desc": "该地址没有对应的页面。它可能已被移动，或者链接输入有误。",
+    "backHome": "返回首页"
   }
 }

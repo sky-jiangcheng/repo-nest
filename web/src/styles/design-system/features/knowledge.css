@@ -2,29 +2,80 @@
    Knowledge hub
    ============================================ */
 
-.knowledge h1 {
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin-bottom: 4px;
+/* Page toolbar: search is the page's primary verb, so it and the two write
+   actions share one row. The previous version stacked a large "Knowledge Base"
+   title above a separate action row — but the nav bar already names this
+   section, so that block was pure duplication and pushed the actual content
+   below the fold. */
+.knowledge-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  /* A single hairline instead of a heading block: the toolbar reads as a
+     control surface, not as a title, which is what it is. */
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .knowledge-search {
   position: relative;
-  margin-bottom: 16px;
+  /* Capped, not `flex: 1`. A search box stretched to 970px on a wide monitor
+     is a scanning problem, not a convenience — the eye has to travel from the
+     magnifier to the far end of the field to find what you typed. 520px keeps
+     the query and its result on one short line. */
+  flex: 1 1 320px;
+  max-width: 520px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.knowledge-search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+  display: block;
 }
 
 .knowledge-search-input {
   width: 100%;
-  max-width: 560px;
-  padding: 11px 16px;
+  /* Taller than the shared 9px/14px form control: this is the page's primary
+     input, not one field among several. */
+  padding: 10px 14px 10px 34px;
   font-size: 14px;
+  /* Room for the icon on the left and the hint on the right. */
+  padding-right: 16px;
 }
 
 .search-hint {
+  position: absolute;
+  right: 12px;
   font-size: 11px;
   color: var(--text-muted);
-  margin-left: 4px;
+  pointer-events: none;
+  background: var(--bg-secondary);
+  padding-left: 8px;
+}
+
+@media (max-width: 640px) {
+  .knowledge-toolbar {
+    gap: 10px;
+  }
+
+  /* Actions take the full width on a phone: two 13px labels plus a search
+     field cannot share a 390px line without either wrapping or shrinking the
+     field below a usable size. */
+  .knowledge-toolbar .page-head-actions {
+    width: 100%;
+  }
+
+  .knowledge-toolbar .page-head-actions .btn {
+    flex: 1;
+  }
 }
 
 .knowledge-filters {
@@ -69,6 +120,17 @@
   background: var(--accent-soft);
   color: var(--accent);
   border-color: var(--accent);
+}
+
+/* Live result count. Replaces the old "笔记 (N)" heading: same information,
+   but set as quiet metadata so it does not compete with the notes it counts.
+   `aria-live` lives on this element, so screen readers hear the count change
+   as filters narrow the list. */
+.result-count {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 12px;
 }
 
 .project-jump {

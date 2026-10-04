@@ -122,8 +122,11 @@ export default function PluginsTab({ initialAutoImport, initialClaudeCapture, in
                   <span className="plugin-name">{s.name}</span>
                   <span className="plugin-path">{t('settings.fromPlugin', { name: s.plugin || 'builtin' })}</span>
                 </div>
+                {/* Secondary, not primary: five identical filled-blue CTAs in a
+                    row read as one giant primary action and none of them wins.
+                    The row's hover state carries the emphasis instead. */}
                 <button
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-sm plugin-import-btn"
                   onClick={() => handleImportSource(s.name)}
                   disabled={importingSource !== '' || !s.enabled}
                 >
@@ -142,10 +145,10 @@ export default function PluginsTab({ initialAutoImport, initialClaudeCapture, in
         {TARGET_PROJECT_KEYS.map((key) => (
           <div className="form-group" key={key}>
             <label htmlFor={`target-${key}`}>{t('settings.targetProjectLabel', { source: key.replace('_project', '') })}</label>
-            <div className="toggle-row">
+            <div className="input-row">
               <input
                 id={`target-${key}`}
-                className="input"
+                className="form-input"
                 type="text"
                 placeholder={t('settings.targetProjectPlaceholder')}
                 value={targets[key] ?? ''}
@@ -182,10 +185,10 @@ export default function PluginsTab({ initialAutoImport, initialClaudeCapture, in
         </div>
         <div className="form-group">
           <label htmlFor="capture-project-id">{t('settings.captureProjectLabel')}</label>
-          <div className="toggle-row">
+          <div className="input-row">
             <input
               id="capture-project-id"
-              className="input"
+              className="form-input"
               type="number"
               min={1}
               inputMode="numeric"

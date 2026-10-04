@@ -15,6 +15,17 @@
 .markdown-body .callout-warning { border-left-color: #c95757; }
 .markdown-body .callout-caution { border-left-color: #9b2c2c; }
 .markdown-body .callout-question { border-left-color: #5a7fa0; }
+
+/* The callout hues above are authored for a white page. On the dark card they
+   drop below 3:1 and the category becomes unreadable — the one thing a callout
+   exists to signal. These are the same hues lifted to their dark-theme values
+   (the same ramps --success / --warning / --danger / --info already use), so
+   the two themes read as one system rather than two palettes. */
+[data-theme="dark"] .markdown-body .callout-tip { border-left-color: #4caf7a; }
+[data-theme="dark"] .markdown-body .callout-important { border-left-color: #e0a340; }
+[data-theme="dark"] .markdown-body .callout-warning { border-left-color: #d97373; }
+[data-theme="dark"] .markdown-body .callout-caution { border-left-color: #e06c6c; }
+[data-theme="dark"] .markdown-body .callout-question { border-left-color: #7a9ab8; }
 .markdown-body .callout-header {
   display: flex;
   align-items: center;

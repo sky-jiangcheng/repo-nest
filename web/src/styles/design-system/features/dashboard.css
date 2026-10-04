@@ -75,8 +75,37 @@
 
 .summary-value.todo { color: var(--warning); }
 
-.green { color: #2d6a2d; }
-.red { color: #8b4a4a; }
+/* A zero has no movement to report, so it steps back to the neutral ink.
+   Without this every idle day renders three saturated numbers and the eye
+   cannot tell which ones actually changed. */
+.summary-value.zero {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Semantic ink for added/deleted lines. These were literal hex values with no
+   dark-theme override, which dropped them to ~2.4:1 on the dark card — the
+   exact numbers a user scans for were the hardest to read. Routing them
+   through the tokens keeps both themes above 4.5:1.
+
+   The doubled class (`.x.green`, specificity 0,2,0) is deliberate: several
+   components set a neutral colour on a compound selector like
+   `.card-stat .stat-value` (also 0,2,0), and a bare `.green` (0,1,0) lost to
+   it — so the added/deleted numbers rendered grey on every project card.
+   Matching the specificity makes the semantic colour survive. */
+.green { color: var(--success); }
+.red { color: var(--danger); }
+
+.card-stat .stat-value.green,
+.progress-value.green,
+.card-hero-value.green { color: var(--success); }
+
+.card-stat .stat-value.red,
+.progress-value.red,
+.card-hero-value.red { color: var(--danger); }
+
+/* A number with nothing to report recedes instead of shouting a signed zero. */
+.muted-num { color: var(--text-muted); }
 
 /* --- Project grid --- */
 .project-grid {
@@ -419,14 +448,14 @@
 }
 
 .goal-ring-label {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--text-tertiary);
   font-weight: 500;
   margin-top: 1px;
 }
 
 .goal-ring-sub {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--text-tertiary);
   margin-top: 5px;
   text-align: center;
@@ -476,7 +505,7 @@
 }
 
 .card-goal-pct {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-tertiary);
   font-weight: 500;
   white-space: nowrap;
@@ -492,9 +521,32 @@
     padding: 20px;
   }
 
+  /* Stack the control bar instead of squeezing every control into one row:
+     at 390px the search field, the two filter chips, the sort select and the
+     rescan button cannot share a line without text breaking mid-word. */
   .dashboard-controls {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .dashboard-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* The action row's children each take a full line, so nothing competes for
+     horizontal space with the search box above it. */
+  .dashboard-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .sort-control {
+    flex: 1 1 100%;
+  }
+
+  .sort-control .sort-select {
+    flex: 1;
   }
 
   .hero-row {

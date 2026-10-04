@@ -37,7 +37,7 @@
   justify-content: center;
   padding: 2px 8px;
   border-radius: 12px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.4;
 }
@@ -89,7 +89,7 @@
   color: var(--accent);
   border-radius: 10px;
   padding: 1px 7px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -113,7 +113,7 @@
 
 .stat-tag.team {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
@@ -149,12 +149,15 @@
   padding: 32px 20px;
 }
 
+/* The icon marks the state; it does not headline it. At 0.3 opacity and 32px
+   it reads as a quiet annotation next to the message instead of competing
+   with the heading for attention. */
 .empty-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
-  opacity: 0.3;
+  margin-bottom: 14px;
+  opacity: 0.28;
 }
 
 .empty-state.small .empty-icon {
@@ -162,16 +165,24 @@
 }
 
 .empty-state h3 {
-  font-size: 18px;
+  font-size: 17px;
   color: var(--text-primary);
   margin-bottom: 6px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .empty-state p {
   color: var(--text-tertiary);
-  margin-bottom: 24px;
-  font-size: 14px;
+  margin-bottom: 22px;
+  font-size: 13px;
+  /* Centre-anchored empty states still need a readable measure. Expressed in
+     px, not ch: a Chinese sentence has no inter-word spaces, so a ch-based
+     cap lands mid-phrase and forces a one-word last line. */
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.65;
 }
 
 .empty-actions {

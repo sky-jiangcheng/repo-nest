@@ -33,11 +33,15 @@
   color: var(--text-tertiary);
 }
 
-.settings h1 {
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 24px;
-  letter-spacing: -0.02em;
+/* Section description: the one line that says what the open panel is for.
+   It sits directly under the tab strip (not above it) so the tab label and
+   its explanation read as one unit. */
+.section-head-desc {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  max-width: 72ch;
+  margin: 0 0 20px;
 }
 
 .settings-section {
@@ -46,6 +50,15 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   padding: 28px;
+}
+
+/* Cap the measure so long settings forms do not stretch to a 1280px line
+   length, which makes labels and inputs hard to associate visually. */
+.settings-section > .form-group,
+.settings-section > .theme-options,
+.settings-group .form-group,
+.settings-group > .toggle-row {
+  max-width: 560px;
 }
 
 .settings-section h2 {
@@ -57,8 +70,11 @@
 
 .section-desc {
   font-size: 13px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   margin-bottom: 20px;
+  /* Cap the measure: 13px copy running the full 1280px content width is a
+     ~120-character line, well past comfortable reading length. */
+  max-width: 72ch;
 }
 
 .section-header {

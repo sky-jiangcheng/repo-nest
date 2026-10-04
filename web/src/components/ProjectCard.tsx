@@ -109,7 +109,11 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
 
         <div className="card-hero-num">
           <span className="card-hero-label">{t('project.todayAdded')}</span>
-          <span className={`card-hero-value ${myAdded > 0 ? 'green' : ''}`}>+{myAdded}</span>
+          {/* Sign only when there is a value to sign: "+0" on every quiet
+              project turned the grid into a wall of false positives. */}
+          <span className={`card-hero-value ${myAdded > 0 ? 'green' : 'muted-num'}`}>
+            {myAdded > 0 ? `+${myAdded}` : '0'}
+          </span>
         </div>
 
         {isWorkday && dailyGoal > 0 && myAdded > 0 && (
@@ -132,11 +136,15 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
           </div>
           <div className="card-stat">
             <span className="stat-label">{t('project.added')}</span>
-            <span className="stat-value green">+{myAdded}</span>
+            <span className={myAdded > 0 ? 'stat-value green' : 'stat-value muted-num'}>
+              {myAdded > 0 ? `+${myAdded}` : '0'}
+            </span>
           </div>
           <div className="card-stat">
             <span className="stat-label">{t('project.deleted')}</span>
-            <span className="stat-value red">-{myDeleted}</span>
+            <span className={myDeleted > 0 ? 'stat-value red' : 'stat-value muted-num'}>
+              {myDeleted > 0 ? `-${myDeleted}` : '0'}
+            </span>
           </div>
         </div>
 

@@ -10,32 +10,50 @@
   height: 60px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-subtle);
+  /* Without this the flex children refuse to shrink below their content
+     width and the bar overflows on narrow viewports. */
+  min-width: 0;
+  gap: 16px;
 }
 
 .nav-left {
   display: flex;
   align-items: center;
   gap: 28px;
+  min-width: 0;
 }
 
 .nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 17px;
   font-weight: 600;
   color: var(--text-primary);
   text-decoration: none;
   letter-spacing: -0.02em;
+  /* The wordmark is the first thing to go when space runs short; the mark
+     carries the identity on its own. */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .nav-brand-mark {
-  color: var(--text-primary);
-  font-weight: 700;
-  margin-right: 6px;
-  font-size: 16px;
+  display: block;
+  /* The tile is a rounded square with its own dark gradient. Without a radius
+     here it would be a hard square inside a soft UI, and at 26px the corner
+     pixels read as noise next to the 10px-radius controls beside it. */
+  border-radius: 6px;
+  flex-shrink: 0;
+  /* A gold mark on a dark tile next to dark text: the mark carries the only
+     saturated colour in the bar, so it must not be recoloured by the theme. */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
 .nav-links {
   display: flex;
   gap: 4px;
+  min-width: 0;
 }
 
 .nav-links a {
@@ -46,6 +64,10 @@
   transition: color var(--transition-fast);
   padding: 6px 14px;
   border-radius: var(--radius-md);
+  /* Chinese section labels have no spaces, so without this the browser breaks
+     between any two characters and the nav renders as a vertical strip. */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .nav-links a:hover {
@@ -63,7 +85,11 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
+  /* Matches .nav-lang-btn's 30px so the two right-hand controls share one
+     horizontal band — they were 32px and 29px, a 3px step that read as a
+     misalignment rather than a choice. */
+  height: 30px;
+  padding: 0 12px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-tertiary);
@@ -91,6 +117,56 @@
 
 @media (max-width: 640px) {
   .nav-kbd, .nav-palette-btn span:not(.nav-kbd) { display: none; }
+
+  /* Tighten every horizontal step so brand + 3 links + 2 controls fit a 390px
+     viewport without scrolling: wordmark drops its label, link padding halves,
+     and the language button shows its globe only. */
+  .navbar {
+    padding: 0 16px;
+    gap: 8px;
+  }
+
+  .nav-left {
+    gap: 12px;
+  }
+
+  /* Drop only the "RepoNest" word. font-size:0 collapses the gap too, so the
+     mark's own margin has to be re-added — .nav-brand keeps its flex gap. */
+  .nav-brand-name {
+    display: none;
+  }
+
+  .nav-brand-mark {
+    /* Slightly larger once the wordmark is gone: it is now the only thing
+       identifying the app in the bar. */
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+  }
+
+  .nav-links a {
+    padding: 6px 9px;
+    font-size: 13px;
+  }
+
+  .lang-label {
+    display: none;
+  }
+
+  .nav-lang-btn {
+    padding: 0 8px;
+  }
+
+  .nav-palette-btn {
+    padding: 0 9px;
+  }
+}
+
+@media (max-width: 400px) {
+  .nav-links a {
+    padding: 6px 7px;
+    font-size: 12px;
+  }
 }
 
 /* Language switcher */
@@ -98,6 +174,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Controls keep their intrinsic size; the links absorb the pressure. */
+  flex-shrink: 0;
 }
 
 .lang-switcher {
@@ -108,7 +186,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 5px 10px;
+  /* Same 30px band as .nav-palette-btn — see note there. */
+  height: 30px;
+  padding: 0 10px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-tertiary);

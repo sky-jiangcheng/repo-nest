@@ -1,3 +1,7 @@
+import { useMemo } from 'react'
+import { cssVar } from '../utils/theme'
+import { useTheme } from '../hooks/useTheme'
+
 interface Props {
   value: number
   goal: number
@@ -7,27 +11,51 @@ interface Props {
   sublabel?: string
 }
 
+/**
+ * Goal progress ring. The track and the progress arc both read their colour
+ * from design tokens rather than literal hex, so the dark theme is painted
+ * with its own palette instead of a light-mode ring on a dark surface.
+ *
+ * The arc's weight steps down as progress drops — full attention at the goal,
+ * a quiet hint when barely started — which encodes the value before the number
+ * is read.
+ */
 export default function GoalRing({ value, goal, size = 80, stroke = 7, label, sublabel }: Props) {
-  const v = value || 0
-  const g = goal || 0
-  const radius = (size - stroke) / 2
-  const circumference = 2 * Math.PI * radius
-  const ratio = g > 0 ? Math.min(v / g, 1) : 0
-  const offset = circumference * (1 - ratio)
-  const pct = Math.round(ratio * 100)
-  const reached = v >= g && g > 0
+  useTheme()
 
-  const color = reached ? '#1a1a1a' : ratio >= 0.5 ? '#3a3a3a' : '#888888'
+  const { radius, circumference, offset, pct, arcColor, trackColor } = useMemo(() => {
+    const v = value || 0
+    const g = goal || 0
+    const r = (size - stroke) / 2
+    const c = 2 * Math.PI * r
+    const ratio = g > 0 ? Math.min(v / g, 1) : 0
+    const reached = v >= g && g > 0
+
+    return {
+      radius: r,
+      circumference: c,
+      offset: c * (1 - ratio),
+      pct: Math.round(ratio * 100),
+      // Reaching the goal is the only state that earns the strongest ink;
+      // below it the arc recedes so the number carries the message.
+      arcColor: reached
+        ? cssVar('--accent')
+        : ratio >= 0.5
+          ? cssVar('--text-secondary')
+          : cssVar('--text-tertiary'),
+      trackColor: cssVar('--bg-tertiary'),
+    }
+  }, [value, goal, size, stroke])
 
   return (
     <div className="goal-ring" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="goal-ring-svg">
+      <svg width={size} height={size} className="goal-ring-svg" aria-hidden="true">
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#e8e8e6"
+          stroke={trackColor}
           strokeWidth={stroke}
         />
         <circle
@@ -35,7 +63,7 @@ export default function GoalRing({ value, goal, size = 80, stroke = 7, label, su
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={color}
+          stroke={arcColor}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -45,7 +73,7 @@ export default function GoalRing({ value, goal, size = 80, stroke = 7, label, su
         />
       </svg>
       <div className="goal-ring-center">
-        <span className="goal-ring-value" style={{ fontSize: Math.round(size * 0.24) }}>{pct}%</span>
+        <span className="goal-ring-value" style={{ fontSize: Math.round(size * 0.26) }}>{pct}%</span>
         {label && <span className="goal-ring-label">{label}</span>}
       </div>
       {sublabel && <span className="goal-ring-sub">{sublabel}</span>}

@@ -80,9 +80,9 @@ export function useProjectDetail(id: string | undefined) {
     return {
       labels: dates,
       datasets: [
-        { label: t('dashboard.sortMyAdded', { defaultValue: 'Lines Added' }), data: dates.map((d) => stats.get(d)!.added), color: '#4a7d4a' },
-        { label: t('project.deletedLines'), data: dates.map((d) => stats.get(d)!.deleted), color: '#c95757' },
-        { label: t('dashboard.sortMyFiles', { defaultValue: 'Files Changed' }), data: dates.map((d) => stats.get(d)!.files), color: '#5a7fa0' },
+        { label: t('dashboard.sortMyAdded', { defaultValue: 'Lines Added' }), data: dates.map((d) => stats.get(d)!.added), color: '--success' },
+        { label: t('project.deletedLines'), data: dates.map((d) => stats.get(d)!.deleted), color: '--danger' },
+        { label: t('dashboard.sortMyFiles', { defaultValue: 'Files Changed' }), data: dates.map((d) => stats.get(d)!.files), color: '--info' },
       ] as TrendDataset[],
     }
   }, [stats, scope, t])

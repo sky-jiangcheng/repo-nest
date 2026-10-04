@@ -13,7 +13,7 @@ function KnowledgePage() {
   const {
     notes, tags, loading, error, query, hits, kindFilter, activeTag,
     pinnedOnly, importing, message, newNotePicker, askMode, exportingId,
-    filtered, projectNames, pinnedCount, recentNotes,
+    filtered, projectNames, recentNotes,
     setKindFilter, setActiveTag, setPinnedOnly, setNewNotePicker,
     handleSearchInput, handlePin, handleExport, handleImport, fetchAll, flashMessage,
   } = useKnowledgePage()
@@ -57,10 +57,26 @@ function KnowledgePage() {
 
   return (
     <div className="knowledge">
-      <div className="page-head">
-        <div>
-          <h1 className="visually-hidden">{t('knowledge.title')}</h1>
-          <p className="page-sub">{t('knowledge.desc', { count: notes.length })}</p>
+      {/* The nav bar already names this section ("知识库"), so repeating it as a
+          page title is pure duplication — the user's read. The h1 stays for
+          screen readers and for the document outline, but visually the page
+          now opens on its actual content: the search field, which is the one
+          thing a knowledge base is for. */}
+      <h1 className="visually-hidden">{t('knowledge.title')}</h1>
+
+      <div className="knowledge-toolbar">
+        <div className="knowledge-search" role="search" aria-label={t('knowledge.searchAria')}>
+          <Icon name="search" size={15} className="knowledge-search-icon" />
+          <input
+            type="text"
+            value={query}
+            onChange={e => handleSearchInput(e.target.value)}
+            placeholder={askMode ? t('knowledge.searchAskPlaceholder') : t('knowledge.searchPlaceholder')}
+            aria-label={t('knowledge.searchAria')}
+            className="form-input knowledge-search-input"
+            autoFocus
+          />
+          {query && <span className="search-hint">{t('knowledge.searchHint')}</span>}
         </div>
         <div className="page-head-actions">
           <button className="btn btn-primary btn-sm" onClick={handleQuickCreate}>
@@ -86,19 +102,6 @@ function KnowledgePage() {
       )}
 
       {message && <div className="message-banner">{message}</div>}
-
-      <div className="knowledge-search" role="search" aria-label={t('knowledge.searchAria')}>
-        <input
-          type="text"
-          value={query}
-          onChange={e => handleSearchInput(e.target.value)}
-          placeholder={askMode ? t('knowledge.searchAskPlaceholder') : t('knowledge.searchPlaceholder')}
-          aria-label={t('knowledge.searchAria')}
-          className="form-input knowledge-search-input"
-          autoFocus
-        />
-        {query && <span className="search-hint">{t('knowledge.searchHint')}</span>}
-      </div>
 
       {hits !== null ? (
         <div className="knowledge-section">
@@ -156,7 +159,10 @@ function KnowledgePage() {
               onClick={() => setPinnedOnly(v => !v)}
               title={t('knowledge.pinnedOnly')}
             >
-              <Icon name="pin" size={14} /> {t('knowledge.pinnedOnly')} {pinnedCount}
+              <Icon name="pin" size={14} /> {t('knowledge.pinnedOnly')}
+              {/* No count here: it sits one line below in the result count, and
+                  two live counters on screen disagree the moment a filter is
+                  on. The chip says which filter; the count says how much. */}
             </button>
           </div>
 
@@ -181,9 +187,16 @@ function KnowledgePage() {
           )}
 
           <div className="knowledge-section">
-            <div className="section-header">
-              <h2>{t('knowledge.notes')} ({filtered.length})</h2>
-            </div>
+            {/* Live result count. Hidden when there is nothing to count: "0 条
+                笔记" directly above an empty state that says the same thing is
+                the same duplication this whole pass is removing. It appears
+                the moment a filter or search narrows a non-empty list, which is
+                the only time the number is news. */}
+            {filtered.length > 0 && (
+              <div className="result-count" aria-live="polite">
+                {t('knowledge.resultCount', { count: filtered.length })}
+              </div>
+            )}
 
             {projectNames.length > 0 && (
               <div className="project-jump">
@@ -197,7 +210,7 @@ function KnowledgePage() {
             {filtered.length === 0 ? (
               notes.length === 0 ? (
                 <div className="empty-state large">
-                  <div className="empty-icon"><Icon name="file-text" size={40} /></div>
+                  <div className="empty-icon"><Icon name="file-text" size={32} /></div>
                   <h3>{t('knowledge.startBrain')}</h3>
                   <p>{t('knowledge.startBrainMsg')}</p>
                   <div className="empty-actions">
@@ -211,7 +224,7 @@ function KnowledgePage() {
                 </div>
               ) : (
                 <div className="empty-state small">
-                  <div className="empty-icon"><Icon name="search" size={40} /></div>
+                  <div className="empty-icon"><Icon name="search" size={32} /></div>
                   <h3>{t('knowledge.noMatch')}</h3>
                   <p>{t('knowledge.adjustMsg')}</p>
                 </div>

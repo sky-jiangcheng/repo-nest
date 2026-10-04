@@ -27,6 +27,38 @@ import { createRequire } from 'node:module'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const docsDir = join(root, 'docs')
 
+// The brand mark, inlined from the SSOT (build/icon.svg) that also generates the
+// app icon, favicons and the VS Code extension icon. Read at build time rather
+// than copied by hand so the docs sidebar, the desktop app and the shipped
+// artifacts cannot drift apart: change the SSOT, re-run generate-icons.mjs,
+// rebuild the docs, and every surface shows the same mark.
+function brandMarkSvg(size) {
+  const svgPath = join(root, 'build', 'icon.svg')
+  if (!existsSync(svgPath)) {
+    console.warn('build-docs: build/icon.svg missing — sidebar falls back to wordmark only')
+    return ''
+  }
+  let svg = readFileSync(svgPath, 'utf8')
+  // Keep only the geometry: drop the outer <svg> wrapper, the <title> (the
+  // sidebar h1 already names the product, so a second title makes screen
+  // readers announce "RepoNest" twice) and the XML preamble. The <title>
+  // sits *after* the opening <svg> tag, so the wrapper strip cannot catch it.
+  svg = svg
+    .replace(/<\?xml[^>]*\?>/g, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/^[\s\S]*?<svg[^>]*>/, '')
+    .replace(/<\/svg>\s*$/, '')
+    .replace(/<title>[\s\S]*?<\/title>/g, '')
+    .trim()
+  // Gradient ids are global to the document. The docs page inlines many SVGs
+  // (mermaid diagrams too), so a collision would repaint this mark with
+  // another diagram's gradient.
+  const uid = `docs-brand-${size}`
+  svg = svg.replace(/id="rn-([a-z]+)"/g, (_, n) => `id="${uid}-${n}"`)
+  svg = svg.replace(/url\(#rn-([a-z]+)\)/g, (_, n) => `url(#${uid}-${n})`)
+  return `<svg width="${size}" height="${size}" viewBox="0 0 512 512" aria-hidden="true" focusable="false">${svg}</svg>`
+}
+
 // Resolve marked from web/node_modules (the project keeps a single dep tree).
 const requireFromWeb = createRequire(join(root, 'web', 'noop.js'))
 const { marked } = requireFromWeb('marked')
@@ -412,6 +444,8 @@ ${extraHead}  <style>
     a:hover { text-decoration: underline; }
     .sidebar { width: var(--sidebar-w); background: #1a1a2e; color: #fff; padding: 24px 0; flex-shrink: 0; overflow-y: auto; position: fixed; height: 100vh; }
     .sidebar-brand { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 12px; }
+    .sidebar-brand-row { display: flex; align-items: center; gap: 10px; }
+    .sidebar-brand-row svg { display: block; border-radius: 6px; flex-shrink: 0; }
     .sidebar-brand h1 { font-size: 18px; font-weight: 700; }
     .sidebar-brand span { color: var(--accent); }
     .sidebar-brand small { display: block; font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 4px; }
@@ -454,7 +488,10 @@ ${extraHead}  <style>
 <body>
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <h1>Repo<span>Nest</span></h1>
+      <div class="sidebar-brand-row">
+        ${brandMarkSvg(28)}
+        <h1>Repo<span>Nest</span></h1>
+      </div>
       <small>${loc.brandSmall}</small>
       ${switcherHtml(locale, base, pageOutDir)}
     </div>

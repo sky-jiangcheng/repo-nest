@@ -94,11 +94,20 @@
   font-weight: 500;
 }
 
+/* Hint text sits at 12px, where WCAG AA requires 4.5:1. --text-tertiary is
+   only 3.5:1 on white and --text-muted 2.3:1, so hints use the secondary
+   ramp instead — legibility over "looks quieter". */
 .form-hint {
   display: block;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-top: 6px;
+}
+
+/* Numeric fields have no intrinsic width and collapse to the browser's
+   default (~5ch), which reads as a mistake next to full-width text inputs. */
+input[type="number"].form-input {
+  width: 160px;
 }
 
 .input-row {
@@ -108,6 +117,7 @@
 
 .input-row .form-input {
   flex: 1;
+  min-width: 0;
 }
 
 .toggle-row {
