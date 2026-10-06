@@ -5,4 +5,4 @@ package version
 // Version is the current RepoNest version. The canonical value lives in
 // wails.json (info.productVersion); scripts/bump-version.sh propagates it
 // here. CI builds override this via ldflags at link time.
-const Version = "1.14.1"
+const Version = "1.14.2"

@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [1.14.2] - 2026-10-06
+
+发布工程批次，无应用代码变更。另：本轮全量测试(Go 32 包 / 前端 89 用例 / GUI 黑盒 15 项)全部通过。
+
+### 变更
+
+- **CI：fill-sha256 占位符校验门收窄到打包清单目录**：Gate 1 用 `grep -rn` 扫整个 `packaging/`，而 `packaging/README.md` 文档里按字面写出的 `__FILL_SHA256_*__` 示例让该门在自身文档上永远失败——v1.13.0 / v1.14.0 / v1.14.1 三个发布都因此卡在 "Fill manifest sha256" 一步。改为只扫 `packaging/homebrew` 与 `packaging/scoop`（与 Gate 2 口径一致），实际清单无占位符时即可通过
+- **打包清单：回填 v1.14.1 发布资产 sha256**：CI 步骤失败期间按其同等口径在本地执行 `--fill-sha256 --from-api` 完成回填，Homebrew Cask/Formula 与 Scoop 清单现指向 v1.14.1 实际发布资产的摘要，双门校验（无占位符 + 摘要与 Release API 一致）均通过
+
 ## [1.14.1] - 2026-10-05
 
 ### 修复
