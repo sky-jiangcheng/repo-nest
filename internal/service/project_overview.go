@@ -213,6 +213,19 @@ func (s *Service) mineAndCache(cacheRepoID int64, rootPath string, repos []domai
 	if err != nil || k == nil {
 		return
 	}
+	// For a multi-repo grouping the container directory is not a git
+	// repository, so Mine's per-path git probes (activity, top contributors)
+	// silently returned zero. Aggregate across the actual repositories
+	// instead — languages/tech stack walk the working tree and are already
+	// container-safe.
+	if len(repos) > 1 {
+		paths := make([]string, 0, len(repos))
+		for _, r := range repos {
+			paths = append(paths, r.Path)
+		}
+		k.Activity = knowledge.AggregateActivity(paths)
+		k.TopContributors = knowledge.AggregateContributors(paths, 5)
+	}
 	if cacheRepoID > 0 {
 		ts, _ := json.Marshal(k.TechStack)
 		ls, _ := json.Marshal(k.Languages)

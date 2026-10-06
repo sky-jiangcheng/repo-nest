@@ -91,7 +91,12 @@ func GetRecentCommits(repoPaths []string, filterAuthor string, limit int) ([]Rec
 	for _, repoPath := range repoPaths {
 		args := []string{
 			"log", "-" + strconv.Itoa(limit),
-			"--pretty=format:%H" + sep + "%an" + sep + "%at" + sep + "%s" + sep + "%D",
+			// The NUL separator must reach git as the FORMAT SPECIFIER %x00 —
+			// a literal NUL byte inside an argv string fails at execve (POSIX
+			// argv is NUL-terminated), so every command errored and the commit
+			// list was silently empty for every project. %n (as GetLastCommit
+			// uses) cannot be used here: commit subjects may contain newlines.
+			"--pretty=format:%H%x00%an%x00%at%x00%s%x00%D",
 		}
 		if filterAuthor != "" {
 			args = append(args, "--author="+filterAuthor)

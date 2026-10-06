@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -51,16 +52,44 @@ func countTags(tags string) int {
 	return n
 }
 
+// NormalizeTags splits a raw tags string on ASCII and full-width commas,
+// trims each entry, drops empties and duplicates (first occurrence wins) and
+// rejoins with ", " — the canonical form the frontend's parseTags/joinTags
+// pair produces. Writers used to store the raw input, so a note created with
+// "cbipay, 样例测试, 支付" kept the whole string as ONE tag: the tag list then
+// offered a single joined chip that the frontend filter (which splits tags
+// on commas) could never match, hiding the note behind its own tag.
+func NormalizeTags(tags string) string {
+	parts := strings.FieldsFunc(tags, func(r rune) bool {
+		return r == ',' || r == '，'
+	})
+	seen := make(map[string]bool, len(parts))
+	out := make([]string, 0, len(parts))
+	for _, t := range parts {
+		t = strings.TrimSpace(t)
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		out = append(out, t)
+	}
+	return strings.Join(out, ", ")
+}
+
 // CreateNote inserts a new note for a project.
 func CreateNote(db *sql.DB, projectID int64, content string) (*Note, error) {
 	return CreateNoteEx(db, projectID, "", content, "", "other", "manual")
 }
 
-// CreateNoteEx inserts a new note with explicit metadata.
+// CreateNoteEx inserts a new note with explicit metadata. Tags are
+// normalized before storage — every writer (desktop UI, MCP, plugin runtime,
+// importers) converges here, so the canonical form is guaranteed at the
+// chokepoint the same way the bounds are.
 func CreateNoteEx(db *sql.DB, projectID int64, title, content, tags, kind, source string) (*Note, error) {
 	if err := ValidateNoteBounds(title, content, tags); err != nil {
 		return nil, err
 	}
+	tags = NormalizeTags(tags)
 	res, err := db.Exec(
 		"INSERT INTO project_notes (project_id, title, content, tags, kind, source) VALUES (?, ?, ?, ?, ?, ?)",
 		projectID, title, content, tags, kind, source)
@@ -137,6 +166,7 @@ func UpdateNoteFull(db *sql.DB, noteID int64, content, title, tags, kind string,
 	if err := ValidateNoteBounds(title, content, tags); err != nil {
 		return err
 	}
+	tags = NormalizeTags(tags)
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -180,6 +210,7 @@ func UpdateNoteMeta(db *sql.DB, noteID int64, title, tags, kind string, pinned b
 	if err := ValidateNoteBounds(title, "", tags); err != nil {
 		return err
 	}
+	tags = NormalizeTags(tags)
 	res, err := db.Exec(
 		"UPDATE project_notes SET title = ?, tags = ?, kind = ?, pinned = ?, updated_at = strftime('%Y-%m-%d %H:%M:%f','now') WHERE id = ?",
 		title, tags, kind, pinned, noteID)
@@ -289,22 +320,38 @@ func CountNotes(db *sql.DB) (int, error) {
 	return n, err
 }
 
-// ListAllTags returns the distinct set of non-empty tag strings.
+// ListAllTags returns the distinct set of individual tags across all notes,
+// sorted. Stored values are comma-joined (one string per note), so the raw
+// DISTINCT list would offer one chip per NOTE — e.g. "cbipay, 支付" — which
+// the frontend filter (splitting each note's tags on commas) could never
+// match. Splitting here is what makes a tag chip point back at its notes.
 func ListAllTags(db *sql.DB) ([]string, error) {
-	rows, err := db.Query("SELECT DISTINCT tags FROM project_notes WHERE tags != '' ORDER BY tags ASC")
+	rows, err := db.Query("SELECT DISTINCT tags FROM project_notes WHERE tags != ''")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	seen := make(map[string]bool)
 	var tags []string
 	for rows.Next() {
-		var t string
-		if err := rows.Scan(&t); err != nil {
+		var v string
+		if err := rows.Scan(&v); err != nil {
 			return nil, err
 		}
-		tags = append(tags, t)
+		for _, t := range strings.Split(v, ",") {
+			t = strings.TrimSpace(t)
+			if t == "" || seen[t] {
+				continue
+			}
+			seen[t] = true
+			tags = append(tags, t)
+		}
 	}
-	return tags, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	sort.Strings(tags)
+	return tags, nil
 }
 
 // GetNoteCounts returns the number of notes per project.

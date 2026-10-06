@@ -317,3 +317,67 @@ func TestDetectContributorsReturnsAuthors(t *testing.T) {
 		t.Errorf("limit=1 should truncate to the top author, got %+v err=%v", got, err)
 	}
 }
+
+// A multi-repo project mines its container directory, which is not a git
+// repository — DetectActivity/DetectContributors against it silently return
+// zero. AggregateActivity/AggregateContributors must union and sum across
+// the actual sibling repositories instead.
+func TestAggregateActivityAndContributors(t *testing.T) {
+	a := initGitRepo(t, map[string]string{"a1": "alice", "a2": "bob"})
+	b := initGitRepo(t, map[string]string{"b1": "alice"})
+
+	single, err := DetectActivity(a)
+	if err != nil {
+		t.Fatalf("DetectActivity: %v", err)
+	}
+	if single.TotalCommits != 2 {
+		t.Errorf("repo a total commits = %d, want 2", single.TotalCommits)
+	}
+	// Regression for the DATE..DATE rev-range bug: date windows go through
+	// --since, so per-repo day/month/rate fields were silently zero from day
+	// one even though total commits and last-commit-date worked.
+	if single.ActiveDays != 1 {
+		t.Errorf("repo a active days = %d, want 1", single.ActiveDays)
+	}
+	if single.CommitRate30d != 2 {
+		t.Errorf("repo a commit rate (30d) = %d, want 2", single.CommitRate30d)
+	}
+	if single.ActiveMonths != 1 {
+		t.Errorf("repo a active months = %d, want 1", single.ActiveMonths)
+	}
+
+	agg := AggregateActivity([]string{a, b})
+	if agg.TotalCommits != 3 {
+		t.Errorf("aggregate total commits = %d, want 3", agg.TotalCommits)
+	}
+	if agg.ActiveDays != 1 {
+		t.Errorf("aggregate active days = %d, want 1 (same-day commits union once)", agg.ActiveDays)
+	}
+	if agg.ActiveMonths != 1 {
+		t.Errorf("aggregate active months = %d, want 1", agg.ActiveMonths)
+	}
+	if agg.LastCommitDate == "" {
+		t.Errorf("aggregate last commit date is empty")
+	}
+	// The 30-day rate sums across repos: both commits in a and one in b are
+	// inside the window.
+	if agg.CommitRate30d != 3 {
+		t.Errorf("aggregate commit rate (30d) = %d, want 3", agg.CommitRate30d)
+	}
+
+	contribs := AggregateContributors([]string{a, b}, 5)
+	if len(contribs) != 2 {
+		t.Fatalf("expected 2 aggregated contributors, got %+v", contribs)
+	}
+	// a has alice×1 + bob×1, b has alice×1 — the union sums alice to 2.
+	if contribs[0].Author != "alice" || contribs[0].Count != 2 {
+		t.Errorf("top contributor should be alice (1+1), got %+v", contribs[0])
+	}
+	if contribs[1].Author != "bob" || contribs[1].Count != 1 {
+		t.Errorf("second contributor should be bob (1), got %+v", contribs[1])
+	}
+
+	if top := AggregateContributors([]string{a, b}, 1); len(top) != 1 || top[0].Author != "alice" {
+		t.Errorf("limit=1 should keep only alice, got %+v", top)
+	}
+}

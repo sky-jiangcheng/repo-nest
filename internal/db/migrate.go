@@ -238,6 +238,23 @@ func upgradeSchema(db *sql.DB) error {
 			`INSERT INTO project_notes_fts(project_notes_fts) VALUES('rebuild')`,
 			`INSERT INTO project_todos_fts(project_todos_fts) VALUES('rebuild')`,
 		}},
+		// v13: normalize note tags + invalidate multi-repo mining caches.
+		//
+		// Note writers used to store the tags input verbatim, so "cbipay, 样例
+		// 测试, 支付" was ONE tag row: the tag list showed a single joined chip
+		// that the frontend filter (which splits tags on commas) could never
+		// match, hiding the note behind its own tags. Rewritten via Go because
+		// the split/dedupe/rejoin logic must mirror db.NormalizeTags exactly.
+		//
+		// repo_meta rows for MULTI-repo projects are dropped: mining ran git in
+		// the project root, which for a container of sibling repos is not a git
+		// repository, so activity and top contributors were silently zero and
+		// that broken result was cached. A true zero-commit multi-repo project
+		// cannot be distinguished from the broken cache, so invalidation is the
+		// only reliable repair; the next detail-page load remines (cheap on a
+		// personal knowledge base). Single-repo projects mined their actual
+		// repository and keep their cache.
+		{id: 13, fn: migrateV13NormalizeTagsAndDropMultiRepoMeta},
 	}
 
 	for _, m := range migrations {
@@ -260,13 +277,19 @@ func upgradeSchema(db *sql.DB) error {
 	return nil
 }
 
-// migration represents one schema change.
+// migration represents one schema change. Either sql (a statement list run
+// inside one transaction) or fn (a Go-side data migration whose logic cannot
+// be expressed in SQL) must be set; fn takes precedence.
 type migration struct {
 	id  int
-	sql any // string or []string
+	sql any
+	fn  func(db *sql.DB) error
 }
 
 func (m migration) apply(db *sql.DB) error {
+	if m.fn != nil {
+		return m.fn(db)
+	}
 	stmts := stmtList(m.sql)
 	// Non-PRAGMA statements of one migration run inside a single transaction,
 	// so a multi-step migration cannot leave the schema half-applied if the
@@ -369,6 +392,59 @@ func logMigrationError(id int, err error) {
 }
 
 // insertDefaults inserts default configuration values if they don't exist.
+// migrateV13NormalizeTagsAndDropMultiRepoMeta rewrites note tags into the
+// canonical form produced by NormalizeTags and drops mining caches for
+// multi-repo projects, whose activity and top contributors were mined from a
+// non-git container directory and are therefore always zero. See migration
+// v13's comment in upgradeSchema.
+func migrateV13NormalizeTagsAndDropMultiRepoMeta(db *sql.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	rows, err := tx.Query(`SELECT id, tags FROM project_notes WHERE tags LIKE '%,%' OR tags LIKE '%，%'`)
+	if err != nil {
+		return err
+	}
+	type tagFix struct {
+		id   int64
+		tags string
+	}
+	var fixes []tagFix
+	for rows.Next() {
+		var id int64
+		var tags string
+		if err := rows.Scan(&id, &tags); err != nil {
+			rows.Close()
+			return err
+		}
+		if n := NormalizeTags(tags); n != tags {
+			fixes = append(fixes, tagFix{id, n})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	for _, f := range fixes {
+		if _, err := tx.Exec("UPDATE project_notes SET tags = ? WHERE id = ?", f.tags, f.id); err != nil {
+			return err
+		}
+	}
+
+	_, err = tx.Exec(`DELETE FROM repo_meta WHERE repository_id IN (
+		SELECT r.id FROM repositories r
+		WHERE r.project_id IS NOT NULL
+		  AND (SELECT COUNT(*) FROM repositories r2 WHERE r2.project_id = r.project_id) > 1)`)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func insertDefaults(db *sql.DB) error {
 	defaults := map[string]string{
 		"daily_code_standard": "500",

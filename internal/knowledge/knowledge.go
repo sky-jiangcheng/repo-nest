@@ -492,70 +492,140 @@ func DetectContributors(repoPath string, limit int) ([]TopContributor, error) {
 	return contributors, nil
 }
 
-// DetectActivity computes recent commit activity metrics for a repository.
-func DetectActivity(repoPath string) (*ActivityStat, error) {
+// activityRaw holds the unaggregated git facts DetectActivity is built from.
+// Days and months stay as sets so a multi-repo project can union them without
+// double-counting a day on which two sibling repos both had commits.
+type activityRaw struct {
+	total    int
+	days     map[string]bool
+	rate30   int
+	lastDate string
+	months   map[string]bool
+}
+
+// activityRawFor runs the five git probes for one repository. Individual
+// failures (including "not a git repository") degrade that probe to its zero
+// value — a non-repo path yields empty knowledge, not a hard failure, and
+// callers mine container directories that may or may not be repos themselves.
+func activityRawFor(repoPath string) activityRaw {
 	now := time.Now()
 	threeMonthsAgo := now.AddDate(0, -3, 0).Format("2006-01-02")
 	monthAgo := now.AddDate(0, -1, 0).Format("2006-01-02")
-	today := now.Format("2006-01-02")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	raw := activityRaw{days: map[string]bool{}, months: map[string]bool{}}
+
 	totalCmd := exec.CommandContext(ctx, "git", "-C", repoPath, "rev-list", "--count", "HEAD")
 	totalOut, err := totalCmd.Output()
-	totalCommits := 0
 	if err == nil {
-		totalCommits, _ = strconv.Atoi(strings.TrimSpace(string(totalOut)))
+		raw.total, _ = strconv.Atoi(strings.TrimSpace(string(totalOut)))
 	}
 
-	daysCmd := exec.CommandContext(ctx, "git", "-C", repoPath, "log", "--format=%ad", "--date=short", threeMonthsAgo+".."+today)
+	// Date windows must go through --since: a "DATE..DATE" argument is parsed
+	// as a REV RANGE, git fails to resolve the date as a ref, and the command
+	// errors — which silently zeroed active_days, commit_rate_30d and
+	// active_months from day one. No --until: commits are never in the future,
+	// and a bare date resolves to that day's 00:00 which would drop today.
+	daysCmd := exec.CommandContext(ctx, "git", "-C", repoPath, "log", "--format=%ad", "--date=short", "--since="+threeMonthsAgo)
 	daysOut, err2 := daysCmd.Output()
-	activeDays := 0
 	if err2 == nil {
-		daySet := make(map[string]bool)
 		for _, d := range strings.Split(string(daysOut), "\n") {
 			d = strings.TrimSpace(d)
 			if d != "" {
-				daySet[d] = true
+				raw.days[d] = true
 			}
 		}
-		activeDays = len(daySet)
 	}
 
-	commitsCmd := exec.CommandContext(ctx, "git", "-C", repoPath, "rev-list", "--count", monthAgo+"..HEAD")
+	commitsCmd := exec.CommandContext(ctx, "git", "-C", repoPath, "rev-list", "--count", "--since="+monthAgo, "HEAD")
 	commitsOut, err3 := commitsCmd.Output()
-	commitRate30d := 0
 	if err3 == nil {
-		commitRate30d, _ = strconv.Atoi(strings.TrimSpace(string(commitsOut)))
+		raw.rate30, _ = strconv.Atoi(strings.TrimSpace(string(commitsOut)))
 	}
 
 	lastCmd := exec.CommandContext(ctx, "git", "-C", repoPath, "log", "-1", "--format=%ad", "--date=short")
 	lastOut, err4 := lastCmd.Output()
-	lastDate := ""
 	if err4 == nil {
-		lastDate = strings.TrimSpace(string(lastOut))
+		raw.lastDate = strings.TrimSpace(string(lastOut))
 	}
 
-	monthsCmd := exec.CommandContext(ctx, "git", "-C", repoPath, "log", "--format=%ad", "--date=format:%Y-%m", threeMonthsAgo+".."+today)
+	monthsCmd := exec.CommandContext(ctx, "git", "-C", repoPath, "log", "--format=%ad", "--date=format:%Y-%m", "--since="+threeMonthsAgo)
 	monthsOut, err5 := monthsCmd.Output()
-	activeMonths := 0
 	if err5 == nil {
-		monthSet := make(map[string]bool)
 		for _, m := range strings.Split(string(monthsOut), "\n") {
 			m = strings.TrimSpace(m)
 			if m != "" {
-				monthSet[m] = true
+				raw.months[m] = true
 			}
 		}
-		activeMonths = len(monthSet)
 	}
 
+	return raw
+}
+
+func statFromRaw(raw activityRaw) *ActivityStat {
 	return &ActivityStat{
-		TotalCommits:   totalCommits,
-		ActiveDays:     activeDays,
-		LastCommitDate: lastDate,
-		CommitRate30d:  commitRate30d,
-		ActiveMonths:   activeMonths,
-	}, nil
+		TotalCommits:   raw.total,
+		ActiveDays:     len(raw.days),
+		LastCommitDate: raw.lastDate,
+		CommitRate30d:  raw.rate30,
+		ActiveMonths:   len(raw.months),
+	}
+}
+
+// DetectActivity computes recent commit activity metrics for a repository.
+func DetectActivity(repoPath string) (*ActivityStat, error) {
+	return statFromRaw(activityRawFor(repoPath)), nil
+}
+
+// AggregateActivity computes recent commit activity across a set of sibling
+// repositories — the project-level view for a multi-repo grouping. Totals and
+// the 30-day rate sum; days and months are unioned, so a day on which two
+// sibling repos both had commits counts once. Running git in the container
+// directory of a multi-repo project fails silently (it is not a repository),
+// which is what made the mined activity zero for grouped projects.
+func AggregateActivity(repoPaths []string) *ActivityStat {
+	agg := activityRaw{days: map[string]bool{}, months: map[string]bool{}}
+	for _, p := range repoPaths {
+		r := activityRawFor(p)
+		agg.total += r.total
+		agg.rate30 += r.rate30
+		for d := range r.days {
+			agg.days[d] = true
+		}
+		for m := range r.months {
+			agg.months[m] = true
+		}
+		// LastCommitDate is "2006-01-02", so lexical comparison is date order.
+		if r.lastDate > agg.lastDate {
+			agg.lastDate = r.lastDate
+		}
+	}
+	return statFromRaw(agg)
+}
+
+// AggregateContributors returns the top N contributors by commit count summed
+// across a set of sibling repositories (limit <= 0 disables truncation).
+func AggregateContributors(repoPaths []string, limit int) []TopContributor {
+	counts := make(map[string]int)
+	for _, p := range repoPaths {
+		contribs, err := DetectContributors(p, 0)
+		if err != nil {
+			continue
+		}
+		for _, c := range contribs {
+			counts[c.Author] += c.Count
+		}
+	}
+	out := make([]TopContributor, 0, len(counts))
+	for a, c := range counts {
+		out = append(out, TopContributor{Author: a, Count: c})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Count > out[j].Count })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out
 }

@@ -78,8 +78,10 @@ func TestUpgradeSchema_V12RepairsDriftedFTSIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("readSchemaVersion: %v", err)
 	}
-	if version != 12 {
-		t.Fatalf("expected schema version 12 after upgrade, got %d", version)
+	// 12 is where the FTS repair lives; later migrations (v13...) keep
+	// stacking on top, so assert "at least repaired", not a frozen number.
+	if version < 12 {
+		t.Fatalf("expected schema version >= 12 after upgrade, got %d", version)
 	}
 
 	assertIndexedDocs(t, database, 2, "v12 rebuild should have reindexed every note")

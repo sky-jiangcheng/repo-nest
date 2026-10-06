@@ -323,7 +323,9 @@ func TestNotesUpdatePartialKeepsMetadata(t *testing.T) {
 	if title, _ := got["title"].(string); title != "FTS5 quirk" {
 		t.Errorf("category-only update wiped the title: %q", title)
 	}
-	if tags, _ := got["tags"].(string); tags != "sqlite,search" {
+	// Tags come back normalized ("sql,search" style input joins with ", "):
+	// the db layer canonicalizes every write since the tag-list fix.
+	if tags, _ := got["tags"].(string); tags != "sqlite, search" {
 		t.Errorf("category-only update wiped the tags: %q", tags)
 	}
 	if kind, _ := got["kind"].(string); kind != "log" {

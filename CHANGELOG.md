@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [1.14.4] - 2026-10-06
+
+CBiPay 真实数据样例测试(11 仓库聚合工作区)暴露的修复批次,共 4 个 P1、1 个 P3,另含测试中振出的 2 个隐藏老 bug。全部在真实数据上 GUI 实测验证。
+
+### 修复
+
+- **标签整串入库导致标签过滤永远空结果**（P1）：写入口把 tags 输入原文透传，`"cbipay, 样例测试, 支付"` 整串成为一条标签——标签列表提供的是「整串 chip」，而前端过滤按逗号拆分后匹配，任何 chip 都命中不了自己的笔记。规范化收敛到 db 写入收口（`NormalizeTags`：按半角/全角逗号拆分、trim、去空、去重、`", "` 连接，与前端 `parseTags`/`joinTags` 契约一致），`CreateNoteEx`/`UpdateNoteFull`/`UpdateNoteMeta` 三入口全覆盖；`ListAllTags` 同步改为拆分聚合 + 排序（原 `SELECT DISTINCT tags` 返回的是每条笔记一串）；迁移 v13 清洗存量并在 Go 侧执行（逻辑须与 `NormalizeTags` 完全一致）
+- **项目详情 recent commits 恒为空**（P1）：`GetRecentCommits` 把字面 NUL 字节拼进 `--pretty=format:` 参数，而 POSIX argv 不允许参数含 NUL，execve 对每个仓库都失败且错误被逐仓库吞掉——所有项目、所有仓库一律空列表。分隔符改用 `%x00` 格式说明符（提交标题可含换行，不能用 `%n`）；补真实 git 仓库回归测试
+- **多仓库项目的挖掘 activity / 贡献者恒为零**（P1）：挖掘在项目根目录跑 git，而聚合项目的根是「容器目录」不是 git 仓库，失败被静默吞掉后还进了缓存。新增 `AggregateActivity`/`AggregateContributors` 对兄弟仓库做真实聚合（天数/月份按并集去重、提交数求和、贡献者跨仓库累加）；迁移 v13 失效多仓库项目的 repo_meta 坏缓存（真实零提交无法与坏缓存区分，下次打开页面自动重挖）
+- **挖掘 activity 的日期窗口从第一天起就是零**（P1）：`git log "2026-07-06..2026-10-06"` 把日期当 ref 解析必然报错，`active_days`/`commit_rate_30d`/`active_months` 三字段自实现以来恒为 0（total 与 last commit 正常所以从未暴露）。日期窗口改走 `--since=`
+- **Copy AI Context 内容过薄**（P3）：前端只拼名称/路径/分组/技术栈/最近提交（111 字节，无 README 时更少）。补语言分布（top 8）、活动指标、范围内统计、仓库清单（cap 30），实测 1954 字节且全部为真实数据
+
 ## [1.14.3] - 2026-10-06
 
 ### 修复

@@ -28,6 +28,9 @@ function ProjectDetailPage() {
 
   const handleCopyContext = async () => {
     if (!project) return
+    // This markdown feeds an AI model, not the UI: new section headers stay
+    // in fixed English so the prompt-like output is stable across locales
+    // (existing t() labels kept for continuity).
     const lines: string[] = [
       `# ${project.name}`,
       `path: ${project.root_path}`,
@@ -35,6 +38,23 @@ function ProjectDetailPage() {
     ]
     if (overview?.readme_excerpt) lines.push('', `## README\n${overview.readme_excerpt}`)
     if (overview?.tech_stack?.length) lines.push('', `## ${t('project.techStack')}\n${overview.tech_stack?.map(x => x.name).join(', ')}`)
+    if (overview?.languages?.length) {
+      lines.push('', `## Languages\n${overview.languages.slice(0, 8).map(l => `${l.language}: ${l.count}`).join('\n')}`)
+    }
+    if (overview?.activity && (overview.activity.total_commits > 0 || overview.activity.last_commit_date)) {
+      lines.push(
+        '',
+        `## Activity\n- total commits: ${overview.activity.total_commits}\n- active days (90d): ${overview.activity.active_days}\n- commits (30d): ${overview.activity.commit_rate_30d}\n- last commit: ${overview.activity.last_commit_date}`,
+      )
+    }
+    if (totals) {
+      lines.push('', `## Stats (selected range)\n- added: ${totals.added}\n- deleted: ${totals.deleted}\n- files changed: ${totals.files}\n- active days: ${totals.active}`)
+    }
+    if (project.repos?.length) {
+      const capped = project.repos.slice(0, 30)
+      const more = project.repos.length - capped.length
+      lines.push('', `## Repositories (${project.repos.length})\n${capped.map(r => `- ${r.path}`).join('\n')}${more > 0 ? `\n- ...and ${more} more` : ''}`)
+    }
     if (overview?.recent_commits?.length) lines.push('', `## ${t('project.recentCommits')}\n${overview.recent_commits?.slice(0, 5).map(c => `- ${c.time} ${c.message}`).join('\n')}`)
     try {
       await copyText(lines.join('\n'))

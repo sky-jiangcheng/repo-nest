@@ -18,7 +18,7 @@ const schemaVersionKey = "schema_version"
 // together with the migration list. A forgotten bump is the one failure mode
 // that makes this check lie, so TestExpectedSchemaVersionMatchesMigrations
 // parses internal/db/migrate.go and fails when the two drift apart.
-const ExpectedSchemaVersion = 12
+const ExpectedSchemaVersion = 13
 
 // StaleAfterDays is the age at which the repo_meta knowledge cache is reported
 // as stale. The cache feeds generated knowledge (tech stack, readme excerpt,
