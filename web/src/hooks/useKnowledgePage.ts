@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   listAllNotes, listAllTags, searchAll, pinNote, importClaudeMemory, exportNoteAsMarkdown,
-  type NoteWithProject, type SearchHit,
+  getProjects,
+  type NoteWithProject, type Project, type SearchHit,
 } from '../api/client'
 import { parseTags } from '../utils/markdown'
 import { copyText } from '../utils/clipboard'
@@ -18,6 +19,7 @@ export function useKnowledgePage() {
   const { t } = useTranslation()
   const [notes, setNotes] = useState<NoteWithProject[]>([])
   const [tags, setTags] = useState<string[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
@@ -43,8 +45,8 @@ export function useKnowledgePage() {
 
   const fetchAll = useCallback(() => {
     setError('')
-    Promise.all([listAllNotes(), listAllTags()])
-      .then(([n, tg]) => { setNotes(n); setTags(tg) })
+    Promise.all([listAllNotes(), listAllTags(), getProjects()])
+      .then(([n, tg, ps]) => { setNotes(n); setTags(tg); setProjects(ps) })
       .catch((e: unknown) => { setError(e instanceof Error ? e.message : t('common.failed')) })
       .finally(() => setLoading(false))
   }, [t])
@@ -109,11 +111,15 @@ export function useKnowledgePage() {
     return list
   }, [notes, kindFilter, activeTag, pinnedOnly])
 
+  // Quick Note / Create Note / the project jump list must all work on a cold
+  // start (zero notes), so this is derived from the scanned project list.
+  // Deriving it from notes (the old behavior) deadlocked the first note: no
+  // notes -> no projects to attach it to -> "No projects found" guard.
   const projectNames = useMemo(() => {
     const set = new Map<string, number>()
-    notes.forEach(n => set.set(n.project_name, n.project_id))
+    projects.forEach(p => set.set(p.name, p.id))
     return Array.from(set.entries()).sort((a, b) => a[0].localeCompare(b[0]))
-  }, [notes])
+  }, [projects])
 
   const pinnedCount = useMemo(() => notes.filter(n => n.pinned).length, [notes])
 

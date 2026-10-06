@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+## [1.14.3] - 2026-10-06
+
+### 修复
+
+- **知识库冷启动死锁：空库时无法创建第一条笔记**（P1）：Knowledge 页的 Quick Note / Create Note 在零笔记时被 "No projects found" 挡住——`projectNames` 从**已有笔记**派生（`useKnowledgePage`），没笔记就选不了项目，而空状态文案却在引导 "Create your first note"，提示语让用户去扫描仓库（扫了也没用）。改为从 `getProjects()` 扫描项目列表派生，Quick Note 选择器、项目跳转区与空库守卫全部在冷启动下可用；补 4 个 hook 回归测试
+
 ## [1.14.2] - 2026-10-06
 
 发布工程批次，无应用代码变更。另：本轮全量测试(Go 32 包 / 前端 89 用例 / GUI 黑盒 15 项)全部通过。
