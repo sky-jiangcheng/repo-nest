@@ -81,6 +81,12 @@ func storedVectorDim(db *sql.DB) (dim int, ok bool) {
 	return dim, true
 }
 
+// StoredVectorDim is the exported view of the local index's dimension, used by
+// the incremental drainer when `embedding_dim` is unset: an index built before
+// that key was persisted still knows its own width, and guessing wrong would
+// write vectors that KNN silently mis-ranks.
+func StoredVectorDim(db *sql.DB) (int, bool) { return storedVectorDim(db) }
+
 // DropVectorIndex removes the derived vector table + its meta row.
 func DropVectorIndex(db *sql.DB) error {
 	if _, err := db.Exec("DROP TABLE IF EXISTS " + vecTableName); err != nil {
@@ -200,10 +206,9 @@ func ListNoteEmbeddingInputs(db *sql.DB) ([]NoteEmbeddingInput, error) {
 		if err := rows.Scan(&id, &title, &content); err != nil {
 			return nil, err
 		}
-		if len(content) > MaxNoteContentLen {
-			content = content[:MaxNoteContentLen]
-		}
-		out = append(out, NoteEmbeddingInput{ID: id, Text: strings.TrimSpace(title + "\n" + content)})
+		// Shared with the incremental drainer (NoteEmbeddingText) so a note's
+		// vector means the same thing whichever path wrote it.
+		out = append(out, NoteEmbeddingInput{ID: id, Text: NoteEmbeddingText(title, content)})
 	}
 	return out, rows.Err()
 }

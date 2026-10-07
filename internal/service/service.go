@@ -11,6 +11,7 @@ import (
 	"database/sql"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"repo-nest/internal/core/git"
@@ -73,6 +74,12 @@ type Service struct {
 	// reads plus, for a remote backend, an HTTP reachability probe — which on
 	// the search path was one extra round trip per query.
 	vecStore vectorStoreCache
+
+	// embedDimWarned keeps the "endpoint changed models" skip to one log line
+	// instead of one per drain tick. Reset whenever the embedding endpoint or
+	// model is reconfigured, which is exactly when the user deserves to hear
+	// about it again.
+	embedDimWarned atomic.Bool
 
 	// miningInFlight tracks repoIDs currently being mined to prevent duplicate
 	// goroutines when the user rapidly switches between projects.
@@ -156,6 +163,11 @@ func (s *Service) SetImportEventHandler(fn func(ImportEventPayload)) {
 // Safe to call multiple times; only the first call has an effect.
 func (s *Service) Startup() {
 	s.startupOnce.Do(func() {
+		// Incremental embedding (ADR-0012's 增删改即时生效) needs only the queue
+		// and a configured endpoint — never the plugin runtime — so it starts
+		// ahead of the rt guard below rather than being skipped by it.
+		s.startEmbedDrainer()
+
 		if s.rt == nil {
 			return
 		}

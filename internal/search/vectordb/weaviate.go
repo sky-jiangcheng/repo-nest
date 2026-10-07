@@ -105,6 +105,24 @@ func (w *Weaviate) Upsert(id int64, vec []float32) error {
 	return nil
 }
 
+// Delete removes one object by the same deterministic uuid Upsert used. A 404
+// means the object was never written or is already gone — which is exactly the
+// state the caller asked for, so it is not an error (the interface requires
+// idempotency; a note can be deleted before it was ever embedded).
+func (w *Weaviate) Delete(id int64) error {
+	_, code, err := w.do(http.MethodDelete, "/v1/objects/"+w.Class+"/"+uuidFor(id), nil, nil)
+	if err != nil {
+		return err
+	}
+	if code == http.StatusNotFound {
+		return nil
+	}
+	if code >= 400 {
+		return fmt.Errorf("vectordb: weaviate delete note %d: %d", id, code)
+	}
+	return nil
+}
+
 type weavSearchResp struct {
 	Data struct {
 		Get map[string][]struct {

@@ -87,6 +87,17 @@ func (q *Qdrant) Upsert(id int64, vec []float32) error {
 	return statusErr("upsert", resp)
 }
 
+// Delete removes one point by id. Qdrant answers 2xx for a point that never
+// existed, so this is idempotent without any extra handling.
+func (q *Qdrant) Delete(id int64) error {
+	body := map[string]any{"points": []any{id}, "wait": true}
+	resp, err := q.do(http.MethodDelete, "/collections/"+q.Collection+"/points?wait=true", body, nil)
+	if err != nil {
+		return err
+	}
+	return statusErr("delete", resp)
+}
+
 type qdrantSearchResp struct {
 	Result []struct {
 		ID int64 `json:"id"`

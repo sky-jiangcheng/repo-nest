@@ -116,6 +116,14 @@ func (s *Service) RebuildEmbeddings() (int, error) {
 			return 0, fmt.Errorf("semantic search: endpoint returned an empty vector")
 		}
 		emb.Dim = len(probe[0])
+		// Persist what was just learned. The incremental drainer refuses to work
+		// without a known dimension (guessing one means calling Ensure with the
+		// wrong width, which DROPS AND REBUILDS the whole index), so this single
+		// write is what makes "turn semantic search on, rebuild once" leave the
+		// store self-maintaining afterwards instead of silently never updating.
+		if err := db.SetConfig(s.db, "embedding_dim", strconv.Itoa(emb.Dim)); err != nil {
+			log.Printf("semantic rebuild: could not persist learned embedding_dim: %v", err)
+		}
 	}
 	if err := store.Ensure(emb.Dim); err != nil {
 		s.invalidateVectorStore()
@@ -126,6 +134,7 @@ func (s *Service) RebuildEmbeddings() (int, error) {
 		return 0, err
 	}
 	embedded := 0
+	bailed := false
 	for start := 0; start < len(notes); start += embedBatch {
 		end := start + embedBatch
 		if end > len(notes) {
@@ -140,6 +149,7 @@ func (s *Service) RebuildEmbeddings() (int, error) {
 		vecs, err := emb.Embed(texts)
 		if err != nil {
 			log.Printf("semantic rebuild: embed batch %d: %v", start, err)
+			bailed = true
 			break
 		}
 		for i, vec := range vecs {
@@ -153,6 +163,14 @@ func (s *Service) RebuildEmbeddings() (int, error) {
 		}
 	}
 	log.Printf("semantic rebuild: %s holds %d vectors", store.Name(), embedded)
+	// Only a completed rebuild may clear the incremental queue: everything still
+	// in it after a bailed run has provably NOT been embedded, and dropping those
+	// rows would silently lose the user's pending writes.
+	if !bailed {
+		if err := db.TruncateDirtyNoteIDs(s.db); err != nil {
+			log.Printf("semantic rebuild: could not clear the incremental queue: %v", err)
+		}
+	}
 	return embedded, nil
 }
 

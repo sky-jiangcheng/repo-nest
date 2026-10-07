@@ -31,6 +31,11 @@ type Store interface {
 	Clear(dim int) error
 	// Upsert writes/replaces one note's vector.
 	Upsert(id int64, vec []float32) error
+	// Delete removes one note's vector. Required by incremental indexing: a
+	// deleted note whose vector survives keeps being recalled by search, and the
+	// only other way to clear it is a full rebuild. Implementations must be
+	// idempotent — the caller cannot know whether a vector was ever written.
+	Delete(id int64) error
 	// Search returns the ids of the `limit` most-similar vectors, nearest first.
 	Search(vec []float32, limit int) ([]int64, error)
 }

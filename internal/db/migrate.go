@@ -255,6 +255,14 @@ func upgradeSchema(db *sql.DB) error {
 		// personal knowledge base). Single-repo projects mined their actual
 		// repository and keep their cache.
 		{id: 13, fn: migrateV13NormalizeTagsAndDropMultiRepoMeta},
+		// v14: incremental-embedding work queue (see embed_dirty.go).
+		//
+		// A trigger-maintained dirty table rather than service-layer hooks,
+		// because internal/db is where every note writer converges — including
+		// the plugin runtime's direct upserts, which the five agent-memory
+		// importers use. Goes through the Go fn so the statement list stays in
+		// one place with EnsureNoteEmbedDirty (idempotent, already-exists safe).
+		{id: 14, fn: noteEmbedDirtyMigration},
 	}
 
 	for _, m := range migrations {

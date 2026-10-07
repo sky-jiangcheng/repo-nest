@@ -136,6 +136,12 @@ func (s *Service) UpdateConfig(key, value string) error {
 	if strings.HasPrefix(key, "vector_store") {
 		s.invalidateVectorStore()
 	}
+	// Pointing at a different endpoint or model is exactly when the
+	// "returned vectors don't match the configured dimension — rebuild" notice
+	// becomes worth repeating, so un-mute it here.
+	if strings.HasPrefix(key, "embedding_") {
+		s.embedDimWarned.Store(false)
+	}
 	return nil
 }
 

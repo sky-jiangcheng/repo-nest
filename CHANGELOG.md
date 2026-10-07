@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **笔记增删改即时进向量索引，不必再跑全量重建**（schema v14 + 后台 `embed-drainer`）：ADR-0012 把向量索引和查询侧融合都做完了，唯独索引侧是全有全无——开启语义检索后新建/修改的笔记要等下一次「重建索引」才可见，而那是 O(全部笔记) 的端点遍历。顺带说明今天的实际形态：语义检索仍只有配置键、设置页刻意没有开关与按钮（等 A/B 评测门通过，见 TODO M3），所以这条改动目前服务的是手动配置的那部分人，但它也是那个开关上线前必须存在的一半——否则 UI 一开，用户会立刻撞上"我写的笔记搜不到"。现在 `note_embed_dirty` 队列由 `project_notes` 上的三个触发器维护，drainer 每 5 秒批量排空：note 还在就 embed + Upsert，note 已删就 `Store.Delete`（`Store` 接口为此新增 `Delete`，local / Qdrant / Weaviate 各一实现——**删除不处理的话，用户删掉的文本会永久留在检索结果里**）。
+  - 为什么是触发器而不是服务层 hook：`internal/db` 才是所有笔记写入者收敛的地方，5 个 agent 记忆 importer 经插件运行时直写 db、**完全不经 `service.*Note`**。服务层 hook 会精准漏掉最大的一路写入，而这正是 FTS5 当年用同样三个触发器解决过的同一个问题。测试也刻意走直写路径来证明这点。
+  - 三个刻意的保守：整条路径仍在 `semantic_search` 之后（那是用户同意把笔记文本发往端点的显式授权，不另开第二个开关，否则会出现"主开关开着、索引却静默不更新"）；维度未知或索引尚未建立时直接跳过且**不消费队列**（猜维度意味着用错的 width 调 `Ensure`，那会 drop 并重建整个索引）；端点挂掉时队列原地保留、下一 tick 重试，所以离线合盖不会丢写。
+  - 只改标题/内容才排队：置顶、拖排序、改标签、移动项目都不改变送给端点的文本，不该花钱。这里踩到一个 SQLite 语义坑——`AFTER UPDATE OF title, content` 是**语法判定**，只要 SET 里提到 title 就触发，而 `UpdateNoteMeta` 每次保存都会重发 title，等于每次改标签白付一次 embedding；已改为 `WHEN OLD.title IS NOT NEW.title OR OLD.content IS NOT NEW.content` 的值判定（`IS NOT` 同时正确处理 NULL）
+  - `RebuildEmbeddings` 现在会持久化它学到的 `embedding_dim`（增量工作的解锁条件），并且**只有完整跑完才清空队列**——中途 bail 时那些没 embed 的笔记全靠这条队列兜着。顺带暴露一个既有契约：rebuild 中途失败时返回的是计数而不是 error，所以真正防止半截重建丢笔记的是这个持久队列，不是返回值
+  - 回归 11 例：`internal/db/embed_dirty_test.go`（触发器只在内容写时排队、元数据写不排队、live/gone 分流、limit、DDL 重放安全）+ `internal/service/embed_drain_test.go`（importer 直写端到端可召回、删除后不再召回且零 embedding 请求、开关关时零外发、两道门前置条件、端点挂掉与 store 拒删都不消费队列、半截重建不清空队列）。`internal/integrity` 的 `ExpectedSchemaVersion` 同步升到 14——该常量与迁移列表漂移会让自检说谎，仓库里的 `TestExpectedSchemaVersionMatchesMigrations` 正是为此而设，本次就是它抓出来的
+
 ### 变更
 
 - **语义检索不再为每次查询探测远程向量库**（`service.vectorStore()` 改为 memo）：原实现在每条查询路径上重读 4 次 `db.GetConfig`，而远程后端还要在 `vectordb.Open` 的工厂里做一次 HTTP 可达性探测——配了 Qdrant / Weaviate 的用户**每次语义检索都白付一个网络往返**，「向量比词法还慢」成为默认。失效点两处：`UpdateConfig` 命中 `vector_store*` 前缀即丢缓存（否则在设置页改端点要重启才生效——缓存会把配置写入变成静默无效输入），以及任何一次 store 报错即丢（远程中途挂掉时下一轮重新解析并退回 local；这件事在加缓存之前是「意外自愈」的，缓存后必须显式做，否则一个死句柄会被永久抱着）。顺带补上向量检索失败此前**完全静默**的日志：`fuseSemantic` 只在 embed 失败时打日志，store 失败直接返回词法结果，用户开着语义检索却因远程库挂掉而长期只拿到词法命中，界面上看不出任何区别。回归 `internal/service/vector_store_cache_test.go` 4 例（缓存生效 / 四个 `vector_store*` 键各自失效且 `embedding_model` 不误伤 / 死 store 在 fuse 与 rebuild 两条路径都被丢弃且错误如实上抛）

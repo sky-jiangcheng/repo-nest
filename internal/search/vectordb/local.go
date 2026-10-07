@@ -23,6 +23,17 @@ func (l *Local) Upsert(id int64, vec []float32) error {
 	return db.PutNoteEmbedding(l.database, id, vec)
 }
 
+// Delete drops one note's vector. sqlite-vec has no row for a note that was
+// never embedded, so the DELETE is inherently idempotent.
+func (l *Local) Delete(id int64) error {
+	return db.DeleteNoteEmbedding(l.database, id)
+}
+
 func (l *Local) Search(vec []float32, limit int) ([]int64, error) {
 	return db.KnnNoteIDs(l.database, vec, limit)
 }
+
+// Ready reports whether the derived vec0 index exists at all. Writing into a
+// never-created index only errors, so incremental indexing asks this first and
+// leaves its queue untouched until a rebuild creates it.
+func (l *Local) Ready() bool { return db.VectorIndexReady(l.database) }

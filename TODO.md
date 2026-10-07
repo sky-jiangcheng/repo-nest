@@ -256,7 +256,8 @@
 - [x] **registry 已落地（核验收口，非待办）**：`internal/search/vectordb/store.go` 已有 `registry` map + `Register(kind, factory)` + `Kinds()`（local 恒隐式）+ `Open` 三重退回（未配 / 未知 kind / 远程工厂报错或不可探测一律 local）；Weaviate 已经在 registry 里，调用方零改动。原条目描述的「改为可插拔 registry」已完成，**剩余未接后端（Pinecone/Milvus/chromem-go/Bleve）统一记在下面一条**，不重复挂账。附带修正：`vectordb.go` 包注释原写「Two implementations: local / qdrant」漏了 Weaviate，已改为三个 + registry 指路
 - [x] **OMP 导出接缝已实现（provisional）**：`service.ExportMemoryJSON` 导出 OMP 风格 Memory Object 数组（binding `App.ExportMemoryJSON` + 前端 `exportMemoryJSON` + 单测）；仅导出向
 - [ ] OMP 导入向 + 字段映射对齐（等 OMP v1 稳定）；chromem-go/Bleve（需 `go get`，本会话离线未加）、Pinecone/Milvus（需凭据/集群）按同 registry 流程待接
-- [ ] A 面向普通用户上线前：embedding 配置前端 UI（未过门前刻意不做开关）、笔记增删改增量 embed（现全量重建）、一份真实标注 query 集
+- [x] **增量 embed 已落地（原「现全量重建」缺口的收口）**：schema v14 加 `note_embed_dirty` 队列 + `project_notes` 三个触发器（INSERT/UPDATE-WHEN-文本真变/DELETE），后台 `embed-drainer`（`internal/service/embed_drain.go`，5s tick、批量 64）排空：note 还在→embed+Upsert，note 已删→`Store.Delete`（`Store` 接口为此新增 Delete，local/qdrant/weaviate 各一实现）。选触发器而非服务层 hook 的理由是硬的：`internal/db` 才是所有写入者收敛的地方，5 个 agent 记忆 importer 走插件运行时直写 db、**根本不经 `service.*Note`**，服务层 hook 会漏掉最大的一路——这与 FTS5 当年用同样三个触发器解决的是同一个问题。三条刻意的保守：① 一切仍在 `semantic_search` 之后（那是用户同意把笔记文本发往端点的显式授权，不另开第二个开关，否则"主开关开、增量关"会静默留下陈旧索引）；② 维度未知或索引尚未建立时**直接跳过且不消费队列**——猜维度意味着用错的 width 调 `Ensure`，那会 drop 并重建整个索引；③ 端点挂掉时队列原地保留，下一 tick 重试，所以离线笔记本合上盖子也不会丢写。`RebuildEmbeddings` 顺带持久化它学到的 `embedding_dim`（这是增量得以解锁的前置），且**只有完整跑完才清空队列**。回归：`internal/db/embed_dirty_test.go` 5 例（含"只改标签/置顶/移动不触发 embedding，改标题触发"）+ `internal/service/embed_drain_test.go` 6 例（ importer 直写路径端到端可召回、删除后不再被召回且零 embedding 请求、开关关时零外发、两道门、端点挂掉不消费队列、store 拒删不消费）。
+- [ ] A 面向普通用户上线前：embedding 配置前端 UI（未过门前刻意不做开关）、一份真实标注 query 集
 
 ### M4: Agent 集成即插即用
 

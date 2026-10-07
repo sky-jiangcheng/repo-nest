@@ -21,6 +21,7 @@ func (downStore) Name() string                  { return "down" }
 func (downStore) Ensure(int) error              { return errStoreDown }
 func (downStore) Clear(int) error               { return errStoreDown }
 func (downStore) Upsert(int64, []float32) error { return errStoreDown }
+func (downStore) Delete(int64) error            { return errStoreDown }
 func (downStore) Search([]float32, int) ([]int64, error) {
 	return nil, errStoreDown
 }
