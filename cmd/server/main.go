@@ -5,8 +5,12 @@
 //
 // Usage:
 //
-//	reponest server [--port 18765]
-//	REPONEST_HTTP_PORT=18765 reponest server
+//	go build -o reponest-server ./cmd/server
+//	./reponest-server --port 18765
+//	REPONEST_HTTP_PORT=18765 ./reponest-server
+//
+// (This is its own binary, not a subcommand: the desktop `reponest` executable at
+// the repo root has no argument dispatch — it launches Wails and returns.)
 //
 // The server binds to 127.0.0.1 only — it is a local agent, not a public
 // service. The dsh-plugin spawns this process and connects to the chosen port.

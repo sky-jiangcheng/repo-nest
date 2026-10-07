@@ -7,27 +7,66 @@ order: 7
 
 RepoNest provides read channels and self-check tools for AI agents, all reusing the same `internal/service` implementation (behavior identical to the desktop app).
 
-## Value proposition: RepoNest is a data source for AI, not an AI itself
+## Value proposition: RepoNest is a data source for AI, not an AI platform
 
-**RepoNest does not call any large language model** — there is no OpenAI / Anthropic / any API key configuration in the code, no model selection, no endpoint settings. Its AI features are all about "exporting project knowledge for AI tools to consume", not built-in chat or generation. More precisely:
-
-- RepoNest is the **data foundation**: it models raw git information into a structured, indexable, materializable local knowledge base (see [Storage Optimization and AI Value](../storage-optimization.md));
-- AI tools (Claude Code / Cursor, etc.) **consume** this layer of data through the 13 MCP tools, fetching on demand and searching precisely.
+**RepoNest does not host models, does not hold API keys on your behalf, and ships no agent orchestration.** More precisely: it is the **data foundation** — it models raw git information into a structured, indexable, materializable local knowledge base (see [Storage Optimization and AI Value](../storage-optimization.md)); AI tools (Claude Code / Cursor, etc.) **consume** this layer of data through the 13 MCP tools, fetching on demand and searching precisely.
 
 For the argument for why this layer is better than letting AI read git directly, see [Storage Optimization and AI Value](../storage-optimization.md).
 
-### Configuration keys (none involve models / APIs)
+A boundary that needs stating: earlier versions of this page claimed "**RepoNest does not call any large language model**". **The product has since disproved that sentence** — AI Q&A (v1.15.0) calls an OpenAI-compatible `/chat/completions`, and optional semantic search calls `/v1/embeddings`. The accurate positioning is the sentence above: models and endpoints are **user-supplied**, the capabilities are **off by default**, and keys stay local. The distinction is worth being pedantic about because it decides where privacy responsibility lies — "we don't ship AI" means not one line of your notes leaves this machine unless you explicitly enabled it and typed in your own endpoint; "we ship AI" would not be that promise.
 
-The whitelist in `internal/service/config.go` contains only 4 configuration keys, **none of which involve an LLM**:
+### Configuration keys
+
+The whitelist in `internal/service/config.go` splits into two groups. **Core configuration has nothing to do with models or APIs**:
 
 | Key | Type | Default | Purpose |
 |-----|------|---------|---------|
-| `auto_import` | 0 / 1 | `1` | Whether to import Claude memory automatically (**the only AI-related setting**) |
+| `auto_import` | 0 / 1 | `1` | Whether startup auto-imports knowledge sources (today only `claude` is an automatic source; the other four are manual) |
 | `daily_code_standard` | integer | `500` | The daily code target (lines per day), used for the dashboard goal display. The name says "code standard" but it is not an AI standard — easy to misread |
 | `scan_depth` | integer | `2` | Scan directory depth |
 | `git_author` | string | System git user | Affects "My" statistics / heatmap attribution |
 
-## MCP Server (`reponest-mcp`)
+**The AI-side keys are all optional, all off by default, and all require you to supply the endpoint** — RepoNest brings no service of its own:
+
+| Key | Default | Purpose | What leaves the machine if enabled |
+|-----|---------|---------|-----------------------------------|
+| `claude_session_capture` | off | Allow reading Claude session transcripts on demand for handoff ([ADR-0010](../adr/0010-session-auto-capture.md)) | Nothing externally, but transcripts are read from disk |
+| `openclaw_project` / `hermes_project` | empty | Target project for the two agent-global memory sources; unset means the whole source skips | Nothing |
+| `semantic_search` + `embedding_base_url` / `embedding_model` / `embedding_api_key` / `embedding_dim` | off / empty | Vector recall covering FTS5's blind spots ([ADR-0012](../adr/0012-semantic-search.md)) | **Note text** → your embedding endpoint |
+| `vector_store` + `vector_store_url` / `vector_store_api_key` / `vector_store_collection` | `local` | Where vectors live: local sqlite-vec, or remote Qdrant / Weaviate ([ADR-0013](../adr/0013-vector-database-selection.md)) | Vectors (not raw text) → your remote store |
+| `ai_chat_base_url` / `ai_chat_model` / `ai_chat_api_key` | empty | AI Q&A on the project detail page | Your question + the packaged project context → your chat endpoint |
+
+The three key-holding settings (`embedding_api_key`, `vector_store_api_key`, `ai_chat_api_key`) come back masked when configuration is read and are never sent to the UI — the backend holds the real value, the interface shows `********`.
+
+## Semantic search and vector storage (optional)
+
+Lexical search cannot answer "the same fact phrased differently"; vector recall covers that blind spot. The whole chain is off by default and **every failure degrades back to pure lexical results** — turning it on cannot return fewer hits ([ADR-0012](../adr/0012-semantic-search.md)).
+
+- **Guided setup**: `go run ./cmd/vector-init`. It self-checks that sqlite-vec is loaded (create vec0 → write a test vector → KNN round trip → clean up), lets you pick an embedding provider (local Ollama is the default recommendation, or any OpenAI-compatible remote), writes the configuration, and finally points you at the in-app settings to review. Adding `-store qdrant` (or `weaviate`) writes a remote vector store and probes it immediately; **unreachable or unconfigured falls back to local automatically**, so search never gets worse.
+- **The first run needs one full rebuild** (one text upload per note). After that, no more rebuilds: note creation, title/body edits and deletions are queued by database triggers and drained in the background every 5 seconds; vectors of deleted notes are removed from the index. When the dimension is unknown or the index does not exist yet, the drainer skips without consuming the queue (guessing a dimension risks dropping the whole index), and when the endpoint is unreachable the queue is kept and retried on the next tick. Details in [Knowledge Base and Notes](knowledge.md).
+- **Measure before shipping the switch**: `go run ./cmd/abeval` runs "lexical vs lexical+vector" against a live database, reporting Recall@k / NDCG@k with a threshold gate. Until a real labelled query set passes that gate, the settings page deliberately offers no switch — an unproven feature is worse than a missing one.
+
+## AI Q&A: what it actually is today
+
+The floating-ball panel on the project detail page has an AI Q&A tab (since v1.15.1 it moved out of the page header into the panel, sharing the shell and the project selector with the logging tab). Describing the current implementation honestly, rather than letting you read it as RAG:
+
+- The context is **statically packaged**: the project's repositories (up to 15) + the first repository's mined cache (tech stack / languages / README excerpt) + **the 10 most recent notes, each truncated to 500 bytes**, assembled into the system prompt.
+- One POST to an OpenAI-compatible `/chat/completions` (LM Studio, an Ollama shim, or a cloud provider), **non-streaming, no tool calls, no retrieval ranking, no citations**.
+- In other words it *stuffs context* rather than *gathering evidence*: it does not guarantee relevant notes are read, nor that what was read reaches the answer. Turning it into real evidence-gathering (read the index → rank pages with FTS + vectors → answer with citations → file good answers back as new pages, plus an item / character / timeout budget and streaming) is M6-W2 in [ADR-0014](../adr/0014-llm-wiki-knowledge-compiler.md), gated on the `abeval` threshold above.
+- If nothing must leave the machine, use **Copy AI context** on the detail page: it puts the packaged prompt on the clipboard and you decide where it goes; no endpoint is called.
+
+## Headless HTTP service and the executable inventory
+
+Beyond MCP there is a second channel onto the same implementation: expose `internal/service` over loopback HTTP for browser mode, scripts and other agents.
+
+```
+go build -o reponest-server ./cmd/server
+./reponest-server --port 18765        # or env REPONEST_HTTP_PORT; listens on 127.0.0.1 only
+```
+
+- `POST /api/rpc` reflects every desktop binding (JSON body naming method + args) and runs the **same implementation** as Wails; `Startup` / `Shutdown` / `Service` itself are excluded. Write operations obey the same protocol protections as MCP (for example handoff notes refuse to be overwritten by update).
+- For browser development use `bash scripts/dev.sh`: it starts the headless API (default 18731) *and* Vite. Running `npx vite` alone yields a page that loads but 502s every request — that is a missing backend, not a broken app.
+- **Release assets contain only**: the desktop installers (4 platforms), `reponest-mcp-<platform>`, and the VS Code VSIX. `reponest-server`, `cmd/vector-init`, `cmd/abeval` and `cmd/reponest-capture` must be built yourself (`go build` / `go run`); they are not distributed with releases.
 
 MCP is the only AI execution interface (the `reponest` CLI is not shipped with releases). stdio protocol, the database is opened once per process, 13 tools (including 4 write operations: scan + note create/update + session handoff):
 

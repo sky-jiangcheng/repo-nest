@@ -57,6 +57,19 @@ highlight.js 代码高亮、Mermaid 图、KaTeX 数学公式、GFM Callout 与�
 - FTS5 trigram + bm25 排序，snippet 高亮匹配词；短 CJK 查询自动降级 LIKE
 - 覆盖笔记与待办；`⌘/Ctrl+K` 命令面板随时可用
 
+### 语义检索（可选，默认关）
+
+词法搜索回答「哪些字面命中」，答不了「同一件事的另一种说法」。可选的向量召回补的是这个盲区：
+
+- **两级检索融合**：FTS5 与向量召回经 RRF（k=60）合并，向量只做**补充**——任何一步失败（端点未配、请求报错、索引不存在）都退回纯词法结果，**开启它不会让搜索结果变少**。这是设计约束不是安慰话：语义检索的第一版就是靠这条约束才敢默认关着上线。
+- **默认关**：仅当 `semantic_search=1` **且**配好 embedding 端点（`embedding_base_url` + `embedding_model`）时才生效。设置页目前不提供这些开关，需按 [AI 集成](ai-integration.md) 的「语义检索与向量存储」一节用配置键开启。
+- **首次要跑一次全量重建**：把每条笔记的文本送去 embed，成本是 O(全部笔记) 的端点遍历。它会顺带把探测到的向量维度持久化下来。
+- **之后不需要再重建**：笔记的新建、改标题/正文、删除由 SQLite 触发器排队，后台每 5 秒批量排空——还在的笔记重新 embed，已删除的从向量索引里移除（否则你删掉的文本会一直出现在召回结果里）。三条保守行为：置顶 / 改标签 / 移动项目**不**触发 embed（它们不改变送进端点的文本）；端点不可用时任务原地排队、下一轮重试，所以离线不会丢写；维度未知或索引还没建时直接跳过，不猜。
+- **导入的笔记同样自动进索引**：排队由数据库触发器负责，而所有写入者（界面、MCP、CLI、agent 记忆导入）都收敛到同一层——这也是为什么它没做在应用逻辑里。
+- **隐私边界**：开启语义检索意味着笔记文本会发往你配置的 embedding 端点（本地 Ollama 或远端 API，取决于 `embedding_base_url`）。这是显式选择，默认关着；`embedding_api_key` 与 `vector_store_api_key` 是密钥，读取配置时以掩码返回、不回传给界面。
+- **向量索引是派生缓存**，笔记本体才是事实源：随时可以 drop 并从笔记重算，与笔记同库同事务同备份（零 CGO 的纯 Go sqlite-vec）。确有大规模需求才需要远程向量库，见 [AI 集成](ai-integration.md) 的「语义检索与向量存储」一节。
+- **效果不好可以量化验证**：`cmd/abeval` 对活库跑「词法 vs 词法+向量」的 Recall@k / NDCG@k 并给出门槛判定。刻意先有门再有开关——没有真实标注 query 集之前，前端不放这个开关。
+
 ## 版本历史
 
 每次保存自动创建快照（保留最近 50 个）。笔记卡片 **历史** 按钮：
@@ -85,8 +98,9 @@ highlight.js 代码高亮、Mermaid 图、KaTeX 数学公式、GFM Callout 与�
 2. **`openclaw` 与 `hermes` 需先配置目标项目**（`openclaw_project` / `hermes_project`），否则静默全部 `skipped`。
 3. **重复导入不是失败。** `created=0` + `updated=N` 说明幂等命中，内容已更新。
 
-导入的笔记 `kind` 为 `knowledge`（记忆类）或 `log`（会话类），写入后立即可被全文搜索命中。各源的完整路径、匹配规则与限制见 [知识源导入](../plugins/overview.md)。
+导入的笔记 `kind` 为 `knowledge`（记忆类）或 `log`（会话类），写入后立即可被全文搜索命中；开启语义检索后也会被向量召回取到，且**不需要再跑一次重建**（排队由触发器负责，见「语义检索」）。各源的完整路径、匹配规则与限制见 [知识源导入](../plugins/overview.md)。
 
 ## 导出
 
-笔记卡片 **导出 .md**：带 YAML frontmatter（标题 / 标签 / 项目 / 类型 / 更新时间）的 Markdown 复制到剪贴板。批量 AI 消费见 [AI 集成](ai-integration.md) 的 llms.txt。
+- 笔记卡片 **导出 .md**：带 YAML frontmatter（标题 / 标签 / 项目 / 类型 / 更新时间）的 Markdown 复制到剪贴板。批量 AI 消费见 [AI 集成](ai-integration.md) 的 llms.txt。
+- **OMP 风格记忆导出**（`ExportMemoryJSON`）：把知识库导出成 OMP（Open Memory Protocol）风格的 Memory Object 数组，供其它支持该协议的 agent 工具消费。**目前只有导出、没有导入**，且字段映射仍是 provisional——协议本身还没稳定，双向同步刻意没做。入口在应用内绑定层，尚无独立界面按钮。

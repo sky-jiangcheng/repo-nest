@@ -7,25 +7,66 @@ order: 7
 
 RepoNest 面向 AI 代理提供读取通道与自检工具，全部复用同一 `internal/service` 实现（与桌面端行为一致）。
 
-## 价值定位：RepoNest 是 AI 的数据源，而非 AI 本身
+## 价值定位：RepoNest 是 AI 的数据源，而非 AI 平台
 
-**RepoNest 不调用任何大语言模型**——代码里没有 OpenAI / Anthropic / 任何 API key 配置，没有模型选择、没有 endpoint 设置。它的 AI 功能全部是「把项目知识出口给 AI 工具用」，而不是内置聊天或生成能力。更准确地说：
-
-- RepoNest 是**数据底座**：把 git 原始信息建模成结构化、可索引、可物化的本地知识库（详见[存储结构优化与 AI 价值](../storage-optimization.md)）；
-- AI 工具（Claude Code / Cursor 等）通过 MCP 的 13 个工具来**消费**这层数据，按需取数、精确检索。
+**RepoNest 不托管模型、不代持密钥、不自带 agent 编排。** 更准确地说：它是**数据底座**——把 git 原始信息建模成结构化、可索引、可物化的本地知识库（详见[存储结构优化与 AI 价值](../storage-optimization.md)）；AI 工具（Claude Code / Cursor 等）通过 MCP 的 13 个工具来**消费**这层数据，按需取数、精确检索。
 
 这一层「为什么比让 AI 直接读 git 更优」的论证，见[存储结构优化与 AI 价值](../storage-optimization.md)。
 
-### 配置项（均与模型 / API 无关）
+需要明说的边界：早期版本这里写的是「RepoNest 不调用任何大语言模型」。**这句话已经被产品自己推翻**——AI 问答（v1.15.0）会打 OpenAI 兼容的 `/chat/completions`，可选的语义检索会打 `/v1/embeddings`。真实的定位是上面那句：模型与端点**由用户自备**，相应能力**默认关**，密钥只存不外传。之所以要较真这个区别，是因为它决定了隐私责任的落点——「不内置 AI」意味着没有任何一行笔记会在你没显式开启、没填自己端点的情况下离开这台机器；而「内置了 AI」就不是这个承诺了。
 
-`internal/service/config.go` 白名单只含 4 个配置键，**没有任何一项涉及 LLM**：
+### 配置项
+
+`internal/service/config.go` 的白名单分两组。**核心配置与模型 / API 完全无关**：
 
 | 键 | 类型 | 默认 | 用途 |
 |----|------|------|------|
-| `auto_import` | 0 / 1 | `1` | 是否自动导入 Claude 记忆（**唯一与 AI 相关的配置**） |
+| `auto_import` | 0 / 1 | `1` | 启动时是否自动导入知识源（当前只有 `claude` 是自动源，其余 4 个需手动触发） |
 | `daily_code_standard` | 整数 | `500` | 每日代码行数目标，用于仪表盘达标展示。名字带 “code standard” 但非 AI 规范，易误读 |
 | `scan_depth` | 整数 | `2` | 扫描目录深度 |
 | `git_author` | 字符串 | 系统 git 用户 | 影响「我的」统计 / 热力图归属 |
+
+**AI 侧配置全部可选、全部默认关**，且都要你自己填端点——RepoNest 不带任何服务：
+
+| 键 | 默认 | 用途 | 开了会把什么发出去 |
+|----|------|------|-------------------|
+| `claude_session_capture` | 关 | 允许按需读取 Claude 会话转录做交接（[ADR-0010](../adr/0010-session-auto-capture.md)） | 无外发，但会读盘上转录 |
+| `openclaw_project` / `hermes_project` | 空 | 两个 agent 全局记忆源的归属项目；不设则该源整批 skip | 无 |
+| `semantic_search` + `embedding_base_url` / `embedding_model` / `embedding_api_key` / `embedding_dim` | 关 / 空 | 向量召回补 FTS5 盲区（[ADR-0012](../adr/0012-semantic-search.md)） | **笔记文本** → 你的 embedding 端点 |
+| `vector_store` + `vector_store_url` / `vector_store_api_key` / `vector_store_collection` | `local` | 向量存哪：本地 sqlite-vec 或远程 Qdrant / Weaviate（[ADR-0013](../adr/0013-vector-database-selection.md)） | 向量（非原文）→ 你的远程库 |
+| `ai_chat_base_url` / `ai_chat_model` / `ai_chat_api_key` | 空 | 项目详情页的 AI 问答 | 提问 + 打包的项目上下文 → 你的 chat 端点 |
+
+两个密钥键（`embedding_api_key` / `vector_store_api_key`，以及 `ai_chat_api_key`）在读取配置时以掩码返回、不回传界面——后端持真值，界面只显示 `********`。
+
+## 语义检索与向量存储（可选）
+
+词法检索答不了「同一件事的另一种说法」，向量召回补的是这个盲区。整条链路默认关，且**任何失败都退回纯词法结果**——开启它不会让搜索结果变少（[ADR-0012](../adr/0012-semantic-search.md)）。
+
+- **引导式配置**：`go run ./cmd/vector-init`。它会自检 sqlite-vec 是否装载（建 vec0 → 写测试向量 → KNN 往返 → 清理），让你选 embedding provider（本地 Ollama 为默认推荐，或任意 OpenAI 兼容远端），写入配置，最后指向应用内设置复核。加 `-store qdrant`（或 `weaviate`）可写远程向量库并当场探测；**不可达或未配则自动退回本地**，不会让检索变少。
+- **首次要跑一次全量重建**（O(全部笔记) 次文本送端点）。之后不需要再重建：笔记的新建、标题/正文修改、删除由数据库触发器排队，后台每 5 秒批量排空；已删除的笔记会从向量索引里移除。维度未知或索引尚未建立时排空器直接跳过且不消费队列（猜维度意味着可能 drop 整个索引），端点不可达时任务原地保留、下一轮重试。细节见[知识库与笔记](knowledge.md) 的「语义检索」。
+- **效果先量化再放开关**：`go run ./cmd/abeval` 对活库跑「词法 vs 词法+向量」的 Recall@k / NDCG@k 与差值门判定。在真实标注 query 集与门槛通过之前，设置页刻意不放这个开关——宁缺毋滥。
+
+## AI 问答：今天是什么样
+
+项目详情页的悬浮球面板里有 AI 问答 tab（v1.15.1 起从详情页头部并入面板，与「记录」共享外壳与项目选择器）。诚实描述当前实现，别把它读成 RAG：
+
+- 上下文是**静态打包**：项目下仓库列表（≤15）+ 第一个仓库的挖掘缓存（技术栈 / 语言 / README 摘要）+ **最近 10 条笔记，每条截断到 500 字节**，拼进 system prompt。
+- 一次 POST 到 OpenAI 兼容 `/chat/completions`（LM Studio、Ollama shim 或云端皆可），**非流式、无工具调用、无检索排序、无引用**。
+- 也就是说它「塞上下文」而不是「取证」——不保证相关的笔记被读到，不保证读到的都进答案。把它改造成真正的检索取证（读 index → FTS+向量选页 → 带引用作答 → 好答案可回档成新页 + 条数/字符/超时三重预算封顶 + 流式）是 [ADR-0014](../adr/0014-llm-wiki-knowledge-compiler.md) 的 M6-W2，门槛是过上面那个 `abeval` 评测门。
+- 不想让任何内容离开这台机器的话，用详情页的**复制 AI 上下文**：它把打包好的 prompt 交给剪贴板，由你决定贴给谁，不经过任何端点。
+
+## 无头 HTTP 服务与可执行清单
+
+MCP 之外还有一条同源的通道：把 `internal/service` 暴露成 loopback HTTP，供浏览器模式、脚本和其它 agent 调用。
+
+```
+go build -o reponest-server ./cmd/server
+./reponest-server --port 18765        # 或 env REPONEST_HTTP_PORT；只监听 127.0.0.1
+```
+
+- `POST /api/rpc` 用反射覆盖桌面端绑定的全部方法（JSON body 指定 method + args），与 Wails 走的是**同一份实现**；`Startup` / `Shutdown` / `Service` 本身被屏蔽。写操作与 MCP 遵守同一套协议保护（例如交接笔记拒绝被 update 覆盖）。
+- 浏览器开发模式用 `bash scripts/dev.sh`：它同时起无头 API（默认 18731）与 Vite。只跑 `npx vite` 会得到一个「页面能开、每个请求都 502」的假象——那是缺后端，不是应用坏了。
+- **发布资产里只有**：桌面安装包（4 平台）、`reponest-mcp-<平台>`、VS Code 扩展 VSIX。`reponest-server`、`cmd/vector-init`、`cmd/abeval`、`cmd/reponest-capture` 都需自行 `go build`（或 `go run`），未随版本分发。
 
 ## MCP Server（`reponest-mcp`）
 
