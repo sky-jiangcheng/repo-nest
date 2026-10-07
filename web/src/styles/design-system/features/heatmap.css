@@ -12,6 +12,21 @@
   margin-bottom: 16px;
 }
 
+/* Same component, hosted inside .commit-visual (the commits tab). That card
+   already provides the border, background, radius and shadow, so keeping the
+   standalone chrome here produced a bordered box nested in a bordered box —
+   visible as a stray frame inside the heatmap card, most obvious in the
+   empty state. Drop the shell and the bottom margin; the inner padding stays
+   for the breathing room it provides. */
+.commit-visual-heat .heatmap-simple {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  margin-bottom: 0;
+}
+
 .heatmap-simple .heatmap-header {
   margin-bottom: 10px;
 }
@@ -32,6 +47,11 @@
   font-size: 14px;
 }
 
+/* Cells grow to fill the hosting card. At the fixed 10px they used to occupy
+   ~440px of a 668px card and huddled in the top-left corner, so a 30-day view
+   looked like a rendering fault rather than a calendar. The grid is a flex row
+   of week columns; letting the columns share the leftover width keeps the
+   aspect ratio square via aspect-ratio instead of a hard-coded height. */
 .heatmap-grid-simple {
   display: flex;
   gap: 3px;
@@ -42,7 +62,13 @@
 .heatmap-week-simple {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
   gap: 3px;
+  /* Narrow hosts (the dashboard card) keep sharing the width; the commits tab
+     overrides this — see the note above .commit-visual-heat rules. */
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .heatmap-cell-simple {
@@ -53,6 +79,33 @@
   cursor: default;
   transition: transform 0.1s ease, outline 0.1s ease;
   flex-shrink: 0;
+}
+
+/* Inside the commits tab the card is 718px wide, so cells scale up from the
+   10px baseline (which stays right for the narrow dashboard card). A fixed
+   size, not aspect-ratio: inside a flex column, `aspect-ratio: 1` combined
+   with `max-height` collapses the cell to 0x0 — the column has no definite
+   height for the ratio to resolve against.
+
+   The week columns stop sharing the leftover width here (5 columns across
+   668px left ~110px of gaps between 20px cells, which reads as five stray
+   strips rather than a calendar). */
+.commit-visual-heat .heatmap-week-simple {
+  flex: 0 1 26px;
+}
+
+.commit-visual-heat .heatmap-cell-simple {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+
+/* The legend is outside .heatmap-grid-simple and must keep the small size —
+   a 20px swatch next to a 10px cell misreads as a different scale. */
+.commit-visual-heat .heatmap-legend-simple .heatmap-cell-simple {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
 }
 
 .heatmap-cell-simple[role="button"] {

@@ -674,7 +674,12 @@
   display: grid;
   grid-template-columns: var(--commits-col-template, minmax(0, 3fr) minmax(0, 2fr));
   gap: var(--commits-col-gap, 16px);
-  align-items: start;
+  /* stretch, not start: the two visuals are one band and must share a
+     baseline. With `start` each card sized to its own content, so the pair
+     was 39px apart when both were empty and 49px apart the other way once
+     the trend chart had data — the eye reads a misaligned bottom edge as a
+     rendering bug. */
+  align-items: stretch;
 }
 
 .commit-visual {
@@ -684,6 +689,8 @@
   box-shadow: var(--shadow-sm);
   padding: 24px;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* The two bounded visuals ARE the cards in this band — no wrapping
@@ -703,6 +710,19 @@
    as a caption under the heatmap's heading rather than as its equal. */
 .commit-visual h2 {
   margin-bottom: 0;
+}
+
+/* The body fills the card so an empty state is centred in the space the
+   chart would have used, instead of sitting at a fixed 120px in a taller
+   card. Both visuals get the same treatment so their empty states line up
+   with each other, not just their outer edges. */
+.commit-visual .heatmap-simple,
+.commit-visual .empty-section {
+  flex: 1;
+}
+
+.commit-visual-heat .heatmap-simple.heatmap-empty-state {
+  min-height: 100%;
 }
 
 /* Bounded trend canvas: the shared canvas height was tuned for a full-width

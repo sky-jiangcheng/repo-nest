@@ -20,6 +20,10 @@ export function useProjectDetail(id: string | undefined) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [scope, setScope] = useState<'week' | 'month' | 'all'>('week')
+  // Widening the window is a one-shot correction, not a rule: without this
+  // guard a user who deliberately parks on an empty week gets yanked to
+  // "all" on every reload.
+  const autoWidened = useRef(false)
 
   const load = useCallback(() => {
     if (!id) return
@@ -30,10 +34,31 @@ export function useProjectDetail(id: string | undefined) {
     const current = () => loadSeqRef.current === seq
     setLoading(true)
     setError('')
+    // A new project gets a fresh widening budget and the default window;
+    // carrying either over would show project B in project A's scope.
+    autoWidened.current = false
+    setScope('week')
     getProjectDetail(Number(id))
       .then(p => {
         if (!current()) return
         setProject(p)
+        // A project whose last commit predates the default 7-day window
+        // opened onto two empty charts, which reads as "broken" rather than
+        // "no recent activity". Step the window out until the data is in view
+        // — once per page load, so an intentional empty-week choice sticks.
+        if (!autoWidened.current) {
+          const days = (p.repos || []).flatMap(r => (r.stats || []).map(s => s.stat_date))
+          const newest = days.reduce<string>((acc, d) => (d > acc ? d : acc), '')
+          if (newest) {
+            const ageDays = Math.floor(
+              (Date.now() - new Date(newest.slice(0, 10) + 'T00:00:00').getTime()) / 86_400_000,
+            )
+            if (ageDays > 7) {
+              autoWidened.current = true
+              setScope(ageDays > 30 ? 'all' : 'month')
+            }
+          }
+        }
         // The overview is nested inside detail's chain: it needs the same
         // guard, or a late overview could still land after the next load.
         getProjectOverview(Number(id))
