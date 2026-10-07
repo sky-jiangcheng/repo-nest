@@ -14,12 +14,12 @@ cask "reponest" do
 
   on_arm do
     url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/reponest-darwin-arm64.dmg"
-    sha256 "cac8ded541cb51b960c6a4150d2c3457c6b348ca0d9343b20e1f048129d61e82"
+    sha256 "7ae36cd6800473c6694aa5ca2c78e3005f4726646b8c7554ce224aa1c19d9ff9"
   end
 
   on_intel do
     url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/reponest-darwin-amd64.dmg"
-    sha256 "59383c180c1b85d479a24b6fa50b70ee664b1aa890a6d99ea25e48af18712e6c"
+    sha256 "85a1d45f099595683ff04ce38169d476fc5f0b19ee90d25cd78a77694f018057"
   end
 
   app "RepoNest.app"
