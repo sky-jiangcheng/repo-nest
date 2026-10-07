@@ -269,6 +269,19 @@
 - [ ] JetBrains 插件：缓议——独立 Kotlin/Gradle 代码库双倍维护面，待真实需求信号（issue/star）并补充 ADR 后再立项
 - [ ] 分发评估门：此后每个分发资产立项时必须回答「人在哪个界面上看见它」；仅 agent 可消费的资产需说明服务存量深度而非获客（ADR-0009 决策 5）
 
+### M6: LLM Wiki 知识编译层 → [ADR-0014](docs/adr/0014-llm-wiki-knowledge-compiler.md)
+
+- [ ] **W0 前置隐私门（阻塞 W3）**：`auto_import` 现默认 `"1"`（`internal/db/migrate.go:452`）→ 改默认关 + 逐源显式开。迁移**只改默认值、不得静默关掉用户已显式开启的源**，并补迁移测试
+- [ ] **W1 结构成图（不含任何 LLM 调用）**：`wiki_pages`（entity / concept / source / synthesis 四类）+ `page_links`（双向可查）+ note↔repository 关联。迁移必须**可逆**并带测试（参照 `migrate_fts_repair_test` 的严格度）；「四类够不够（是否加 question / decision）」在本步给结论并回填 ADR-0014 待决项
+- [ ] **W1b 单向导出旁路**：`reponest wiki export` 渲染 md 文件树 + YAML frontmatter + wikilink + 导出清单，用 Obsidian graph view 反向验证结构是否自然。**刻意不做双向同步**（ADR-0014 决策 2：两个写入者会让 `note_versions` / FTS5 / 向量索引全部重做）
+- [ ] **W2 AskAI 取证改造（最高 ROI，先于生成端）**：读 index → FTS5 + 向量 RRF 选页 → 读页 → **带引用**作答 → 好答案一键回档成新页；补流式；上下文预算改为「条数 / 字符 / 超时」三重封顶，替掉 `internal/service/ai.go:431` 的固定 10 条 × 500 字节。**完成判据 = 过 `cmd/abeval` 门**（真实标注 query 集 + Recall@k / NDCG@k delta），不接受"感觉变好了"
+- [ ] **W3 摄入时编译（opt-in、默认关）**：importer 由「原文 upsert」升级为「抽取 → 新建/更新页面 → 更新 index + 追加 log → 标注与既有笔记的矛盾」；LLM 写入一律 `source='llm-wiki'` + 待审，人工批准后才进 index；一次一源、人保持在环。新增字符串配置键必须在 `service/config.go` 的 `allowedConfigKeys` 与 `stringConfigKeys` **两处**登记，否则 `UpdateConfig` 按数值校验拒绝
+- [ ] **W4 Lint 五查（必配防腐层）**：矛盾 / 过时声明 / 孤页 / 缺交叉引用 / 数据缺口 → 产出落 `project_todos`（复用现有表，不新造反馈面）；**LLM 只能建议、不得自动改写页面**；定时与手动触发各一条路径
+- [ ] **W5 分层蒸馏与检索**：L0 转录（capture 链路已有）/ L1 原子笔记（`project_notes`）/ L2 项目场景（`BuildProjectContext` 已是雏形，`internal/service/context.go:94-120`）/ L3 跨项目画像（待立项）；检索改「L2/L3 引导上下文，要具体事实才回落 L1/L0」。页面量上来后评估把语义融合范围从 notes 扩到 `wiki_pages`（受 ADR-0012「只对 notes 融合」现状约束）
+- [ ] **schema 作用域结论**：`schema.md` 等价物放全局默认还是按项目覆盖（倾向全局默认 + 项目覆盖），定了才动 W3
+
+> **M6 刻意不做**：自建或对接远端 Memory Hub（违背 local-first 定位，且外部协议仍在 churn——自家 OMP 导出至今标 PROVISIONAL、导入侧刻意未写）；文件树双向同步；为 wiki 引入新向量后端（sqlite-vec 零 CGO 已在库内，ADR-0013）。
+
 ---
 
 ## 📋 遗留项
@@ -304,5 +317,6 @@
 | ~~**Sprint 12**~~ | ~~P37 SKILL.md 工作流指引~~ | ✅ |
 | ~~**Sprint 13**~~ | ~~D24 PWA 移出桌面主构建（ADR-0008 落地）~~ | ✅ |
 | **Sprint 14** | P29/P31/P32/P33/P34/P36 评估类小项收口（验证 + 落结论，含 P32 绑定审计块、P29 多格式解析 + 测试） | ✅ 共 6 项 |
+| **待排（M6）** | ADR-0014 五步：W0 隐私门 → W1/W1b 结构成图 + 单向导出 → W2 AskAI 取证（须过 `abeval` 门）→ W3 摄入编译 → W4 lint | 未估（db / service / web 三层同动，非单 sprint 量） |
 | **2.0 规划** | D25 仪表盘生产力门面收缩 + C11 插件系统评估 + P35 全量 CSS Modules | 按版本 |
 | **按需** | P29, P31, P32, P33, P36 | 随重构穿插 |
