@@ -3,6 +3,7 @@ import type { SVGProps } from 'react'
 export type IconName =
   | 'arrow-down'
   | 'arrow-up'
+  | 'check'
   | 'close'
   | 'file-text'
   | 'globe'
@@ -24,6 +25,10 @@ export type IconName =
 const paths: Record<IconName, string> = {
   'arrow-down': '<polyline points="6 9 12 15 18 9" />',
   'arrow-up': '<polyline points="6 15 12 9 18 15" />',
+  // Confirms a completed action inline (copy-to-clipboard). The alternative —
+  // swapping only the button's title attribute — is feedback the user never
+  // sees, because the tooltip only renders on hover.
+  check: '<polyline points="20 6 9 17 4 12" />',
   close: '<path d="M18 6 6 18M6 6l12 12" />',
   'file-text': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><path d="M8 13h8M8 17h5" />',
   globe: '<circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />',

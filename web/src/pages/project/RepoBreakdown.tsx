@@ -1,32 +1,38 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Icon from '../../components/Icon'
+import { useToast } from '../../hooks/useToast'
 import type { RepoInfo } from '../../api/client'
 
 interface Props {
   repos: RepoInfo[]
 }
 
-const COLLAPSED_TAGS = 5
-
 /**
- * Per-repository commit breakdown. A repo row is enterable: "more" expands
- * the full per-author list inline, and each row hands off to a real editor
- * via the vscode:// deep link (RepoNest is a read-only knowledge base — code
- * editing belongs to the user's editor, this just closes the distance).
+ * Per-repository rows: totals, the two hand-off tools (editor deep link,
+ * copy path), and a link to the repo's real commit history.
+ *
+ * It used to also list every per-author daily stat as a chip, behind a
+ * "more" expander. That was removed deliberately — see the comment on
+ * .repo-foot below.
  */
 export default function RepoBreakdown({ repos }: Props) {
   const { t } = useTranslation()
-  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const toast = useToast()
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
 
+  // Two confirmations, not one: the icon flips to a check in place so the row
+  // itself acknowledges the click, and a toast names what was copied. Swapping
+  // only the title attribute (what this did before) is invisible — tooltips
+  // render on hover, and the pointer is already on the button.
   const copyPath = async (path: string) => {
     try {
       await navigator.clipboard.writeText(path)
       setCopiedPath(path)
+      toast({ kind: 'success', title: t('project.copied'), message: path })
       setTimeout(() => setCopiedPath(null), 1500)
     } catch {
-      /* clipboard unavailable — the path is also shown in the tooltip */
+      toast({ kind: 'error', title: t('project.copyFailed') })
     }
   }
 
@@ -41,11 +47,9 @@ export default function RepoBreakdown({ repos }: Props) {
           }),
           { added: 0, deleted: 0, files: 0 }
         )
-        const stats = repo.stats || []
-        const expanded = expandedId === repo.id
-        const visibleTags = expanded ? stats : stats.slice(0, COLLAPSED_TAGS)
+        const authors = new Set((repo.stats || []).map((s) => s.author)).size
         return (
-          <div key={repo.id} className={`repo-item ${expanded ? 'repo-item-expanded' : ''}`}>
+          <div key={repo.id} className="repo-item">
             <div className="repo-header">
               <div className="repo-path" title={repo.path}>{repo.path.split('/').slice(-2).join('/')}</div>
               <div className="repo-tools">
@@ -58,12 +62,12 @@ export default function RepoBreakdown({ repos }: Props) {
                   <Icon name="zap" size={13} />
                 </a>
                 <button
-                  className="repo-tool"
+                  className={`repo-tool ${copiedPath === repo.path ? 'repo-tool-done' : ''}`}
                   onClick={() => copyPath(repo.path)}
-                  title={copiedPath === repo.path ? t('project.copied') : t('project.copyPath')}
+                  title={t('project.copyPath')}
                   aria-label={t('project.copyPath')}
                 >
-                  <Icon name="file-text" size={13} />
+                  <Icon name={copiedPath === repo.path ? 'check' : 'file-text'} size={13} />
                 </button>
                 <div className="repo-totals">
                   {/* Sign only when non-zero: "+0"/"-0" on every idle repo
@@ -77,31 +81,29 @@ export default function RepoBreakdown({ repos }: Props) {
                 </div>
               </div>
             </div>
-            {stats.length > 0 && (
-              <div className="repo-stats">
-                {visibleTags.map((stat) => (
-                  <span key={stat.id} className="stat-tag" title={`${stat.stat_date} · ${stat.author}`}>
-                    {stat.author}:{' '}
-                    <span className={stat.lines_added > 0 ? 'green' : 'muted-num'}>
-                      {stat.lines_added > 0 ? `+${stat.lines_added}` : '0'}
-                    </span>{' '}
-                    <span className={stat.lines_deleted > 0 ? 'red' : 'muted-num'}>
-                      {stat.lines_deleted > 0 ? `-${stat.lines_deleted}` : '0'}
-                    </span>
-                  </span>
-                ))}
-                {stats.length > COLLAPSED_TAGS && (
-                  <button
-                    className="stat-tag more repo-more-btn"
-                    onClick={() => setExpandedId(expanded ? null : repo.id)}
-                  >
-                    {expanded
-                      ? t('project.showLess')
-                      : t('project.moreCount', { count: stats.length - COLLAPSED_TAGS })}
-                  </button>
-                )}
-              </div>
-            )}
+            {/* Per-author daily line counts were a dead end: a wall of
+                "all: +137 -124" chips the reader cannot act on and cannot
+                reconcile with the repo total. What they actually want from a
+                repo row is the commit history, so that is what the row
+                offers — and when the repo has no browsable remote, the author
+                count stays as a quiet fact rather than a broken link. */}
+            <div className="repo-foot">
+              {repo.web_url ? (
+                <a
+                  className="repo-history-link"
+                  href={repo.web_url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  <Icon name="globe" size={12} />
+                  {t('project.viewCommits')}
+                </a>
+              ) : (
+                <span className="repo-authors">
+                  {t('project.authorCount', { count: authors })}
+                </span>
+              )}
+            </div>
           </div>
         )
       })}

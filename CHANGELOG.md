@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+### 修复
+
+- **提交 tab 上下两带分栏线错位**：`.commit-visuals` 被包在 `.detail-section`（padding 24px）里而 `.commits-columns` 直接挂在无 padding 的 `.commits-tab` 上，两个容器宽度差 50px，gap 又分别是 12/16px，分栏线落在 x=827 与 x=830。移除多余外壳（两个图卡各自就是卡片，标题移入卡内），两带共用同一列模板与 gap，实测上下分栏线同为 x=830
+- **仓库行 copy 图标点击后毫无反馈**：成功只改了按钮的 `title` 属性，而 tooltip 仅在 hover 时渲染——指针此刻就在按钮上，用户看不到任何东西；图标也不变。现在原地换成 ✓ 图标 + `--success` 着色，并弹 toast 显示完整路径；失败也弹 error 而非静默吞掉
+
+### 变更
+
+- **AI 问答并入悬浮球面板**：AI 问答原本是项目详情页头部的独立按钮，与右下角悬浮球是同一个意图（「就这个项目记点东西」）的两处入口，且离开项目页就够不到。现改为悬浮球面板的两个 tab（记录 / AI 问答），共享外壳与项目选择器；提问包上下文改由面板按所选项目自行拉取（`getProjectDetail` + `getProjectOverview`），因此对下拉里任意项目都可用，而非仅当前页面的项目。详情页头部只留「复制 AI 上下文」
+- **子仓库行改跳 Git 提交记录**：原先每行铺满「all: +137 -124」这类按作者/按日的行数 chip，展开后十余行全是无动作可依附的聚合数字。新增后端 `stats.RemoteWebURL`（读 `remote.origin.url`，剥 `.git` 后拼 `/-/commits`；SSH / file:// / 无路径主机一律返回空而非猜测），由 `RepoWithStats.WebURL` 下发，前端渲染为「查看提交记录」外链；无 browsable remote 时退化为安静的提交者人数。`internal/stats/remote_test.go` 覆盖 8 种 remote 形态 + 无 remote / 非仓库目录
+- **悬浮球面板 320 → 380px**：AI tab 要同时容纳提问框、回答框与提示段，320px 下提示折三行、回答 placeholder 被裁
+- **toast 宽度 340 → 400px 且长路径可断行**：toast 最常见的内容就是复制的仓库路径，60+ 字符在 340px 下折三行
+
 ## [1.15.0] - 2026-10-07
 
 AI 问答闭环 + 项目详情页重构 + 悬浮球快捷收录的一次大版本。全量验证：Go 21 包测试、前端 13 文件 93 用例、5 个页面 GUI 实测（0 console 错误 / 0 失败请求 / 0 横向溢出）。

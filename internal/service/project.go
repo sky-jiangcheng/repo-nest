@@ -30,6 +30,11 @@ type ProjectResponse struct {
 type RepoWithStats struct {
 	domain.Repository
 	Stats []domain.DailyStat `json:"stats"`
+	// WebURL is the browsable commit log for the repo's origin remote, or ""
+	// when it has none the UI can link to. Lets a repo row offer the real
+	// history instead of per-author line counts, which are aggregates the
+	// reader cannot act on.
+	WebURL string `json:"web_url"`
 }
 
 // ProjectDetailResponse is the full project detail payload.

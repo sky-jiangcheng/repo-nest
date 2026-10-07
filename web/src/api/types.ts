@@ -35,6 +35,8 @@ export interface RepoInfo {
   project_id: number
   last_scanned_at: string
   stats: DailyStat[]
+  /** Browsable commit log for the repo's origin remote; '' when it has none. */
+  web_url?: string
 }
 
 export interface DailyStat {

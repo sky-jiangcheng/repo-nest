@@ -360,7 +360,11 @@
     "tab_todos": "Todos",
     "openEditor": "Open in VS Code",
     "copyPath": "Copy path",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "copied": "Copied",
+    "copyFailed": "Copy failed",
+    "viewCommits": "View commit history",
+    "authorCount": "{{count}} contributors"
   },
   "common": {
     "unknownError": "Unknown error",
@@ -569,6 +573,7 @@
   "fab": {
     "open": "Quick capture",
     "title": "Quick capture",
+    "tabCapture": "Capture",
     "project": "Project",
     "placeholder": "Type anything… the first line becomes the note title",
     "kind": "Type",

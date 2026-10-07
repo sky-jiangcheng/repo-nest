@@ -1,23 +1,34 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Icon from './Icon'
 import { createNoteWithMeta, createTodo, getProjects, type NoteKind, type Project } from '../api/client'
+import AIAskPanel from './AIAskPanel'
+
+type Tab = 'capture' | 'ask'
 
 interface Props {
   onToast: (item: { kind: 'success' | 'error'; title: string; message?: string; duration?: number }) => void
 }
 
 /**
- * Floating quick-capture ball, mounted app-wide. One entry point for notes,
- * todos and quick thoughts: expand into a compact panel, pick the project
- * (defaults to the one you are already viewing), type, save. The panel stays
- * deliberately tiny — full editing lives on the project page.
+ * One floating entry point for everything you can add to the knowledge base.
+ *
+ * It used to be quick-capture only, with AI Q&A living behind a separate
+ * button in the project header — two floating/edge affordances for the same
+ * "write something down about this project" intent, and the AI one only
+ * reachable from a project page. Both are now tabs of the same panel, so the
+ * project selector, the panel shell, and the save path are shared.
+ *
+ * Capture stays the default tab: it is the one that works with no
+ * configuration and no network.
  */
 export default function QuickCaptureFab({ onToast }: Props) {
   const { t } = useTranslation()
   const location = useLocation()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState<Tab>('capture')
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<number | null>(null)
   const [content, setContent] = useState('')
@@ -49,8 +60,8 @@ export default function QuickCaptureFab({ onToast }: Props) {
   }, [open])
 
   useEffect(() => {
-    if (open) textareaRef.current?.focus()
-  }, [open])
+    if (open && tab === 'capture') textareaRef.current?.focus()
+  }, [open, tab])
 
   const close = () => { setOpen(false); setContent(''); setSaving(null) }
 
@@ -109,9 +120,30 @@ export default function QuickCaptureFab({ onToast }: Props) {
           </button>
         </div>
 
+        <div className="fab-tabs" role="tablist" aria-label={t('fab.title')}>
+          <button
+            role="tab"
+            aria-selected={tab === 'capture'}
+            className={`fab-tab ${tab === 'capture' ? 'active' : ''}`}
+            onClick={() => setTab('capture')}
+          >
+            <Icon name="plus" size={12} />
+            {t('fab.tabCapture')}
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === 'ask'}
+            className={`fab-tab ${tab === 'ask' ? 'active' : ''}`}
+            onClick={() => setTab('ask')}
+          >
+            <Icon name="help" size={12} />
+            {t('ai.title')}
+          </button>
+        </div>
+
         {projects.length === 0 ? (
           <p className="fab-empty">{t('fab.noProjects')}</p>
-        ) : (
+        ) : tab === 'capture' ? (
           <>
             <select
               className="fab-project form-input"
@@ -156,6 +188,13 @@ export default function QuickCaptureFab({ onToast }: Props) {
               </button>
             </div>
           </>
+        ) : (
+          <AIAskPanel
+            projectId={projectId!}
+            projectName={projects.find(p => p.id === projectId)?.name ?? ''}
+            onToast={onToast}
+            onGoToSettings={() => { close(); navigate('/settings?tab=ai') }}
+          />
         )}
       </div>
     </>

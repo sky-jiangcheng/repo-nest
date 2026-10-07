@@ -11,6 +11,7 @@ import { getConnectionKind, subscribeConnection, startHealthPoll } from './api/t
 import Icon from './components/Icon'
 import QuickCaptureFab from './components/QuickCaptureFab'
 import BrandMark from './components/BrandMark'
+import { ToastContext } from './hooks/useToast'
 
 // Lazy-loaded pages. The initial route (Knowledge) is still eagerly loaded by
 // the browser, but subsequent navigations only fetch the chunks that are needed.
@@ -220,19 +221,23 @@ function App() {
 
   return (
     <AppRouter>
-      <div className="app">
-        {connBanner && (
-          <div className="conn-banner" role="alert" aria-live="polite">{connBanner}</div>
-        )}
-        <a className="skip-link" href="#main-content" onClick={skipToContent}>{t('common.show', { defaultValue: 'Skip to main content' })}</a>
-        <NavBar onOpenPalette={() => setPaletteOpen(true)} />
-        <main id="main-content" className="main-content" tabIndex={-1}>
-          <RoutedApp />
-        </main>
-        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-        <ToastHost toasts={toasts} onDismiss={(id) => setToasts(prev => prev.filter(x => x.id !== id))} />
-        <QuickCaptureFab onToast={pushToast} />
-      </div>
+      {/* Lets any descendant confirm a side effect (copy path, save AI answer)
+          without App having to thread a callback down to it. */}
+      <ToastContext.Provider value={pushToast}>
+        <div className="app">
+          {connBanner && (
+            <div className="conn-banner" role="alert" aria-live="polite">{connBanner}</div>
+          )}
+          <a className="skip-link" href="#main-content" onClick={skipToContent}>{t('common.show', { defaultValue: 'Skip to main content' })}</a>
+          <NavBar onOpenPalette={() => setPaletteOpen(true)} />
+          <main id="main-content" className="main-content" tabIndex={-1}>
+            <RoutedApp />
+          </main>
+          <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+          <ToastHost toasts={toasts} onDismiss={(id) => setToasts(prev => prev.filter(x => x.id !== id))} />
+          <QuickCaptureFab onToast={pushToast} />
+        </div>
+      </ToastContext.Provider>
     </AppRouter>
   )
 }

@@ -359,7 +359,11 @@
     "tab_todos": "待办",
     "openEditor": "在 VS Code 中打开",
     "copyPath": "复制路径",
-    "showLess": "收起"
+    "showLess": "收起",
+    "copied": "已复制",
+    "copyFailed": "复制失败",
+    "viewCommits": "查看提交记录",
+    "authorCount": "{{count}} 位提交者"
   },
   "common": {
     "unknownError": "未知错误",
@@ -568,6 +572,7 @@
   "fab": {
     "open": "快捷收录",
     "title": "快捷收录",
+    "tabCapture": "记录",
     "project": "项目",
     "placeholder": "随便写点什么……首行将作为笔记标题",
     "kind": "类型",

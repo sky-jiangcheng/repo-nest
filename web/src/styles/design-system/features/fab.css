@@ -38,7 +38,10 @@
   position: fixed;
   right: 22px;
   bottom: 52px;
-  width: 320px;
+  /* 380px, not 320: the AI tab carries a question box, an answer box and a
+     hint paragraph, and at 320 the hint wrapped to three lines and the answer
+     placeholder was clipped. */
+  width: 380px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
@@ -106,4 +109,93 @@
   color: var(--text-tertiary);
   text-align: center;
   padding: 16px 0;
+}
+
+/* Tabs: quick capture and AI Q&A are the same intent (write something down
+   about a project) and now share one panel, one project selector and one
+   shell. Capture is first and default because it needs no configuration. */
+.fab-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.fab-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 1px);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+
+.fab-tab:hover {
+  color: var(--text-primary);
+}
+
+.fab-tab.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+
+/* AI tab body: the answer area is the tall element, so the panel keeps the
+   question compact above it. */
+.ai-ask-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ai-hint-project {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.ai-hint-config {
+  color: var(--warning);
+}
+
+.ai-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ai-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ai-answer {
+  font-family: var(--font-sans);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: inherit;
+  text-decoration: underline;
 }

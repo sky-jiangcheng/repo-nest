@@ -39,7 +39,11 @@ func (s *Service) GetProjectDetail(id int64) (*ProjectDetailResponse, error) {
 		if statsList == nil {
 			statsList = []domain.DailyStat{}
 		}
-		repoList = append(repoList, RepoWithStats{Repository: repo, Stats: statsList})
+		repoList = append(repoList, RepoWithStats{
+			Repository: repo,
+			Stats:      statsList,
+			WebURL:     stats.RemoteWebURL(repo.Path),
+		})
 	}
 	return &ProjectDetailResponse{Project: project, Repos: repoList}, nil
 }

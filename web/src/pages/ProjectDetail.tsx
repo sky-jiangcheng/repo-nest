@@ -9,7 +9,6 @@ import ProjectOverviewSection from './project/ProjectOverviewSection'
 import ProjectCommitsSection from './project/ProjectCommitsSection'
 import ErrorBanner from '../components/ErrorBanner'
 import Icon from '../components/Icon'
-import AIAskDialog from '../components/AIAskDialog'
 import NoteSection from '../components/NoteSection'
 import TodoSection from '../components/TodoSection'
 import RepoBreakdown from './project/RepoBreakdown'
@@ -58,7 +57,6 @@ function ProjectDetailPage() {
   }
 
   const [copied, setCopied] = useState(false)
-  const [askOpen, setAskOpen] = useState(false)
   const [actionMsg, setActionMsg] = useState('')
   const actionTimer = useRef<number | null>(null)
 
@@ -126,11 +124,6 @@ function ProjectDetailPage() {
     } catch {
       setError(t('common.failed'))
     }
-  }
-
-  const buildPrompt = (question: string): string => {
-    const context = buildContextLines()?.join('\n') ?? ''
-    return `${t('ai.promptHeader', { defaultValue: 'Question' })}: ${question}\n\n${context}`
   }
 
   if (loading) {
@@ -203,9 +196,6 @@ function ProjectDetailPage() {
               <span className="level-value">{t('project.groupLevel', { n: project.level_override || 0 })}</span>
               <button className="btn btn-sm btn-icon" onClick={() => onLevelChange('up')} aria-label={t('project.levelUp')}><Icon name="plus" size={14} /></button>
             </span>
-            <button className="btn btn-secondary btn-sm" onClick={() => setAskOpen(true)}>
-              <Icon name="help" size={13} /> {t('ai.title')}
-            </button>
             <button className="btn btn-primary btn-sm" onClick={handleCopyContext}>
               {copied ? t('project.copied') : t('project.copyContext')}
             </button>
@@ -265,38 +255,44 @@ function ProjectDetailPage() {
               {/* T-shape: the horizontal bar is the two bounded visuals sharing
                   one scope toggle; the stem below splits into variable-length
                   columns (repo breakdown grows with repo count, the commit
-                  feed grows with history) instead of one long scroll. */}
-              <div className="detail-section">
-                <div className="section-header">
-                  <h2>{t('heatmap.title')}</h2>
-                  <ScopeToggle scope={scope} onChange={setScope} />
+                  feed grows with history) instead of one long scroll.
+
+                  No .detail-section wrapper here on purpose: the two visuals
+                  ARE the cards. A wrapper's 24px padding made this grid 50px
+                  narrower than .commits-columns below, so the column seam
+                  could not line up between the two bands. Each visual carries
+                  its own header instead. */}
+              <div className="commit-visuals">
+                <div className="commit-visual commit-visual-heat">
+                  <div className="section-header">
+                    <h2>{t('heatmap.title')}</h2>
+                    <ScopeToggle scope={scope} onChange={setScope} />
+                  </div>
+                  <Heatmap projectId={Number(id)} scope={scope} onScopeChange={setScope} />
                 </div>
-                <div className="commit-visuals">
-                  <div className="commit-visual commit-visual-heat">
-                    <Heatmap projectId={Number(id)} scope={scope} onScopeChange={setScope} />
+                <div className="commit-visual commit-visual-trend">
+                  <div className="section-header">
+                    <h2>{t('project.trendTitle')}</h2>
                   </div>
-                  <div className="commit-visual commit-visual-trend">
-                    <h4 className="overview-sub-title">{t('project.trendTitle')}</h4>
-                    {trendData.labels.length > 0 ? (
-                      <TrendChart labels={trendData.labels} datasets={trendData.datasets} />
-                    ) : (
-                      <div className="empty-section">
-                        {t('project.noDataInRange')}
-                        {scope !== 'all' && (
-                          <div className="empty-actions">
-                            {scope === 'week' && (
-                              <button className="btn btn-secondary btn-sm" onClick={() => setScope('month')}>
-                                {t('heatmap.show30d')}
-                              </button>
-                            )}
-                            <button className="btn btn-secondary btn-sm" onClick={() => setScope('all')}>
-                              {t('heatmap.showAll')}
+                  {trendData.labels.length > 0 ? (
+                    <TrendChart labels={trendData.labels} datasets={trendData.datasets} />
+                  ) : (
+                    <div className="empty-section">
+                      {t('project.noDataInRange')}
+                      {scope !== 'all' && (
+                        <div className="empty-actions">
+                          {scope === 'week' && (
+                            <button className="btn btn-secondary btn-sm" onClick={() => setScope('month')}>
+                              {t('heatmap.show30d')}
                             </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                          )}
+                          <button className="btn btn-secondary btn-sm" onClick={() => setScope('all')}>
+                            {t('heatmap.showAll')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -327,14 +323,6 @@ function ProjectDetailPage() {
       </div>
 
       <StatusBar />
-      {askOpen && project && (
-        <AIAskDialog
-          projectId={project.id}
-          onClose={() => setAskOpen(false)}
-          buildPrompt={buildPrompt}
-          onToast={(item) => flashAction(item.kind === 'success' ? item.title : `${item.title}${item.message ? ' ' + item.message : ''}`)}
-        />
-      )}
     </div>
   )
 }

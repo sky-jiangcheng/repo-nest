@@ -661,25 +661,48 @@
 
 /* Horizontal bar: the two bounded visuals side by side under one scope
    toggle. The stem below splits into variable-length columns — the repo
-   breakdown grows with repo count, the activity/feed block with history. */
-.commit-visuals {
+   breakdown grows with repo count, the activity/feed block with history.
+
+   Both bands share ONE column template and ONE gap. They used to declare
+   the same 3fr/2fr but with different gaps (12 vs 16) inside containers of
+   different width, so the vertical seam between the two columns landed at
+   x=827 in the top band and x=830 in the one below — a 3px jog plus an 18px
+   width mismatch, visible as the cards not lining up when scanned
+   vertically. Same template + same gap + same width makes the seam exact. */
+.commit-visuals,
+.commits-columns {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 12px;
+  grid-template-columns: var(--commits-col-template, minmax(0, 3fr) minmax(0, 2fr));
+  gap: var(--commits-col-gap, 16px);
   align-items: start;
 }
 
 .commit-visual {
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 24px;
   min-width: 0;
 }
 
-.commit-visual-trend .overview-sub-title {
-  margin-top: 0;
-  margin-bottom: 8px;
+/* The two bounded visuals ARE the cards in this band — no wrapping
+   .detail-section around them. The wrapper's 24px padding made this grid
+   50px narrower than .commits-columns below (which has no wrapper), so the
+   two columns could never line up no matter how the fr/gap were tuned. */
+.commits-tab > .commit-visuals {
+  margin-bottom: 16px;
+}
+
+.commit-visual .section-header {
+  margin-bottom: 14px;
+}
+
+/* Both visuals are sibling cards now, so both titles are h2 in a
+   .section-header — the trend chart used an h4.overview-sub-title and read
+   as a caption under the heatmap's heading rather than as its equal. */
+.commit-visual h2 {
+  margin-bottom: 0;
 }
 
 /* Bounded trend canvas: the shared canvas height was tuned for a full-width
@@ -687,13 +710,6 @@
    row. */
 .commit-visual-trend .chart-container {
   height: 190px;
-}
-
-.commits-columns {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 16px;
-  align-items: start;
 }
 
 @media (max-width: 900px) {
@@ -729,6 +745,15 @@
   background: var(--accent-soft);
 }
 
+/* Copy confirmation: the icon flips to a check and the row acknowledges the
+   click in place. Uses the success token (not a raw hex) so dark mode keeps
+   its contrast. */
+.repo-tool-done,
+.repo-tool-done:hover {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+}
+
 .repo-more-btn {
   border: none;
   background: transparent;
@@ -740,37 +765,39 @@
   color: var(--accent);
 }
 
-/* AI ask dialog shares the FAB panel shell; the answer area is the tall one. */
-.ai-ask-panel {
-  width: 420px;
-}
-
-.ai-hint {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.ai-actions {
+/* Repo row footer: the commit-history link (or, with no browsable remote,
+   a quiet contributor count). Replaces the per-author stat chips, which
+   were aggregates with no action attached. */
+.repo-foot {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  min-height: 18px;
 }
 
-.ai-answer {
-  font-family: var(--font-sans);
+.repo-history-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  padding: 2px 6px 2px 4px;
+  border-radius: var(--radius-sm);
+  transition: color 0.12s, background 0.12s;
 }
 
-.ai-hint-config {
-  color: var(--warning);
-}
-
-.link-btn {
-  background: none;
-  border: none;
-  padding: 0;
+.repo-history-link:hover {
   color: var(--accent);
-  cursor: pointer;
-  font-size: inherit;
-  text-decoration: underline;
+  background: var(--accent-soft);
 }
+
+.repo-authors {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* AI ask styles (.ai-hint / .ai-actions / .ai-answer / .ai-hint-config /
+   .link-btn) moved to fab.css: the panel is a tab of the floating capture
+   panel now, not a dialog opened from this page. */
