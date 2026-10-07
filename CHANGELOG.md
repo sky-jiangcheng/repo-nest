@@ -6,24 +6,30 @@
 
 ## [Unreleased]
 
-### 修复
+## [1.15.1] - 2026-10-07
 
-- **提交 tab 上下两带分栏线错位**：`.commit-visuals` 被包在 `.detail-section`（padding 24px）里而 `.commits-columns` 直接挂在无 padding 的 `.commits-tab` 上，两个容器宽度差 50px，gap 又分别是 12/16px，分栏线落在 x=827 与 x=830。移除多余外壳（两个图卡各自就是卡片，标题移入卡内），两带共用同一列模板与 gap，实测上下分栏线同为 x=830
-- **仓库行 copy 图标点击后毫无反馈**：成功只改了按钮的 `title` 属性，而 tooltip 仅在 hover 时渲染——指针此刻就在按钮上，用户看不到任何东西；图标也不变。现在原地换成 ✓ 图标 + `--success` 着色，并弹 toast 显示完整路径；失败也弹 error 而非静默吞掉
+提交 tab 的一次返工：中间两版（指向 forge 的外链 → 仓库行内就地展开）都不好用，最终收敛成「趋势卡 + 一条跨仓库提交时间线」。本版验证：Go 23 包测试通过（含 `-race`）、前端 13 文件 93 用例、`tsc && vite build` 通过。
 
 ### 变更
 
+- **提交 tab 收敛为两张卡、两个问题**：趋势卡回答「多少、什么时候」，提交记录卡回答「具体发生了什么」。
+  - **热力图卡整个移除**：它与 dashboard 的热力图是同一份数据的第二次渲染，还把两张卡的正文挤到首屏之下。活动指标（总提交 / 近30天速率 / 活跃天数 / 活跃月份）折进趋势卡头部，`ScopeToggle` 留在原位。上一版为「上下两带分栏线对齐」做的容器改造随这次删卡一并作废——分栏线错位的诉求不复存在。
+  - **提交记录改为一条按时间合并的时间线**，上方一排仓库 chip 做筛选（「全部」即合并视图）；合并视图里每行的仓库名本身可点，点一下收窄到该仓库，不必回到筛选行。单仓库项目没有可筛选项，直接出正文而不是一排只有一个 chip 的筛选行。删除 `ProjectCommitsSection` / `RepoBreakdown` / `RepoCommitList`（297 行）及其样式（`project-detail.css` -329 行），新增 `ProjectCommitLog`。
+- **提交记录改由后端按需读 git，两条新绑定同批落地**：`daily_stats` 只有「谁在哪天改了多少行」——没有 message、没有 SHA，库里拼不出提交列表，而指向 forge 的外链对没有 remote 的内网仓库就是死链。
+  - `GetRepoCommits(repoID, limit)`：单个仓库的日志。`RecentCommit` 补 `Hash` 字段（cherry-pick、forge 搜索都要用），前端 SHA 点击即复制。入参用 repo id 而非 path，不能被指向任意目录。
+  - `GetProjectCommits(projectID, limit)`：项目内所有仓库按时间合并的日志。与上一条同一条读 git 路径，作者不过滤，保证合并视图与单仓库视图口径一致。仓库列表为空返回空日志，只有 project id 不存在才报 `ErrProjectNotFound`——`GetRepositoriesByProjectID` 对缺失项目返回空切片而不报错，存在性得单独判一次。
+  - 两条的 limit 都可由客户端传，但服务端钳在 200 以内（否则 `git log -999999` 会走完整个历史）。`internal/service/repo_commits_test.go` 覆盖合并排序、空仓库列表返回空切片而非 nil / 非 error、未知 id 报错、limit 钳制。
+- **forge 外链降级为次要出口**：`stats.RemoteWebURL`（读 `remote.origin.url`，剥 `.git` 后拼 `/-/commits`；SSH / file:// / 无路径主机一律返回空而非猜测）仍在，但渲染成仓库工具条上的地球图标，只在有 browsable remote 时出现。`internal/stats/remote_test.go` 覆盖 8 种 remote 形态 + 无 remote / 非仓库目录。
 - **AI 问答并入悬浮球面板**：AI 问答原本是项目详情页头部的独立按钮，与右下角悬浮球是同一个意图（「就这个项目记点东西」）的两处入口，且离开项目页就够不到。现改为悬浮球面板的两个 tab（记录 / AI 问答），共享外壳与项目选择器；提问包上下文改由面板按所选项目自行拉取（`getProjectDetail` + `getProjectOverview`），因此对下拉里任意项目都可用，而非仅当前页面的项目。详情页头部只留「复制 AI 上下文」
-- **子仓库行改跳 Git 提交记录**：原先每行铺满「all: +137 -124」这类按作者/按日的行数 chip，展开后十余行全是无动作可依附的聚合数字。新增后端 `stats.RemoteWebURL`（读 `remote.origin.url`，剥 `.git` 后拼 `/-/commits`；SSH / file:// / 无路径主机一律返回空而非猜测），由 `RepoWithStats.WebURL` 下发，前端渲染为「查看提交记录」外链；无 browsable remote 时退化为安静的提交者人数。`internal/stats/remote_test.go` 覆盖 8 种 remote 形态 + 无 remote / 非仓库目录
 - **悬浮球面板 320 → 380px**：AI tab 要同时容纳提问框、回答框与提示段，320px 下提示折三行、回答 placeholder 被裁
 - **toast 宽度 340 → 400px 且长路径可断行**：toast 最常见的内容就是复制的仓库路径，60+ 字符在 340px 下折三行
-- **子仓库提交记录改为本地展示，不再跳转 GitLab**：上一版把「查看提交记录」做成指向 forge 的外链，但 `daily_stats` 存的是「谁在哪天改了多少行」——**没有 message、没有 SHA**，本地根本拼不出提交列表；而没有 remote 的内网仓库点了就是死链。改为按需读 git（新增 `GetRepoCommits`，与「最近提交」同一数据源），在仓库行内就地展开 50 条：message / 时间 / 分支 / 作者 / 7 位 SHA，SHA 点击即复制（cherry-pick、forge 搜索都要用）。同时保留一个地球图标作为「在 Git 平台打开」的次要出口。`RecentCommit` 补 `Hash` 字段；limit 客户端可传但服务端钳在 200 以内（否则 `git log -999999` 会走完整个历史）；入参用 repo id 而非 path，不能被指向任意目录
+- **热力图格子 20px → 11px + 趋势图细线**：格子取周历的最小可读单位，图例同步；趋势图 `borderWidth` 3（Chart.js 默认）→ 1.25、`pointRadius` 2 → 0，300+ 采样点时原本糊成一片实心色块，填充降到 8% alpha，X 轴刻度 8 → 6 且 `autoSkip`（`maxTicksLimit: 8` 配 300 个日期会挤成一坨）
 
-- **热力图按月分块 + 格子缩小 + 趋势图细线**：
-  - 「全部」窗口是 ~53 个周列，压在 480px 卡里每个格子被挤成 2px 细条。改为**按日历月分块**，每块 4-6 列、块内横向可拖，一眼能看清是哪个月
-  - 格子 20px → **11px**（周历最小可读单位），图例同步
-  - 趋势图 **borderWidth 3（Chart.js 默认）→ 1.25、pointRadius 2 → 0**，300+ 采样点时原本糊成一片实心色块；填充降到 8% alpha，X 轴刻度 8 → **6** 且 `autoSkip`（原来 `maxTicksLimit:8` 配 300 个日期会挤成一坨）
-  - **三个 scope 卡片高度恒定 584px**：热力图体固定 403px（4 个月带，可见更多则纵向滚动），空态用 `flex: 0 0 403px` 的 body + stats/legend 占位补齐——之前近7天空态 199/222px、近30天 357px、全部可达 1502px，每次切范围整行都在跳
+### 修复
+
+- **dashboard 热力图在宽卡下仍整行溢出**：列 `flex-shrink: 0` 把格子钉死在自然宽 11px，卡片再宽也不会利用空间。单行 53 列改走 `.heatmap-grid-year`（`flex: 1 1 0` + `min-width: 14px` 一个格子加列间距），宽卡下均分填满，窄于 ~53×14px 才横向滚动。上一版的「按日历月分块」是绕开这个问题而非修掉它，随本次布局收敛一起回退；等高占位块（stats/legend spacer）也随热力图卡移除而删除
+- **仓库路径 copy 点击后毫无反馈**：成功只改了按钮的 `title` 属性，而 tooltip 仅在 hover 时渲染——指针此刻就在按钮上，用户看不到任何东西；图标也不变。现在原地换成 ✓ 图标 + `--success` 着色，并弹 toast 显示完整路径；失败也弹 error 而非静默吞掉
+- **`viewCommits` 在语言文件里重复定义**：同一个 JSON 对象里出现两次同名键，后者静默覆盖前者（实际生效的是「提交记录」）。随失去引用的 `showLess` / `authorCount` 一起清理，新增 `commitLog` / `filterRepoHint`
 
 ## [1.15.0] - 2026-10-07
 
@@ -689,7 +695,12 @@ CBiPay 真实数据样例测试(11 仓库聚合工作区)暴露的修复批次,�
 
 - 首个正式版本：Wails 桌面应用骨架、GitHub Actions 多平台构建发布
 
-[Unreleased]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.14.1...HEAD
+[Unreleased]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.15.1...HEAD
+[1.15.1]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.15.0...v1.15.1
+[1.15.0]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.14.4...v1.15.0
+[1.14.4]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.14.3...v1.14.4
+[1.14.3]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.14.2...v1.14.3
+[1.14.2]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.14.1...v1.14.2
 [1.14.1]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.14.0...v1.14.1
 [1.9.5]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.9.4...v1.9.5
 [1.7.9]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.8...v1.7.9
