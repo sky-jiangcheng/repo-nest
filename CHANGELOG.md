@@ -17,6 +17,7 @@
 - **子仓库行改跳 Git 提交记录**：原先每行铺满「all: +137 -124」这类按作者/按日的行数 chip，展开后十余行全是无动作可依附的聚合数字。新增后端 `stats.RemoteWebURL`（读 `remote.origin.url`，剥 `.git` 后拼 `/-/commits`；SSH / file:// / 无路径主机一律返回空而非猜测），由 `RepoWithStats.WebURL` 下发，前端渲染为「查看提交记录」外链；无 browsable remote 时退化为安静的提交者人数。`internal/stats/remote_test.go` 覆盖 8 种 remote 形态 + 无 remote / 非仓库目录
 - **悬浮球面板 320 → 380px**：AI tab 要同时容纳提问框、回答框与提示段，320px 下提示折三行、回答 placeholder 被裁
 - **toast 宽度 340 → 400px 且长路径可断行**：toast 最常见的内容就是复制的仓库路径，60+ 字符在 340px 下折三行
+- **子仓库提交记录改为本地展示，不再跳转 GitLab**：上一版把「查看提交记录」做成指向 forge 的外链，但 `daily_stats` 存的是「谁在哪天改了多少行」——**没有 message、没有 SHA**，本地根本拼不出提交列表；而没有 remote 的内网仓库点了就是死链。改为按需读 git（新增 `GetRepoCommits`，与「最近提交」同一数据源），在仓库行内就地展开 50 条：message / 时间 / 分支 / 作者 / 7 位 SHA，SHA 点击即复制（cherry-pick、forge 搜索都要用）。同时保留一个地球图标作为「在 Git 平台打开」的次要出口。`RecentCommit` 补 `Hash` 字段；limit 客户端可传但服务端钳在 200 以内（否则 `git log -999999` 会走完整个历史）；入参用 repo id 而非 path，不能被指向任意目录
 
 ## [1.15.0] - 2026-10-07
 

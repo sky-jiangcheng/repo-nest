@@ -364,6 +364,12 @@
     "copied": "Copied",
     "copyFailed": "Copy failed",
     "viewCommits": "View commit history",
+    "viewCommits": "Commits",
+    "openForge": "Open on the Git platform",
+    "noCommits": "No commits",
+    "commitCount": "{{count}} commits",
+    "commitsCapped": "showing the latest {{limit}}",
+    "copyHash": "Copy commit SHA",
     "authorCount": "{{count}} contributors"
   },
   "common": {

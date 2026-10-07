@@ -363,6 +363,12 @@
     "copied": "已复制",
     "copyFailed": "复制失败",
     "viewCommits": "查看提交记录",
+    "viewCommits": "提交记录",
+    "openForge": "在 Git 平台打开",
+    "noCommits": "没有提交记录",
+    "commitCount": "{{count}} 条提交",
+    "commitsCapped": "仅显示最近 {{limit}} 条",
+    "copyHash": "复制 commit SHA",
     "authorCount": "{{count}} 位提交者"
   },
   "common": {

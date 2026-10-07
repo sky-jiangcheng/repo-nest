@@ -20,6 +20,10 @@ import (
 // and neither an operator nor an agent could tell "absent" from "broken".
 // Transports (httpapi maps it to 404, everything else to 500) should check
 // it with errors.Is.
+// ErrRepoNotFound is the "no such repository" counterpart of
+// ErrProjectNotFound, returned by GetRepoCommits.
+var ErrRepoNotFound = errors.New("repository not found")
+
 var ErrProjectNotFound = errors.New("project not found")
 
 // GetProjectDetail returns a project with all its repositories and stats.
@@ -78,6 +82,40 @@ func (s *Service) GetProjectStats(id int64, date string) []domain.DailyStat {
 // project into per-repo projects, "up" merges sibling projects sharing the
 // same parent directory into this one. Both run as a single transaction in
 // the db layer.
+// GetRepoCommits returns a single repository's commit log, newest first.
+//
+// The per-day aggregates in daily_stats carry no message and no SHA, so a repo
+// row cannot render a commit list from the database - the only stored form is
+// "who changed how many lines on which day". This reads git on demand instead,
+// the same source the overview's recent-commit feed uses, so the list also
+// works for a repo with no forge remote (an internal or worktree checkout)
+// instead of dead-ending the user at a link that cannot resolve.
+//
+// Takes a repo id rather than a path so it cannot be pointed at an arbitrary
+// directory on disk.
+func (s *Service) GetRepoCommits(repoID int64, limit int) ([]stats.RecentCommit, error) {
+	repo, err := db.GetRepositoryByID(s.db, repoID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrRepoNotFound
+		}
+		return nil, fmt.Errorf("load repository %d: %w", repoID, err)
+	}
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	commits, err := stats.GetRecentCommits([]string{repo.Path}, "", limit)
+	if err != nil {
+		return nil, err
+	}
+	// Non-nil empty slice: the JSON contract says "array", so clients can read
+	// .length without a null guard.
+	if commits == nil {
+		return []stats.RecentCommit{}, nil
+	}
+	return commits, nil
+}
+
 func (s *Service) UpdateProjectLevel(id int64, direction string) (*LevelUpdateResult, error) {
 	var newLevel int
 	var err error

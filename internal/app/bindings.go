@@ -6,6 +6,7 @@ import (
 	pluginruntime "repo-nest/internal/core/plugin/runtime"
 	"repo-nest/internal/domain"
 	"repo-nest/internal/service"
+	"repo-nest/internal/stats"
 )
 
 // --- Wails binding ↔ MCP tool audit (P32, 2026-10-02) -----------------------
@@ -54,6 +55,13 @@ func (a *App) GetProjectDetail(id int64) (*service.ProjectDetailResponse, error)
 // GetProjectStats returns daily stats for a project, optionally by date.
 func (a *App) GetProjectStats(id int64, date string) []domain.DailyStat {
 	return a.svc.GetProjectStats(id, date)
+}
+
+// GetRepoCommits returns one repository's commit log, newest first. Backs the
+// repo row's commit list: the stored daily_stats rows carry no message or SHA,
+// so the list is read from git on demand and works without a forge remote.
+func (a *App) GetRepoCommits(repoID int64, limit int) ([]stats.RecentCommit, error) {
+	return a.svc.GetRepoCommits(repoID, limit)
 }
 
 // UpdateProjectLevel adjusts a project's grouping level up or down.

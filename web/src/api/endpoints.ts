@@ -17,6 +17,7 @@ import type {
   Project,
   ProjectDetail,
   ProjectOverview,
+  RepoCommit,
   ScanStatus,
   SearchHit,
   SourceStatus,
@@ -48,6 +49,15 @@ export function getProjects(date?: string, starredOnly = false): Promise<Project
 
 export function getProjectDetail(id: number): Promise<ProjectDetail> {
   return call<ProjectDetail>({ method: 'GetProjectDetail', args: [id], path: `/projects/${id}` })
+}
+
+/**
+ * One repository's commit log, newest first. Read from git on demand: the
+ * stored daily_stats rows carry no message or SHA, so a commit list cannot be
+ * assembled from the database.
+ */
+export function getRepoCommits(repoId: number, limit = 50): Promise<RepoCommit[]> {
+  return call<RepoCommit[]>({ method: 'GetRepoCommits', args: [repoId, limit], path: `/repos/${repoId}/commits` })
 }
 
 export function getProjectStats(id: number, date?: string): Promise<DailyStat[]> {

@@ -20,6 +20,18 @@ func GetAllRepositories(db *sql.DB) ([]Repository, error) {
 	return repos, rows.Err()
 }
 
+// GetRepositoryByID returns one repository. Returns sql.ErrNoRows when absent
+// so callers can tell "no such repo" from a storage failure.
+func GetRepositoryByID(db *sql.DB, id int64) (*Repository, error) {
+	var r Repository
+	err := db.QueryRow("SELECT id, path, project_id, last_scanned_at FROM repositories WHERE id = ?", id).
+		Scan(&r.ID, &r.Path, &r.ProjectID, &r.LastScanned)
+	if err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
 // GetRepositoriesByProjectID returns all repositories for a project.
 func GetRepositoriesByProjectID(db *sql.DB, projectID int64) ([]Repository, error) {
 	rows, err := db.Query("SELECT id, path, project_id, last_scanned_at FROM repositories WHERE project_id = ? ORDER BY path ASC", projectID)

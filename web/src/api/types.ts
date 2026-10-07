@@ -39,6 +39,20 @@ export interface RepoInfo {
   web_url?: string
 }
 
+/**
+ * One commit, read from git on demand. `hash` is the full SHA — it is what
+ * makes a row actionable (cherry-pick, forge search), so the UI exposes it for
+ * copy rather than treating the commit as read-only text.
+ */
+export interface RepoCommit {
+  hash: string
+  time: string
+  message: string
+  author: string
+  repo: string
+  branch: string
+}
+
 export interface DailyStat {
   id: number
   repository_id: number

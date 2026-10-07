@@ -11,6 +11,10 @@ import (
 
 // RecentCommit holds information about the most recent commit.
 type RecentCommit struct {
+	// Hash is the full commit SHA. Empty only if git output was unparseable.
+	// Kept because a commit row is actionable: it is what you copy to cherry-pick
+	// or paste into a search, and what identifies the commit on the forge.
+	Hash    string `json:"hash"`
 	Time    string `json:"time"`
 	Message string `json:"message"`
 	Author  string `json:"author"`
@@ -61,6 +65,7 @@ func GetRecentCommit(repoPaths []string, filterAuthor string) (*RecentCommit, er
 		commitTime := time.Unix(ts, 0)
 		if best == nil || commitTime.After(time.Unix(parseTimestamp(best.Time), 0)) {
 			best = &RecentCommit{
+				Hash:    lines[0],
 				Time:    commitTime.Format("2006-01-02 15:04:05"),
 				Author:  lines[1],
 				Message: lines[3],
@@ -129,6 +134,7 @@ func GetRecentCommits(repoPaths []string, filterAuthor string, limit int) ([]Rec
 				branch = extractBranch(parts[4])
 			}
 			all = append(all, RecentCommit{
+				Hash:    parts[0],
 				Time:    time.Unix(ts, 0).Format("2006-01-02 15:04:05"),
 				Author:  parts[1],
 				Message: parts[3],

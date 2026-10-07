@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Icon from '../../components/Icon'
 import { useToast } from '../../hooks/useToast'
+import RepoCommitList from './RepoCommitList'
 import type { RepoInfo } from '../../api/client'
 
 interface Props {
@@ -20,6 +21,9 @@ export default function RepoBreakdown({ repos }: Props) {
   const { t } = useTranslation()
   const toast = useToast()
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
+  // Repo id whose commit list is open; null = closed. Only one at a time —
+  // two open lists in a 20-row column leaves no room to read either.
+  const [commitsFor, setCommitsFor] = useState<number | null>(null)
 
   // Two confirmations, not one: the icon flips to a check in place so the row
   // itself acknowledges the click, and a toast names what was copied. Swapping
@@ -47,7 +51,8 @@ export default function RepoBreakdown({ repos }: Props) {
           }),
           { added: 0, deleted: 0, files: 0 }
         )
-        const authors = new Set((repo.stats || []).map((s) => s.author)).size
+        const statsCount = (repo.stats || []).length
+        const open = commitsFor === repo.id
         return (
           <div key={repo.id} className="repo-item">
             <div className="repo-header">
@@ -88,22 +93,28 @@ export default function RepoBreakdown({ repos }: Props) {
                 offers — and when the repo has no browsable remote, the author
                 count stays as a quiet fact rather than a broken link. */}
             <div className="repo-foot">
-              {repo.web_url ? (
+              <button
+                className="repo-history-link"
+                onClick={() => setCommitsFor(open ? null : repo.id)}
+                aria-expanded={open}
+              >
+                <Icon name={open ? 'arrow-up' : 'arrow-down'} size={12} />
+                {t('project.viewCommits')}
+                {statsCount > 0 && <span className="repo-commit-count">{statsCount}</span>}
+              </button>
+              {repo.web_url && (
                 <a
-                  className="repo-history-link"
+                  className="repo-history-link repo-history-external"
                   href={repo.web_url}
                   target="_blank"
                   rel="noreferrer noopener"
+                  title={t('project.openForge')}
                 >
                   <Icon name="globe" size={12} />
-                  {t('project.viewCommits')}
                 </a>
-              ) : (
-                <span className="repo-authors">
-                  {t('project.authorCount', { count: authors })}
-                </span>
               )}
             </div>
+            {open && <RepoCommitList repoId={repo.id} repoName={repo.path.split('/').slice(-2).join('/')} />}
           </div>
         )
       })}
