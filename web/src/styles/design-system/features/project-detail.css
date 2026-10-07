@@ -160,62 +160,12 @@
   gap: 16px;
 }
 
-.repo-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.repo-item {
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-sm);
-  padding: 14px 16px;
-}
-
-.repo-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.repo-path {
-  font-size: 12px;
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-  word-break: break-all;
-}
-
 .repo-totals {
   display: flex;
   gap: 10px;
   font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono);
-}
-
-.repo-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-.repo-stats .stat-tag {
-  font-size: 11px;
-  font-family: var(--font-mono);
-  color: var(--text-secondary);
-}
-
-.repo-stats .stat-tag.more {
-  color: var(--text-tertiary);
-  font-style: italic;
 }
 
 @media (max-width: 900px) {
@@ -436,51 +386,6 @@
   font-size: 12px;
 }
 
-/* --- Activity Stats --- */
-.overview-activity {
-  margin-top: 20px;
-}
-
-.activity-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.activity-stat {
-  display: flex;
-  flex-direction: column;
-  padding: 10px 14px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  min-width: 90px;
-}
-
-.activity-stat:last-child {
-  flex: 1;
-}
-
-.activity-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--accent);
-  line-height: 1.2;
-}
-
-.activity-value-sm {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--accent);
-  font-family: var(--font-mono);
-}
-
-.activity-label {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-top: 2px;
-}
-
 /* --- Chart --- */
 .chart-container {
   height: 320px;
@@ -656,166 +561,142 @@
 }
 
 /* ============================================
-   Commits tab T-layout
+   Commits tab
    ============================================ */
 
-/* Horizontal bar: the two bounded visuals side by side under one scope
-   toggle. The stem below splits into variable-length columns — the repo
-   breakdown grows with repo count, the activity/feed block with history.
-
-   Both bands share ONE column template and ONE gap. They used to declare
-   the same 3fr/2fr but with different gaps (12 vs 16) inside containers of
-   different width, so the vertical seam between the two columns landed at
-   x=827 in the top band and x=830 in the one below — a 3px jog plus an 18px
-   width mismatch, visible as the cards not lining up when scanned
-   vertically. Same template + same gap + same width makes the seam exact. */
-.commit-visuals,
-.commits-columns {
-  display: grid;
-  grid-template-columns: var(--commits-col-template, minmax(0, 3fr) minmax(0, 2fr));
-  gap: var(--commits-col-gap, 16px);
-  /* stretch, not start: the two visuals are one band and must share a
-     baseline. With `start` each card sized to its own content, so the pair
-     was 39px apart when both were empty and 49px apart the other way once
-     the trend chart had data — the eye reads a misaligned bottom edge as a
-     rendering bug. */
-  align-items: stretch;
-}
-
-.commit-visual {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: 24px;
-  min-width: 0;
+/* The four activity numbers ride in the trend card's header instead of a
+   separate overview band: they describe the same window the chart plots, so
+   as loose text they cannot be mistaken for a second card's content. */
+.trend-metrics {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 14px;
 }
 
-/* The two bounded visuals ARE the cards in this band — no wrapping
-   .detail-section around them. The wrapper's 24px padding made this grid
-   50px narrower than .commits-columns below (which has no wrapper), so the
-   two columns could never line up no matter how the fr/gap were tuned. */
-.commits-tab > .commit-visuals {
-  margin-bottom: 16px;
+.trend-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
 }
 
-.commit-visual .section-header {
+.trend-metric-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.trend-metric-value {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+/* Repo filter chips above the log: 全部 + one per repository. */
+.commit-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-bottom: 14px;
 }
 
-/* Both visuals are sibling cards now, so both titles are h2 in a
-   .section-header — the trend chart used an h4.overview-sub-title and read
-   as a caption under the heatmap's heading rather than as its equal. */
-.commit-visual h2 {
-  margin-bottom: 0;
+.commit-chip {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
 }
 
-/* The body fills the card so an empty state is centred in the space the
-   chart would have used, instead of sitting at a fixed 120px in a taller
-   card. Both visuals get the same treatment so their empty states line up
-   with each other, not just their outer edges. */
-.commit-visual .heatmap-simple,
-.commit-visual .empty-section {
-  flex: 1;
+.commit-chip:hover {
+  color: var(--accent);
 }
 
-/* The empty state replaces the month bands, so without this it collapses the
-   card to ~199px while the populated 30-day view shows 343px — the row jumped
-   on every scope click. Match the bands' box so the height is scope-invariant:
-   30px stats strip + 178px band area. */
-/* The empty card and the populated card must be the same height, or the row
-   jumps on every scope click. Measured difference was 77px = the stats strip
-   (30) + legend (18) + two flex gaps, none of which the empty state renders.
-   The empty block is a flex:1 child, so padding-bottom is the reliable way to
-   reserve that space — min-height alone loses to the flex basis. */
-.commit-visual-heat .heatmap-simple.heatmap-empty-state {
+.commit-chip-active,
+.commit-chip-active:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* Selected repo: path + tools + line totals. The per-repo details live here
+   in one row instead of repeating under every entry of a flat repo list. */
+.commit-repo-bar {
   display: flex;
-  flex-direction: column;
-  /* The base rule sets min-height:120px, which capped the card at 222px and
-     made it jump against the populated 584px. This variant sizes itself by its
-     body (below), so the base min-height has to go — padding stays so the
-     message is not flush to the card edge. */
-  min-height: 0;
-  padding-bottom: 24px;
-}
-
-/* Occupies the same 403px the month bands do, so the card below it (legend in
-   the populated case) starts at the same y. */
-/* Stands in for the populated layout's stats strip (label + value, 30px).
-   A window with no activity has no numbers, but the row must still occupy
-   its space or the card measures 37px short and the pair jumps. */
-.commit-visual-heat .heatmap-stats-spacer {
-  flex: 0 0 auto;
-  /* 37px, not 30: the populated layout also has the 7px flex gap between
-     the stats strip and the bands below it. */
-  height: 37px;
-}
-
-.commit-visual-heat .heatmap-empty-body {
-  /* Fixed, not flex:1 — the parent is a flex child whose basis would
-     otherwise shrink this to the message's own height (102px observed) and
-     the card collapsed to 209px. */
-  flex: 0 0 403px;
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 8px;
+  min-width: 0;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
 }
 
-/* ============================================================
-   Heatmap, commits tab. All of it lives here because these rules
-   only make sense against a card of this specific width — the
-   dashboard's heatmap card is narrower and must keep the plain
-   .heatmap-simple behaviour.
-   ============================================================ */
-
-/* Fixed height so 近7天 / 近30天 / 全部 produce the SAME card height.
-   Content-driven height made the row visibly resize on every scope
-   click, which reads as a glitch: 199px empty, 357px populated, and
-   1502px once the year of month bands was left unbounded.
-
-   Four bands is what a half-height card can show; the rest scroll. */
-.commit-visual-heat .heatmap-month-bands {
-  height: 403px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  align-content: flex-start;
-  /* Room for the scrollbar so it does not sit on top of the last cells. */
-  padding-right: 4px;
+.commit-repo-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
 }
 
-/* Reserves the legend row the populated layout has below the bands, so
-   the two card variants end at the same y. Invisible and inert. */
-.commit-visual-heat .heatmap-legend-spacer {
-  flex: 0 0 auto;
-  height: 18px;
+/* Repo label on a row of the merged timeline. Rendered as a button when the
+   repo is known — clicking narrows to that repo's log. */
+.commit-repo {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
 }
 
-/* The stats strip above the bands must not be pushed around by the fixed
-   height; it is the one part whose content varies with the window. */
-.commit-visual-heat .heatmap-stats {
-  min-height: 30px;
+.commit-repo-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  cursor: pointer;
+  transition: color 0.12s;
 }
 
-/* Bounded trend canvas: the shared canvas height was tuned for a full-width
-   column; in a side-by-side band it stays readable but must not stretch the
-   row. */
-.commit-visual-trend .chart-container {
-  height: 190px;
+.commit-repo-btn:hover {
+  color: var(--accent);
+  text-decoration: underline;
 }
 
-@media (max-width: 900px) {
-  .commit-visuals,
-  .commits-columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.commit-log-status {
+  padding: 6px 2px;
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
-/* Repo rows: enterable — tools sit inline on the header, "more" is a real
-   button that expands the full per-author list. */
+.commit-log-error {
+  color: var(--danger);
+}
+
+.commit-log-foot {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.commit-log-cap {
+  opacity: 0.75;
+}
+
+/* Repo actions (open editor / copy path / open forge) sit inline in the
+   selected-repo bar above the commit log. */
 .repo-tools {
   display: flex;
   align-items: center;
@@ -849,107 +730,6 @@
   background: color-mix(in srgb, var(--success) 14%, transparent);
 }
 
-.repo-more-btn {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.repo-more-btn:hover {
-  color: var(--accent);
-}
-
-/* Repo row footer: the commit-history link (or, with no browsable remote,
-   a quiet contributor count). Replaces the per-author stat chips, which
-   were aggregates with no action attached. */
-.repo-foot {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 5px;
-  min-height: 18px;
-}
-
-.repo-history-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  text-decoration: none;
-  padding: 2px 6px 2px 4px;
-  border-radius: var(--radius-sm);
-  transition: color 0.12s, background 0.12s;
-}
-
-.repo-history-link:hover {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
-/* Commit list, expanded inline under a repo row. Reads from git on demand
-   (daily_stats has no message or SHA), so it also works for a repo with no
-   forge remote. */
-.repo-history-link {
-  border: none;
-  background: transparent;
-  font-family: inherit;
-}
-
-.repo-history-external {
-  padding: 2px 4px;
-}
-
-.repo-commit-count {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  background: var(--bg-tertiary);
-  border-radius: 8px;
-  padding: 0 5px;
-}
-
-.repo-commits {
-  margin: 6px 0 2px 0;
-  padding: 8px 10px;
-  border-left: 2px solid var(--border-subtle);
-  background: var(--bg-tertiary);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.repo-commits-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-bottom: 4px;
-}
-
-.repo-commits-cap {
-  font-size: 10px;
-  opacity: 0.75;
-}
-
-.repo-commits-status {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  padding: 6px 2px;
-}
-
-.repo-commits-error {
-  color: var(--danger);
-}
-
-.repo-commits-repo {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  opacity: 0.7;
-  margin-top: 4px;
-  overflow-wrap: anywhere;
-}
-
 /* The SHA chip: monospace, click-to-copy. */
 .commit-hash {
   display: inline-flex;
@@ -974,11 +754,6 @@
 .commit-hash-copied:hover {
   color: var(--success);
   border-color: var(--success);
-}
-
-.repo-authors {
-  font-size: 11px;
-  color: var(--text-tertiary);
 }
 
 /* AI ask styles (.ai-hint / .ai-actions / .ai-answer / .ai-hint-config /

@@ -116,6 +116,43 @@ func (s *Service) GetRepoCommits(repoID int64, limit int) ([]stats.RecentCommit,
 	return commits, nil
 }
 
+// GetProjectCommits returns a project's merged commit log across all its
+// repositories, newest first. Same on-demand git read as GetRepoCommits; the
+// author filter is empty (all authors) so the merged "全部" view and a single
+// repo view agree on what they show.
+func (s *Service) GetProjectCommits(projectID int64, limit int) ([]stats.RecentCommit, error) {
+	repos, err := db.GetRepositoriesByProjectID(s.db, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("load repositories for project %d: %w", projectID, err)
+	}
+	// An empty grouping returns an empty log; only a bogus project id is an
+	// error. GetRepositoriesByProjectID returns an empty slice (no error) for
+	// a missing project, so existence needs its own check.
+	if len(repos) == 0 {
+		if _, err := db.GetProjectByID(s.db, projectID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, ErrProjectNotFound
+			}
+			return nil, fmt.Errorf("load project %d: %w", projectID, err)
+		}
+	}
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	paths := make([]string, 0, len(repos))
+	for _, r := range repos {
+		paths = append(paths, r.Path)
+	}
+	commits, err := stats.GetRecentCommits(paths, "", limit)
+	if err != nil {
+		return nil, err
+	}
+	if commits == nil {
+		return []stats.RecentCommit{}, nil
+	}
+	return commits, nil
+}
+
 func (s *Service) UpdateProjectLevel(id int64, direction string) (*LevelUpdateResult, error) {
 	var newLevel int
 	var err error

@@ -12,21 +12,6 @@
   margin-bottom: 16px;
 }
 
-/* Same component, hosted inside .commit-visual (the commits tab). That card
-   already provides the border, background, radius and shadow, so keeping the
-   standalone chrome here produced a bordered box nested in a bordered box —
-   visible as a stray frame inside the heatmap card, most obvious in the
-   empty state. Drop the shell and the bottom margin; the inner padding stays
-   for the breathing room it provides. */
-.commit-visual-heat .heatmap-simple {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 0;
-  margin-bottom: 0;
-}
-
 .heatmap-simple .heatmap-header {
   margin-bottom: 10px;
 }
@@ -47,45 +32,10 @@
   font-size: 14px;
 }
 
-/* Month bands (simple variant). The "全部" window is ~53 week-columns; as one
-   row they were compressed into the card and every cell came out a 2px sliver.
-   Grouped by month each band is 4-6 columns — a shape that fits, scrolls
-   horizontally inside its own row, and that a reader can name ("2026-09")
-   instead of squinting at an anonymous smear. */
-.heatmap-month-bands {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.heatmap-month-band {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.heatmap-month-band-label {
-  flex: 0 0 auto;
-  width: 44px;
-  font-size: 10px;
-  color: var(--text-tertiary);
-  font-variant-numeric: tabular-nums;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-/* Marks a band whose first column holds days from the previous month. */
-.heatmap-month-band-cont {
-  font-size: 9px;
-  opacity: 0.7;
-}
-
 .heatmap-grid-simple {
   display: flex;
   gap: 3px;
-  /* Horizontal drag for the rare band wider than the card. */
+  /* Horizontal drag below ~53 × 14px, where the row can no longer fit. */
   overflow-x: auto;
   scrollbar-width: thin;
   padding-bottom: 2px;
@@ -98,6 +48,18 @@
   flex-direction: column;
   gap: 3px;
   flex-shrink: 0;
+}
+
+/* Year layout (dashboard): one row of 53 week-columns fills the card width.
+   Columns share the width evenly when there is room, and the row scrolls
+   horizontally below ~53 × 14px instead of squashing every cell into a
+   sliver. Without this the default flex-shrink: 0 clamped cells to their
+   natural 11px and the row always overflowed even on wide cards. */
+.heatmap-grid-year .heatmap-week-simple {
+  flex: 1 1 0;
+  min-width: 14px; /* one 11px cell + the 3px column gap */
+  justify-content: center;
+  align-items: center;
 }
 
 .heatmap-cell-simple {
@@ -156,6 +118,16 @@
   text-align: center;
   color: var(--text-tertiary);
   font-size: 12px;
+}
+
+/* Stack + centre the empty state's message and widen buttons. The centring
+   parent is .heatmap-empty-state (project-detail.css); without this the two
+   children are centred as a row and read as one run-on line. */
+.heatmap-empty-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 /* --- Full variant --- */

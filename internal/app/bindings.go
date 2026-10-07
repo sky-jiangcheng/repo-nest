@@ -23,7 +23,8 @@ import (
 //   UpdateNote/UpdateNoteFull/UpdateNoteMeta→notes_update.
 //
 // Desktop-only (no MCP equivalent by design — GUI state, admin, or file UX):
-//   Projects: UpdateProjectLevel, ToggleStar, RefreshProjectHistory
+//   Projects: UpdateProjectLevel, ToggleStar, RefreshProjectHistory,
+//             GetRepoCommits, GetProjectCommits
 //   Scan: GetScanStatus (progress polling)
 //   Dashboard: GetSummary, GetHeatmapData, GetStatusBar, GetTodoCounts, GetNoteCounts
 //   Notes lifecycle: DeleteNote, PinNote, MoveNote, ListNoteVersions,
@@ -62,6 +63,12 @@ func (a *App) GetProjectStats(id int64, date string) []domain.DailyStat {
 // so the list is read from git on demand and works without a forge remote.
 func (a *App) GetRepoCommits(repoID int64, limit int) ([]stats.RecentCommit, error) {
 	return a.svc.GetRepoCommits(repoID, limit)
+}
+
+// GetProjectCommits returns the merged cross-repo commit log for a project,
+// newest first. Backs the commits tab's unified timeline.
+func (a *App) GetProjectCommits(projectID int64, limit int) ([]stats.RecentCommit, error) {
+	return a.svc.GetProjectCommits(projectID, limit)
 }
 
 // UpdateProjectLevel adjusts a project's grouping level up or down.

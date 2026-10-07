@@ -60,6 +60,15 @@ export function getRepoCommits(repoId: number, limit = 50): Promise<RepoCommit[]
   return call<RepoCommit[]>({ method: 'GetRepoCommits', args: [repoId, limit], path: `/repos/${repoId}/commits` })
 }
 
+/**
+ * A project's merged commit log across all its repositories, newest first.
+ * Same on-demand git read as getRepoCommits, all authors, so the merged and
+ * per-repo views agree.
+ */
+export function getProjectCommits(projectId: number, limit = 50): Promise<RepoCommit[]> {
+  return call<RepoCommit[]>({ method: 'GetProjectCommits', args: [projectId, limit], path: `/projects/${projectId}/commits` })
+}
+
 export function getProjectStats(id: number, date?: string): Promise<DailyStat[]> {
   const params = date ? `?date=${date}` : ''
   return call<DailyStat[]>({

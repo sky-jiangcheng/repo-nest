@@ -2,16 +2,14 @@ import { useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import TrendChart from '../components/TrendChart'
-import Heatmap from '../components/Heatmap'
 import StatusBar from '../components/StatusBar'
 import ScopeToggle from '../components/ScopeToggle'
 import ProjectOverviewSection from './project/ProjectOverviewSection'
-import ProjectCommitsSection from './project/ProjectCommitsSection'
+import ProjectCommitLog from './project/ProjectCommitLog'
 import ErrorBanner from '../components/ErrorBanner'
 import Icon from '../components/Icon'
 import NoteSection from '../components/NoteSection'
 import TodoSection from '../components/TodoSection'
-import RepoBreakdown from './project/RepoBreakdown'
 import { useProjectDetail } from '../hooks/useProjectDetail'
 import { copyText } from '../utils/clipboard'
 
@@ -251,60 +249,64 @@ function ProjectDetailPage() {
           {tab === 'overview' && overview && <ProjectOverviewSection overview={overview} />}
 
           {tab === 'commits' && (
+            /* Two cards, two questions: the trend card answers "how much,
+               when" (chart plus the activity metrics folded into its header),
+               the log card answers "what exactly happened" (one timeline with
+               a repo filter). The heatmap card that used to hold half the top
+               band duplicated the dashboard's heatmap and pushed both
+               answers below the fold. */
             <div className="commits-tab">
-              {/* T-shape: the horizontal bar is the two bounded visuals sharing
-                  one scope toggle; the stem below splits into variable-length
-                  columns (repo breakdown grows with repo count, the commit
-                  feed grows with history) instead of one long scroll.
-
-                  No .detail-section wrapper here on purpose: the two visuals
-                  ARE the cards. A wrapper's 24px padding made this grid 50px
-                  narrower than .commits-columns below, so the column seam
-                  could not line up between the two bands. Each visual carries
-                  its own header instead. */}
-              <div className="commit-visuals">
-                <div className="commit-visual commit-visual-heat">
-                  <div className="section-header">
-                    <h2>{t('heatmap.title')}</h2>
-                    <ScopeToggle scope={scope} onChange={setScope} />
-                  </div>
-                  <Heatmap projectId={Number(id)} scope={scope} onScopeChange={setScope} />
-                </div>
-                <div className="commit-visual commit-visual-trend">
-                  <div className="section-header">
-                    <h2>{t('project.trendTitle')}</h2>
-                  </div>
-                  {trendData.labels.length > 0 ? (
-                    <TrendChart labels={trendData.labels} datasets={trendData.datasets} />
-                  ) : (
-                    <div className="empty-section">
-                      {t('project.noDataInRange')}
-                      {scope !== 'all' && (
-                        <div className="empty-actions">
-                          {scope === 'week' && (
-                            <button className="btn btn-secondary btn-sm" onClick={() => setScope('month')}>
-                              {t('heatmap.show30d')}
-                            </button>
-                          )}
-                          <button className="btn btn-secondary btn-sm" onClick={() => setScope('all')}>
-                            {t('heatmap.showAll')}
-                          </button>
-                        </div>
-                      )}
+              <div className="detail-section commits-trend">
+                <div className="section-header">
+                  <h2>{t('project.trendTitle')}</h2>
+                  {overview?.activity && (
+                    <div className="trend-metrics">
+                      <span className="trend-metric">
+                        <span className="trend-metric-label">{t('project.totalCommits')}</span>
+                        <span className="trend-metric-value">{overview.activity.total_commits}</span>
+                      </span>
+                      <span className="trend-metric">
+                        <span className="trend-metric-label">{t('project.last30d')}</span>
+                        <span className="trend-metric-value">{overview.activity.commit_rate_30d}</span>
+                      </span>
+                      <span className="trend-metric">
+                        <span className="trend-metric-label">{t('project.activeDays90')}</span>
+                        <span className="trend-metric-value">{overview.activity.active_days}</span>
+                      </span>
+                      <span className="trend-metric">
+                        <span className="trend-metric-label">{t('project.activeMonths')}</span>
+                        <span className="trend-metric-value">{overview.activity.active_months}</span>
+                      </span>
                     </div>
                   )}
+                  <ScopeToggle scope={scope} onChange={setScope} />
                 </div>
+                {trendData.labels.length > 0 ? (
+                  <TrendChart labels={trendData.labels} datasets={trendData.datasets} />
+                ) : (
+                  <div className="empty-section">
+                    {t('project.noDataInRange')}
+                    {scope !== 'all' && (
+                      <div className="empty-actions">
+                        {scope === 'week' && (
+                          <button className="btn btn-secondary btn-sm" onClick={() => setScope('month')}>
+                            {t('heatmap.show30d')}
+                          </button>
+                        )}
+                        <button className="btn btn-secondary btn-sm" onClick={() => setScope('all')}>
+                          {t('heatmap.showAll')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div className="commits-columns">
-                <div className="detail-section">
-                  <div className="section-header">
-                    <h2>{t('project.subRepos')} ({project.repos?.length || 0})</h2>
-                  </div>
-                  <RepoBreakdown repos={project.repos || []} />
+              <div className="detail-section">
+                <div className="section-header">
+                  <h2>{t('project.commitLog')}</h2>
                 </div>
-
-                {overview && <ProjectCommitsSection overview={overview} />}
+                <ProjectCommitLog projectId={Number(id)} repos={project.repos || []} />
               </div>
             </div>
           )}

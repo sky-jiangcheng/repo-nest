@@ -360,17 +360,15 @@
     "tab_todos": "Todos",
     "openEditor": "Open in VS Code",
     "copyPath": "Copy path",
-    "showLess": "Show less",
     "copied": "Copied",
     "copyFailed": "Copy failed",
-    "viewCommits": "View commit history",
-    "viewCommits": "Commits",
     "openForge": "Open on the Git platform",
     "noCommits": "No commits",
     "commitCount": "{{count}} commits",
     "commitsCapped": "showing the latest {{limit}}",
     "copyHash": "Copy commit SHA",
-    "authorCount": "{{count}} contributors"
+    "commitLog": "Commit log",
+    "filterRepoHint": "Click to filter by this repo"
   },
   "common": {
     "unknownError": "Unknown error",

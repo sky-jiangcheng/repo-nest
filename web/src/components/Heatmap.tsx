@@ -53,10 +53,6 @@ function generateGrid(days: HeatmapDay[], daysToShow: number) {
 
   const weeks = Math.ceil((daysToShow + startDay) / 7)
   const grid: (HeatmapDay | null)[][] = []
-  // The date each week-column STARTS on. Returned alongside the grid because
-  // splitting by month needs it: a week with no activity is all nulls and
-  // carries no date of its own, yet it still belongs to a month.
-  const weekStarts: string[] = []
 
   for (let w = 0; w < weeks; w++) {
     const week: (HeatmapDay | null)[] = []
@@ -65,59 +61,11 @@ function generateGrid(days: HeatmapDay[], daysToShow: number) {
       date.setDate(date.getDate() + w * 7 + d)
       const key = toDateStr(date)
       week.push(dayMap.get(key) || null)
-      if (d === 0) weekStarts.push(key)
     }
     grid.push(week)
   }
 
-  return { grid, weekStarts }
-}
-
-interface MonthBlock {
-  /** YYYY-MM: React key and the source for the localized heading. */
-  key: string
-  weeks: (HeatmapDay | null)[][]
-  /**
-   * The block does not start on day 1, so its first column holds days from
-   * the previous month. The UI says so instead of silently drawing a stub
-   * week that looks like missing data.
-   */
-  continued: boolean
-}
-
-/**
- * Groups week columns by calendar month.
- *
- * A "全部" window is ~53 columns; as one row they were compressed into a 480px
- * card and every cell came out a sliver. Per month each block is 4-6 columns —
- * a shape that fits, scrolls horizontally inside its own band, and that a
- * reader can name ("2026-09") instead of squinting at an anonymous smear.
- */
-function splitByMonth(grid: (HeatmapDay | null)[][], weekStarts: string[]): MonthBlock[] {
-  const blocks: MonthBlock[] = []
-  let cur: MonthBlock | null = null
-
-  grid.forEach((week, wi) => {
-    // Anchor on the LAST day of the column that carries data, else the column
-    // start: a column spanning a month boundary belongs to the month its bulk
-    // sits in, which is where a reader would file it.
-    const lastWithData = [...week].reverse().find((d): d is HeatmapDay => d !== null)
-    const key = (lastWithData?.date ?? weekStarts[wi]).slice(0, 7)
-    if (!cur || cur.key !== key) {
-      if (cur) blocks.push(cur)
-      cur = { key, weeks: [], continued: false }
-    }
-    cur.weeks.push(week)
-  })
-  if (cur) blocks.push(cur)
-
-  // A block whose first column does not start on day 1 is showing days that
-  // belong to the previous month.
-  for (const b of blocks) {
-    const firstOfMonth = b.weeks[0].findIndex((d) => d !== null)
-    b.continued = firstOfMonth > 0
-  }
-  return blocks
+  return grid
 }
 
 export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onScopeChange }: Props) {
@@ -134,8 +82,7 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onSc
     return () => { cancelled = true }
   }, [projectId])
 
-  const { grid, weekStarts } = useMemo(() => generateGrid(days, SCOPE_DAYS[scope]), [days, scope])
-  const monthBlocks = useMemo(() => splitByMonth(grid, weekStarts), [grid, weekStarts])
+  const grid = useMemo(() => generateGrid(days, SCOPE_DAYS[scope]), [days, scope])
   const stats = useMemo(() => {
     // Stats reflect the visible window only. Dates are YYYY-MM-DD, so a
     // lexicographic range check is exact and avoids per-day Date parsing.
@@ -153,6 +100,27 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onSc
       deleted: visible.reduce((sum, d) => sum + (d.lines_deleted || 0), 0),
     }
   }, [days, scope])
+
+  const renderCell = (day: HeatmapDay | null, key: number) => {
+    const clickable = day && onDayClick
+    return (
+      <div
+        key={key}
+        className={`heatmap-cell-simple level-${getLevel(day)}`}
+        role={clickable ? 'button' : undefined}
+        tabIndex={clickable ? 0 : undefined}
+        aria-label={day ? `${day.date}: +${day.lines_added} -${day.lines_deleted}` : t('heatmap.noData')}
+        title={day ? `${day.date}: +${day.lines_added} -${day.lines_deleted}` : ''}
+        onClick={clickable ? () => onDayClick!(day!.date) : undefined}
+        onKeyDown={clickable ? (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onDayClick!(day!.date)
+          }
+        } : undefined}
+      />
+    )
+  }
 
   if (loading) {
     return (
@@ -179,11 +147,6 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onSc
     const canWiden = onScopeChange && scope !== 'all' && activeSince(364)
     return (
       <div className="heatmap-simple heatmap-empty-state">
-        {/* The stats strip the populated layout renders above the bands. A
-            window with no activity has no numbers to show, but the row must
-            still be there or the card is 37px shorter and the pair jumps on
-            every scope click. aria-hidden: it carries no information. */}
-        <div className="heatmap-stats-spacer" aria-hidden="true" />
         <div className="heatmap-empty-body">
           <p className="empty-hint">{t('heatmap.noActivityInRange')}</p>
           {canWiden && (
@@ -199,7 +162,6 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onSc
             </div>
           )}
         </div>
-        <div className="heatmap-legend-spacer" aria-hidden="true" />
       </div>
     )
   }
@@ -227,44 +189,13 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onSc
         </div>
       </div>
 
-      {/* One band per calendar month, each scrolling horizontally on its own.
-          A single row could not work: the "全部" window is ~53 week-columns
-          and squeezing them into one card-wide row turned every cell into a
-          2px sliver. Per month each band is 4-6 columns, so cells keep their
-          size and the reader can tell which month they are looking at. */}
-      <div className="heatmap-month-bands" role="grid" aria-label={t('heatmap.title')}>
-        {monthBlocks.map((block) => (
-          <div key={block.key} className="heatmap-month-band">
-            <div className="heatmap-month-band-label">
-              {block.key.slice(0, 4)}-{block.key.slice(5)}
-              {block.continued && <span className="heatmap-month-band-cont">↤</span>}
-            </div>
-            <div className="heatmap-grid-simple" role="row">
-              {block.weeks.map((week, wi) => (
-                <div key={wi} className="heatmap-week-simple" role="gridcolumn">
-                  {week.map((day, di) => {
-                    const clickable = day && onDayClick
-                    return (
-                      <div
-                        key={di}
-                        className={`heatmap-cell-simple level-${getLevel(day)}`}
-                        role={clickable ? 'button' : undefined}
-                        tabIndex={clickable ? 0 : undefined}
-                        aria-label={day ? `${day.date}: +${day.lines_added} -${day.lines_deleted}` : t('heatmap.noData')}
-                        title={day ? `${day.date}: +${day.lines_added} -${day.lines_deleted}` : ''}
-                        onClick={clickable ? () => onDayClick!(day!.date) : undefined}
-                        onKeyDown={clickable ? (e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            onDayClick!(day!.date)
-                          }
-                        } : undefined}
-                      />
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
+      {/* One row of week-columns sharing the card width. Columns flex to fill
+          when the card is wide enough; below ~53×14px the row scrolls
+          horizontally instead of squeezing cells into slivers. */}
+      <div className="heatmap-grid-simple heatmap-grid-year" role="grid" aria-label={t('heatmap.title')}>
+        {grid.map((week, wi) => (
+          <div key={wi} className="heatmap-week-simple" role="gridcolumn">
+            {week.map((day, di) => renderCell(day, di))}
           </div>
         ))}
       </div>
