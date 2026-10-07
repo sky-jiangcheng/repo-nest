@@ -240,10 +240,10 @@
 
 - [x] **Codex 源已落地**：`internal/importers/codex`（流式解析 `~/.codex/sessions/**/rollout-*.jsonl`，取 cwd→项目匹配 + 首次指令 + 最近回复成一条 `log` 笔记），复用 `plugin.KnowledgeImporter`/`upsertDoc`；抽公共件 `internal/importers/memsrc`（`MatchProject`/`ReadCapped`/`LastPathSegment`），claude 改为委托（测试不破）。**隐私门**：新增 `RegisterSourceManual` + `sourceEntry.auto`，`ImportAll`（启动自动导入）只跑 auto 源、Codex 经设置里 sources 列表显式一键触发（ADR-0011 决策 4）。golden-style 测试 + runtime 门控测试
 - [x] **OpenCode 源已落地**（`internal/importers/opencode`，opt-in MANUAL）：真机核验 `~/.local/share/opencode/storage/session/<hash>/ses_*.json`（自带 title/summary/directory，已是摘要级），`directory` 末段→项目匹配；golden-style 测试 + 接口断言
-- [ ] Cursor 源（**真机核验后暂缓**）：`state.vscdb` 正文散在 `bubbleId` blob + 版本化 headers + ProseMirror，且项目归属在 DB 内缺失、本机仅空 draft 无从校验 → 低 ROI 高脆弱，按「不背未公开易碎格式债」暂缓；有稳定真实样例再立项
+- [ ] Cursor 源（**原判据已被本机实测推翻，改为待产品决策**）：原记录称「正文散在 `bubbleId` blob、库内无项目路径、本机仅空 draft 无从校验」。2026-10-07 只读复核：真实库在 `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`（7.1 MB），**此前查的 `~/.cursor/state.vscdb` 不是 macOS 的落点**——"仅空 draft"是找错路径得出的结论。实测有 71 条 `bubbleId:<composerId>:<bubbleId>` 行共 380 KB，且 `json_valid=1` **明文可解析**，顶层含 `text` / `type` / `createdAt` / `workspaceUris`（即正文不必去逆 `composerData` 里那个 6/6 非空的 `blobEncryptionKey`）；项目归属另有 `composerHeaders(composerId, workspaceId, createdAt, lastUpdatedAt, isSubagent, isArchived)` 表可 join。所以「无正文 / 无项目路径 / 无样例」三条判据全部不成立。仍然成立的两条：① 格式未公开且带 `_v` 版本位、随 Cursor 版本漂移，属「不背未公开易碎格式债」的原政策范围；② 本机有效语料只有 1 个真会话（148 KB）+ 5 个短 composer，验证面极窄。→ 需要决策（做 / 不做 / 只导 headers 不碰正文），不再是技术阻碍
 - [x] **OpenClaw 源已落地**（`internal/importers/openclaw`，opt-in MANUAL）：allowlist 到 `~/.openclaw-autoclaw/workspace/*.md` 单层非递归（parent 含私钥/vault，绝不触碰；有 allowlist 单测），全局记忆经 `openclaw_project` 配置定向（未设→skip）；「只做 2.0」＝按当前布局
 - [x] **Hermes(curated) 源已落地**（`internal/importers/hermes`，opt-in MANUAL）：**Nous Research 独立产品，与 OpenClaw 两家**（早先误判已更正）。官网文档核验 root `~/.hermes/`（`$HERMES_HOME` 覆盖），allowlist 到 `memories/{MEMORY,USER}.md`（`.env`/`mcp-tokens`/`state.db` 绝不读），`hermes_project` 配置定向
-- [ ] Hermes sessions（`~/.hermes/sessions/` + `state.db`）未导入：schema 无文档、本机不可核验 → 待真实样例/官方 schema 再实现（不猜活格式）
+- [ ] Hermes sessions（`~/.hermes/sessions/` + `state.db`）未导入：2026-10-07 复核，本机**完全没有** `~/.hermes`，无从校验；上游 `NousResearch/hermes-agent` 源码里有 `hermes_cli/foreign_sessions.py`（读 codex 等**别人**的会话），但 Hermes 自身会话落盘格式无公开文档。判据从「schema 无文档」更正为「无文档**且**无本机样例」——保持待真实样例，不猜活格式
 
 ### M3: 语义检索 → [ADR-0012](docs/adr/0012-semantic-search.md)
 
@@ -272,7 +272,7 @@
 
 ### M6: LLM Wiki 知识编译层 → [ADR-0014](docs/adr/0014-llm-wiki-knowledge-compiler.md)
 
-- [ ] **W0 前置隐私门（阻塞 W3）**：`auto_import` 现默认 `"1"`（`internal/db/migrate.go:452`）→ 改默认关 + 逐源显式开。迁移**只改默认值、不得静默关掉用户已显式开启的源**，并补迁移测试
+- [ ] **W0 前置隐私门（阻塞 W3）**：`auto_import` 现默认 `"1"`（`internal/db/migrate.go:452-466`）→ 目标是默认关 + 逐源显式开。**本项按原写法不可实现，先记录发现**：`insertDefaults` 是用 `INSERT OR IGNORE` 把 `auto_import='1'` 作为一行**写进** `app_config` 的，所以每一个既有数据库里都存在一条显式行——「只改默认值、不得静默关掉用户已显式开启的」在数据上无法区分，因为默认与显式长得一模一样。本机实测即证：`~/Library/Application Support/reponest/dashboard.db` 里 `auto_import|1`、`schema_version|13`，其余敏感键（`semantic_search` / `claude_session_capture`）根本没有行＝默认关，唯独这一条被种子写成了"看起来像用户选的"。三条出路：(a) 只改新库默认、老库原样——零惊喜但隐私修复只覆盖新安装；(b) 一次性迁移把老库也归零——姿态最硬，代价是对从未主动开启过的老用户表现为"自动导入突然停了"；(c) 保留全局 `auto_import` 语义、把唯一的自动源 `claude` 降为手动并新增 `auto_import_claude` 显式键——逐源最清晰，对默认人群的实际观感等同 (b)。三条都要配迁移测试，且 (b)/(c) 需要升级提示文案（设置页/CHANGELOG 告知"以前自动、现在要显式开"）
 - [ ] **W1 结构成图（不含任何 LLM 调用）**：`wiki_pages`（entity / concept / source / synthesis 四类）+ `page_links`（双向可查）+ note↔repository 关联。迁移必须**可逆**并带测试（参照 `migrate_fts_repair_test` 的严格度）；「四类够不够（是否加 question / decision）」在本步给结论并回填 ADR-0014 待决项
 - [ ] **W1b 单向导出旁路**：`reponest wiki export` 渲染 md 文件树 + YAML frontmatter + wikilink + 导出清单，用 Obsidian graph view 反向验证结构是否自然。**刻意不做双向同步**（ADR-0014 决策 2：两个写入者会让 `note_versions` / FTS5 / 向量索引全部重做）
 - [ ] **W2 AskAI 取证改造（最高 ROI，先于生成端）**：读 index → FTS5 + 向量 RRF 选页 → 读页 → **带引用**作答 → 好答案一键回档成新页；补流式；上下文预算改为「条数 / 字符 / 超时」三重封顶，替掉 `internal/service/ai.go:431` 的固定 10 条 × 500 字节。**完成判据 = 过 `cmd/abeval` 门**（真实标注 query 集 + Recall@k / NDCG@k delta），不接受"感觉变好了"
