@@ -1,16 +1,22 @@
 // Package vectordb abstracts where note embeddings are stored and searched —
 // the M3-A "axis B" (vector store), independent of the embedding provider
-// ("axis A", hybrid.Embedder). Two implementations:
+// ("axis A", hybrid.Embedder). Backends live in a registry (see store.go) and
+// are listed by Kinds(); adding one = write a Store + Register("kind", factory),
+// with no change at any call site. Currently shipped:
 //
-//   - local  : sqlite-vec inside dashboard.db (ADR-0013 default, pure Go, same
-//     transaction as notes/FTS5).
-//   - qdrant : a remote/self-hosted Qdrant server (HTTP REST), for users who
-//     explicitly opt in (e.g. >1M vectors or multi-client sharing).
+//   - local    : sqlite-vec inside dashboard.db (ADR-0013 default, pure Go, same
+//     transaction as notes/FTS5). Always implicit — not a registry entry.
+//   - qdrant   : a remote/self-hosted Qdrant server (HTTP REST).
+//   - weaviate : a remote/self-hosted Weaviate server (HTTP REST, pre-1.24).
 //
-// Resolution falls back to local whenever the remote store is unset, fails a
-// connectivity probe, or a call errors — mirroring ADR-0012's "never make
-// search return less than before". Config lives in the service layer; this
-// package takes plain values so it stays free of the config/db-schema plumbing.
+// Both remotes are for users who explicitly opt in (e.g. >1M vectors or
+// multi-client sharing).
+//
+// Resolution falls back to local whenever the remote store is unset, is an
+// unknown kind, fails a connectivity probe, or a call errors — mirroring
+// ADR-0012's "never make search return less than before". Config lives in the
+// service layer; this package takes plain values so it stays free of the
+// config/db-schema plumbing.
 package vectordb
 
 // Store is a vector index: ensure its shape, rebuild, write one vector, and run

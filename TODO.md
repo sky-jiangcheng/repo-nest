@@ -161,8 +161,8 @@
 
 - [x] NoteSection CSS Modules 试点完成（notes.css 242→192 行，NoteSection.module.css 93 行新建）
 - [x] 第二组件 KnowledgeCard 迁移完成：卡片样式从 `knowledge.css` 迁入 `KnowledgeCard.module.css`（`kind-*` 动态类改为 `badgeByKind` 查表映射），全局仅保留共享的 `.pin-btn`（与 NoteSection 复用）与 `.markdown-body`/`.btn`；`knowledge.css` 随之收缩，`npm run build` + tsc + eslint 全绿
-- [ ] 保留全局 CSS 仅用于 reset、design tokens、跨组件基础样式
-- [ ] 逐组件迁移，每轮 sprint 处理 1-2 个组件（下一步：ProjectCard）
+- [ ] 保留全局 CSS 仅用于 reset、design tokens、跨组件基础样式——**本轮实测：这条目前是愿望不是现状**。非 module 全局 CSS 共 5,101 行，其中真正符合该描述的只有 `reset.css` + `tokens.css` + `typography.css` + `index.css` = 355 行（约 7%）；其余 4,746 行按归属仍可继续下沉：`features/` 3,071（`project-detail.css` 761、`dashboard.css` 641、`settings.css` 305、`knowledge.css` 280、`heatmap.css` 271…）、`components/` 1,276、`layouts/` 399。判据待定义清楚再收口：`components/buttons|inputs|cards|tabs` 这一层算「跨组件基础样式」（留下）还是算「可被各组件覆写的壳」（迁走）
+- [ ] 逐组件迁移，每轮 sprint 处理 1-2 个组件（下一步：ProjectCard）——**节奏前提已被证伪，需重估**：两轮试点共迁出 214 行，而同期全局 CSS 从 4,055 涨到 5,101（**+1,046**）。按 1-2 组件/轮的速率追不上新增，这条路不会自然收敛。可选：改为「按文件冻结 + 新组件一律 module.css」的增量策略，存量只在触碰时迁；或按最大三块（project-detail / dashboard / settings）集中收。定了再动，别照旧速率继续走
 
 ### P36: `knowledge.go` 进一步拆分评估（536 行）
 
@@ -253,7 +253,7 @@
 - [x] **A/B 评测门已就绪**：`internal/search/abeval`（Recall@k/NDCG@k + `Compare` delta + 单测）+ `cmd/abeval`（对活库跑 lexical vs hybrid、`GATE PASS/FAIL`、`-min-recall` 阈值；无端点则 hybrid=lexical 自然不过门）
 - [x] **向量存储选型定 + 安装引导落地（[ADR-0013](docs/adr/0013-vector-database-selection.md)）**：轴 B 默认**本地 sqlite-vec（`modernc.org/sqlite/vec` 纯 Go，校正原稿「需 CGO」之误）**；`db.VectorStoreHealthCheck` + `cmd/vector-init`（引导式：自检 vec → 建/验 vec0 → 选 embedding provider[Ollama 本地默认/远程 OpenAI/skip] → 写配置 → **指向 设置→插件** 复核+开启+重建；`semantic_search` 保持默认关）
 - [x] **远程向量库接缝已实现（Qdrant，opt-in + 自动退回本地）**：`internal/search/vectordb` `Store` 接口（`Local`＝sqlite-vec 默认 / `Qdrant`＝REST）+ `Open` 按 `vector_store*` 配置选择、不可达退回本地；`cmd/vector-init -store qdrant` 写入并探测；search_semantic 的 Rebuild/fuse 改走 `Store`；httptest 桩测 + **build-tag 门控真实冒烟（`ollamalive`/`qdrantlive`/`aelive`，本轮已在本地真 Ollama+真 Qdrant 跑通**，含全链路语义召回；CI 默认不跑）。换 Weaviate 只需再加一个实现
-- [ ] 后端改为 `vectordb.Register/Kinds` 可插拔 registry（加后端＝一实现+一行 Register，调用方零改）；候选矩阵见 ADR-0013：默认 sqlite-vec / 纯 Go 备选 chromem-go、Bleve（可连文本一起替代 FTS）/ 远程 Qdrant(已)、**Weaviate(已实现+真容器冒烟)**、Pinecone/Milvus(待)；**LanceDB/go-libsql 因 CGO 破零-CGO 前提不列默认**
+- [x] **registry 已落地（核验收口，非待办）**：`internal/search/vectordb/store.go` 已有 `registry` map + `Register(kind, factory)` + `Kinds()`（local 恒隐式）+ `Open` 三重退回（未配 / 未知 kind / 远程工厂报错或不可探测一律 local）；Weaviate 已经在 registry 里，调用方零改动。原条目描述的「改为可插拔 registry」已完成，**剩余未接后端（Pinecone/Milvus/chromem-go/Bleve）统一记在下面一条**，不重复挂账。附带修正：`vectordb.go` 包注释原写「Two implementations: local / qdrant」漏了 Weaviate，已改为三个 + registry 指路
 - [x] **OMP 导出接缝已实现（provisional）**：`service.ExportMemoryJSON` 导出 OMP 风格 Memory Object 数组（binding `App.ExportMemoryJSON` + 前端 `exportMemoryJSON` + 单测）；仅导出向
 - [ ] OMP 导入向 + 字段映射对齐（等 OMP v1 稳定）；chromem-go/Bleve（需 `go get`，本会话离线未加）、Pinecone/Milvus（需凭据/集群）按同 registry 流程待接
 - [ ] A 面向普通用户上线前：embedding 配置前端 UI（未过门前刻意不做开关）、笔记增删改增量 embed（现全量重建）、一份真实标注 query 集
@@ -267,7 +267,7 @@
 
 - [x] VS Code 扩展（唯一 IDE 扩展，一份 VSIX 覆盖 VS Code / Cursor / Windsurf 全 fork 家族）——骨架已交付 `ide/vscode/`（tsc 零错误）：命令面板 context / handoff / search + 状态栏入口 + 侧边栏笔记检索（MCP stdio 薄客户端）；余：VSIX 打包 / CI、状态栏「上次交接时间」（需服务端交接时间戳 API）
 - [ ] JetBrains 插件：缓议——独立 Kotlin/Gradle 代码库双倍维护面，待真实需求信号（issue/star）并补充 ADR 后再立项
-- [ ] 分发评估门：此后每个分发资产立项时必须回答「人在哪个界面上看见它」；仅 agent 可消费的资产需说明服务存量深度而非获客（ADR-0009 决策 5）
+- [x] 分发评估门：**本条是 ADR-0009 决策 5「传播原则」的复述，早已是正式条款**（中英两版均在：「今后每个分发资产立项时必须回答『人在哪个界面上看见它』；只有 agent 能消费、人不可见的资产，需说明其服务的是存量用户的深度而非获客」）。挂在 TODO 里永远不会被「完成」——它是约束不是待办，故不再占未勾位，判定依据指向 ADR-0009 本身
 
 ### M6: LLM Wiki 知识编译层 → [ADR-0014](docs/adr/0014-llm-wiki-knowledge-compiler.md)
 

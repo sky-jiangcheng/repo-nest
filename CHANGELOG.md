@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+### 变更
+
+- **TODO 收口 + 一处包注释修正（不改任何行为）**：核对 M3 时发现 `vectordb.Register/Kinds` 可插拔 registry **早已落地**——`internal/search/vectordb/store.go` 有 `registry` map + `Register` + `Kinds`（local 恒隐式）+ `Open` 的三重退回（未配 / 未知 kind / 远程工厂报错或探测不通一律 local），Weaviate 已在表内，调用方零改动。该待办属重复挂账，改写为已落地结论并把未接后端合并进相邻等待项，不重复计数。「分发评估门」一条则复述了 [ADR-0009](docs/adr/0009-ide-presence.md) 决策 5 里既有的正式条款（约束不是待办，挂在清单上永远不会「完成」），不再占未勾位。附带修正 `internal/search/vectordb/vectordb.go` 包注释：原文写「Two implementations: local / qdrant」，漏了已实现的 Weaviate，现为三个后端 + registry 指路
+- **P35 的推进前提被实测推翻（记录，未改代码）**：非 module 全局 CSS 现有 5,101 行，而符合「全局只保留 reset / design tokens / 跨组件基础样式」这一目标的仅 355 行（约 7%），其余 4,746 行按归属仍可下沉（`features/` 3,071、`components/` 1,276、`layouts/` 399）。两轮试点共迁出 214 行，同期全局 CSS 却从 4,055 涨到 5,101（+1,046）——「每轮 sprint 迁 1-2 个组件」的速率追不上新增，这条路不会自然收敛。两条待办已改写为带判据的版本：先定义 `components/buttons|inputs|cards|tabs` 那层算不算基础样式，再在「按文件冻结 + 新组件一律 module.css」与「集中收 `project-detail`/`dashboard`/`settings` 三大文件」之间选路
+
 ## [1.15.1] - 2026-10-07
 
 提交 tab 的一次返工：中间两版（指向 forge 的外链 → 仓库行内就地展开）都不好用，最终收敛成「趋势卡 + 一条跨仓库提交时间线」。本版验证：Go 23 包测试通过（含 `-race`）、前端 13 文件 93 用例、`tsc && vite build` 通过。
