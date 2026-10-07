@@ -11,6 +11,7 @@
 # also swallowed cmd/mcp/ and hid cmd/mcp/results.go from version control.
 /reponest
 /reponest-mcp
+/reponest-server
 /git-dashboard
 /mcp
 
