@@ -48,20 +48,29 @@ function TrendChart({ labels, datasets }: Props) {
       borderColor: ds.color.startsWith('--') ? cssVar(ds.color) || '#4a7d4a' : ds.color,
     }))
 
+    // A "全部" window can carry 300+ days. Chart.js draws a point per label by
+    // default, so the series became a solid band of 2px dots and Chart.js
+    // defaulted borderWidth to 3 — the line read as a filled block, not a
+    // trend. Thin stroke, no per-point markers, and a soft fill so the shape
+    // still reads at 300 samples.
     return {
       data: {
         labels,
         datasets: resolved.map((ds) => ({
           ...ds,
-          backgroundColor: ds.borderColor + '20',
-          tension: 0.2,
-          pointRadius: 2,
-          pointHoverRadius: 4,
+          backgroundColor: ds.borderColor + '14',
+          fill: true,
+          tension: 0.25,
+          borderWidth: 1.25,
+          pointRadius: 0,
+          pointHoverRadius: 3,
+          pointHitRadius: 12,
         })),
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: { mode: 'index' as const, intersect: false },
         plugins: {
           legend: {
             position: 'top' as const,
@@ -117,9 +126,13 @@ function TrendChart({ labels, datasets }: Props) {
               color: text,
               padding: 8,
               font: { size: 11 },
-              maxTicksLimit: 8,
+              // A day per label is unreadable past a few dozen: Chart.js would
+              // overlap them into a smear. 6 keeps the date legible and spaced
+              // regardless of how many samples the window carries.
+              maxTicksLimit: 6,
               maxRotation: 0,
-              autoSkipPadding: 12,
+              autoSkip: true,
+              autoSkipPadding: 16,
             },
             title: {
               display: true,

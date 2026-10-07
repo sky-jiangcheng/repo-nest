@@ -721,8 +721,83 @@
   flex: 1;
 }
 
+/* The empty state replaces the month bands, so without this it collapses the
+   card to ~199px while the populated 30-day view shows 343px — the row jumped
+   on every scope click. Match the bands' box so the height is scope-invariant:
+   30px stats strip + 178px band area. */
+/* The empty card and the populated card must be the same height, or the row
+   jumps on every scope click. Measured difference was 77px = the stats strip
+   (30) + legend (18) + two flex gaps, none of which the empty state renders.
+   The empty block is a flex:1 child, so padding-bottom is the reliable way to
+   reserve that space — min-height alone loses to the flex basis. */
 .commit-visual-heat .heatmap-simple.heatmap-empty-state {
-  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  /* The base rule sets min-height:120px, which capped the card at 222px and
+     made it jump against the populated 584px. This variant sizes itself by its
+     body (below), so the base min-height has to go — padding stays so the
+     message is not flush to the card edge. */
+  min-height: 0;
+  padding-bottom: 24px;
+}
+
+/* Occupies the same 403px the month bands do, so the card below it (legend in
+   the populated case) starts at the same y. */
+/* Stands in for the populated layout's stats strip (label + value, 30px).
+   A window with no activity has no numbers, but the row must still occupy
+   its space or the card measures 37px short and the pair jumps. */
+.commit-visual-heat .heatmap-stats-spacer {
+  flex: 0 0 auto;
+  /* 37px, not 30: the populated layout also has the 7px flex gap between
+     the stats strip and the bands below it. */
+  height: 37px;
+}
+
+.commit-visual-heat .heatmap-empty-body {
+  /* Fixed, not flex:1 — the parent is a flex child whose basis would
+     otherwise shrink this to the message's own height (102px observed) and
+     the card collapsed to 209px. */
+  flex: 0 0 403px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ============================================================
+   Heatmap, commits tab. All of it lives here because these rules
+   only make sense against a card of this specific width — the
+   dashboard's heatmap card is narrower and must keep the plain
+   .heatmap-simple behaviour.
+   ============================================================ */
+
+/* Fixed height so 近7天 / 近30天 / 全部 produce the SAME card height.
+   Content-driven height made the row visibly resize on every scope
+   click, which reads as a glitch: 199px empty, 357px populated, and
+   1502px once the year of month bands was left unbounded.
+
+   Four bands is what a half-height card can show; the rest scroll. */
+.commit-visual-heat .heatmap-month-bands {
+  height: 403px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: flex-start;
+  /* Room for the scrollbar so it does not sit on top of the last cells. */
+  padding-right: 4px;
+}
+
+/* Reserves the legend row the populated layout has below the bands, so
+   the two card variants end at the same y. Invisible and inert. */
+.commit-visual-heat .heatmap-legend-spacer {
+  flex: 0 0 auto;
+  height: 18px;
+}
+
+/* The stats strip above the bands must not be pushed around by the fixed
+   height; it is the one part whose content varies with the window. */
+.commit-visual-heat .heatmap-stats {
+  min-height: 30px;
 }
 
 /* Bounded trend canvas: the shared canvas height was tuned for a full-width
