@@ -286,7 +286,7 @@
 
 ## 📋 遗留项
 
-- [ ] **性能（M3-A 审核发现）**：`service.vectorStore()` 每次语义检索都重读 5 个 config + 对远程库做 `Reachable()` 探测 → 应按配置签名缓存 store（配置变更失效），避免每次查询的额外 SQL + 远程探测。默认关，优先级低
+- [x] **性能（M3-A 审核发现）已落地**：`service.vectorStore()` 改为 memo。原实现每次解析都要 4 次 `db.GetConfig`，而远程后端还要在 `vectordb.Open` 的工厂里做一次 HTTP 可达性探测——配了 Qdrant/Weaviate 时**每次语义检索都多一个网络往返**，这才是真正贵的部分（本地默认只贵那几次 SELECT）。失效点两处：`UpdateConfig` 命中 `vector_store*` 前缀即丢 memo（否则在设置页改了端点要到重启才生效），以及任何一次 store 报错即丢 memo（远程中途挂掉时下一轮重新解析并退回 local，而不是抱着死句柄不放——缓存之前这个是"意外自愈"的，加了缓存必须显式做）。查询路径顺带补了此前静默的向量检索失败日志。回归：`internal/service/vector_store_cache_test.go` 4 例（memo 生效 / 四个 vector_store* 键各自失效且 `embedding_model` 不误伤 / 死 store 在 fuse 与 rebuild 两条路径都被丢弃且错误如实上抛）
 - [ ] **文档**：`ai-integration` / `knowledge` 功能文档尚未提及新能力（捕捉/语义检索/向量库/CLI/OMP）；后续同步（本轮已补 README + settings 中英 + ADR 中英对齐）
 
 - [ ] 桌面 GUI 回归测试：建议在真机跑一轮冒烟（扫描→收藏→刷新历史→笔记 CRUD→版本恢复→知识库搜索→MCP 问答）

@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"repo-nest/internal/db"
 )
@@ -127,6 +128,13 @@ func (s *Service) UpdateConfig(key, value string) error {
 	// commits reflect the new author without a restart.
 	if key == "git_author" {
 		s.setGitUser(value)
+	}
+	// Any vector_store* change (kind, url, api key, collection) drops the
+	// memoised store — otherwise reconfiguring the endpoint from the settings
+	// page would keep using the old handle, and its cached reachability verdict,
+	// until restart.
+	if strings.HasPrefix(key, "vector_store") {
+		s.invalidateVectorStore()
 	}
 	return nil
 }

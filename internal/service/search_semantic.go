@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 
 	"repo-nest/internal/db"
 	"repo-nest/internal/domain"
@@ -43,16 +44,50 @@ func (s *Service) noteEmbedder() (*hybrid.RemoteEmbedder, bool) {
 	return &hybrid.RemoteEmbedder{BaseURL: base, Model: model, APIKey: key, Dim: dim}, true
 }
 
+// vectorStoreCache memoises the resolved vector store (axis B). It lives here
+// rather than as loose fields on Service so this file keeps ownership of the
+// vector-store concern (and service.go needs no vectordb import).
+type vectorStoreCache struct {
+	mu    sync.Mutex
+	store vectordb.Store
+}
+
 // vectorStore resolves the configured vector STORE (axis B, ADR-0013), falling
 // back to local sqlite-vec when remote is unset/unreachable. Reading the real
 // (unmasked) api keys here is intentional: GetConfig masks them for the UI, but
 // the store needs them to connect.
+//
+// The result is memoised. Resolving it re-reads four config rows and — for a
+// remote backend — runs vectordb.Open, whose factory issues an HTTP
+// reachability probe. On the search path that was an extra network round trip
+// per query, which is what made semantic search slower than lexical whenever a
+// remote store was configured.
+//
+// The memo is dropped by invalidateVectorStore on two triggers: a
+// `vector_store*` config write (otherwise a reconfigured endpoint would keep
+// being ignored until restart) and any store error (so a remote that dies
+// mid-session is re-resolved — and falls back to local — instead of being
+// hammered with the same dead handle).
 func (s *Service) vectorStore() vectordb.Store {
+	s.vecStore.mu.Lock()
+	defer s.vecStore.mu.Unlock()
+	if s.vecStore.store != nil {
+		return s.vecStore.store
+	}
 	kind, _ := db.GetConfig(s.db, "vector_store")
 	url, _ := db.GetConfig(s.db, "vector_store_url")
 	key, _ := db.GetConfig(s.db, "vector_store_api_key")
 	coll, _ := db.GetConfig(s.db, "vector_store_collection")
-	return vectordb.Open(s.db, kind, url, key, coll)
+	s.vecStore.store = vectordb.Open(s.db, kind, url, key, coll)
+	return s.vecStore.store
+}
+
+// invalidateVectorStore drops the memoised store. Resolution itself never fails
+// (Open falls back to local), so this is safe to call from error paths.
+func (s *Service) invalidateVectorStore() {
+	s.vecStore.mu.Lock()
+	s.vecStore.store = nil
+	s.vecStore.mu.Unlock()
 }
 
 // RebuildEmbeddings fully (re)embeds every note into the vector index. Used when
@@ -83,9 +118,11 @@ func (s *Service) RebuildEmbeddings() (int, error) {
 		emb.Dim = len(probe[0])
 	}
 	if err := store.Ensure(emb.Dim); err != nil {
+		s.invalidateVectorStore()
 		return 0, err
 	}
 	if err := store.Clear(emb.Dim); err != nil {
+		s.invalidateVectorStore()
 		return 0, err
 	}
 	embedded := 0
@@ -108,6 +145,7 @@ func (s *Service) RebuildEmbeddings() (int, error) {
 		for i, vec := range vecs {
 			if i < len(ids) {
 				if err := store.Upsert(ids[i], vec); err != nil {
+					s.invalidateVectorStore()
 					return embedded, err
 				}
 				embedded++
@@ -139,7 +177,16 @@ func (s *Service) fuseSemantic(base []domain.SearchHit, query string) []domain.S
 		return base
 	}
 	ids, err := s.vectorStore().Search(vecs[0], embedRecallK)
-	if err != nil || len(ids) == 0 {
+	if err != nil {
+		// Drop the memo so the next query re-resolves the store (and falls back
+		// to local) instead of reusing a handle that just failed. Before the
+		// cache existed every query built a fresh store, so this path was
+		// self-healing by accident; silence here would have been a regression.
+		s.invalidateVectorStore()
+		log.Printf("semantic vector search failed; using lexical only: %v", err)
+		return base
+	}
+	if len(ids) == 0 {
 		return base
 	}
 	baseIDs := make(hybrid.RankList, 0, len(base))

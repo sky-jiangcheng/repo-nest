@@ -68,6 +68,12 @@ type Service struct {
 	statusCache     *StatusBarData
 	statusCacheTime time.Time
 
+	// vecStore memoises the resolved vector store (axis B). See
+	// vectorStoreCache in search_semantic.go: rebuilding it costs four config
+	// reads plus, for a remote backend, an HTTP reachability probe — which on
+	// the search path was one extra round trip per query.
+	vecStore vectorStoreCache
+
 	// miningInFlight tracks repoIDs currently being mined to prevent duplicate
 	// goroutines when the user rapidly switches between projects.
 	miningInFlight sync.Map

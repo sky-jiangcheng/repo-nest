@@ -8,6 +8,7 @@
 
 ### 变更
 
+- **语义检索不再为每次查询探测远程向量库**（`service.vectorStore()` 改为 memo）：原实现在每条查询路径上重读 4 次 `db.GetConfig`，而远程后端还要在 `vectordb.Open` 的工厂里做一次 HTTP 可达性探测——配了 Qdrant / Weaviate 的用户**每次语义检索都白付一个网络往返**，「向量比词法还慢」成为默认。失效点两处：`UpdateConfig` 命中 `vector_store*` 前缀即丢缓存（否则在设置页改端点要重启才生效——缓存会把配置写入变成静默无效输入），以及任何一次 store 报错即丢（远程中途挂掉时下一轮重新解析并退回 local；这件事在加缓存之前是「意外自愈」的，缓存后必须显式做，否则一个死句柄会被永久抱着）。顺带补上向量检索失败此前**完全静默**的日志：`fuseSemantic` 只在 embed 失败时打日志，store 失败直接返回词法结果，用户开着语义检索却因远程库挂掉而长期只拿到词法命中，界面上看不出任何区别。回归 `internal/service/vector_store_cache_test.go` 4 例（缓存生效 / 四个 `vector_store*` 键各自失效且 `embedding_model` 不误伤 / 死 store 在 fuse 与 rebuild 两条路径都被丢弃且错误如实上抛）
 - **TODO 收口 + 一处包注释修正（不改任何行为）**：核对 M3 时发现 `vectordb.Register/Kinds` 可插拔 registry **早已落地**——`internal/search/vectordb/store.go` 有 `registry` map + `Register` + `Kinds`（local 恒隐式）+ `Open` 的三重退回（未配 / 未知 kind / 远程工厂报错或探测不通一律 local），Weaviate 已在表内，调用方零改动。该待办属重复挂账，改写为已落地结论并把未接后端合并进相邻等待项，不重复计数。「分发评估门」一条则复述了 [ADR-0009](docs/adr/0009-ide-presence.md) 决策 5 里既有的正式条款（约束不是待办，挂在清单上永远不会「完成」），不再占未勾位。附带修正 `internal/search/vectordb/vectordb.go` 包注释：原文写「Two implementations: local / qdrant」，漏了已实现的 Weaviate，现为三个后端 + registry 指路
 - **P35 的推进前提被实测推翻（记录，未改代码）**：非 module 全局 CSS 现有 5,101 行，而符合「全局只保留 reset / design tokens / 跨组件基础样式」这一目标的仅 355 行（约 7%），其余 4,746 行按归属仍可下沉（`features/` 3,071、`components/` 1,276、`layouts/` 399）。两轮试点共迁出 214 行，同期全局 CSS 却从 4,055 涨到 5,101（+1,046）——「每轮 sprint 迁 1-2 个组件」的速率追不上新增，这条路不会自然收敛。两条待办已改写为带判据的版本：先定义 `components/buttons|inputs|cards|tabs` 那层算不算基础样式，再在「按文件冻结 + 新组件一律 module.css」与「集中收 `project-detail`/`dashboard`/`settings` 三大文件」之间选路
 
