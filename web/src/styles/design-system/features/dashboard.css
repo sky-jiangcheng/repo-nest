@@ -563,3 +563,79 @@
 .project-card-shell {
   position: relative;
 }
+
+/* --- Flat starred rows --- */
+/* One starred repo used to render as a full-width tall card that read like a
+   dropdown; starred projects are now single-line rows. */
+.project-list-flat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.project-card-shell-flat {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.project-card-shell-flat .card-star {
+  position: static;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.project-card-shell-flat .card-refresh-btn {
+  position: static;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.project-card-flat {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.project-card-flat:hover {
+  transform: none;
+}
+
+.card-flat-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 80px;
+}
+
+.card-flat-stats {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.flat-pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.flat-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.flat-num {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}

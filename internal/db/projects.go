@@ -178,8 +178,10 @@ func MarkProjectCollectedTx(tx *sql.Tx, projectID int64) error {
 // SplitProjectDown adjusts a project's grouping level downwards: every repo
 // except the first becomes its own project (keeping the original for the first
 // repo so its notes/todos survive). The whole operation runs in a single
-// transaction so the project graph never ends up half-changed. Returns the new
-// level override.
+// transaction so the project graph never ends up half-changed. The decremented
+// level_override is persisted on the surviving project — returning it without
+// writing it left the UI's "分组层级" reading a stale value forever, since every
+// later split computed from the unchanged column.
 func SplitProjectDown(db *sql.DB, id int64) (int, error) {
 	project, err := GetProjectByID(db, id)
 	if err != nil {
@@ -199,7 +201,7 @@ func SplitProjectDown(db *sql.DB, id int64) (int, error) {
 	defer tx.Rollback() //nolint:errcheck
 
 	if len(repos) <= 1 {
-		if _, err := tx.Exec("UPDATE projects SET is_auto_grouped = 0 WHERE id = ?", id); err != nil {
+		if _, err := tx.Exec("UPDATE projects SET is_auto_grouped = 0, level_override = ? WHERE id = ?", project.LevelOverride-1, id); err != nil {
 			return 0, fmt.Errorf("failed to update project")
 		}
 	} else {
@@ -220,7 +222,7 @@ func SplitProjectDown(db *sql.DB, id int64) (int, error) {
 			}
 		}
 		// Keep the original project bound to its first repo.
-		if _, err := tx.Exec("UPDATE projects SET is_auto_grouped = 0, root_path = ? WHERE id = ?", repos[0].Path, id); err != nil {
+		if _, err := tx.Exec("UPDATE projects SET is_auto_grouped = 0, root_path = ?, level_override = ? WHERE id = ?", repos[0].Path, project.LevelOverride-1, id); err != nil {
 			return 0, fmt.Errorf("failed to update project: %w", err)
 		}
 	}
@@ -234,7 +236,9 @@ func SplitProjectDown(db *sql.DB, id int64) (int, error) {
 // MergeProjectUp adjusts a project's grouping level upwards: it absorbs
 // sibling projects that share the same parent directory, moving their repos,
 // notes, and todos along, then deletes the emptied siblings. Runs in a single
-// transaction. Returns the new level override.
+// transaction. The incremented level_override is persisted on the survivor —
+// returning it without writing it made two consecutive "up" calls report the
+// same level while the second was a no-op.
 func MergeProjectUp(db *sql.DB, id int64) (int, error) {
 	project, err := GetProjectByID(db, id)
 	if err != nil {
@@ -269,7 +273,14 @@ func MergeProjectUp(db *sql.DB, id int64) (int, error) {
 				rows.Close()
 				return 0, fmt.Errorf("failed to scan sibling: %w", err)
 			}
-			if filepath.Dir(sroot) == parentDir {
+			// A project that already sits exactly at parentDir is a merge
+			// source too, not just a same-parent sibling. Without this the
+			// final UPDATE hit `UNIQUE constraint failed: projects.root_path`
+			// and the whole merge rolled back — which made split irreversible:
+			// the project a split came out of still occupies the very path the
+			// merge tries to move it into. Its own Dir is the grandparent, so
+			// the sibling comparison above never saw it.
+			if filepath.Dir(sroot) == parentDir || sroot == parentDir {
 				siblingIDs = append(siblingIDs, sid)
 			}
 		}
@@ -289,10 +300,10 @@ func MergeProjectUp(db *sql.DB, id int64) (int, error) {
 				return 0, fmt.Errorf("failed to remove merged project: %w", err)
 			}
 		}
-		if _, err := tx.Exec("UPDATE projects SET is_auto_grouped = 0, root_path = ?, name = ? WHERE id = ?", parentDir, filepath.Base(parentDir), id); err != nil {
+		if _, err := tx.Exec("UPDATE projects SET is_auto_grouped = 0, root_path = ?, name = ?, level_override = ? WHERE id = ?", parentDir, filepath.Base(parentDir), project.LevelOverride+1, id); err != nil {
 			return 0, fmt.Errorf("failed to update project: %w", err)
 		}
-	} else if _, err := tx.Exec("UPDATE projects SET is_auto_grouped = 0 WHERE id = ?", id); err != nil {
+	} else if _, err := tx.Exec("UPDATE projects SET is_auto_grouped = 0, level_override = ? WHERE id = ?", project.LevelOverride+1, id); err != nil {
 		return 0, fmt.Errorf("failed to update project: %w", err)
 	}
 

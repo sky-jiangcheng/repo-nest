@@ -82,9 +82,20 @@ func GetHeatmapData(db *sql.DB, start, end, gitUser string, projectID int64) ([]
 	var days []HeatmapDay
 	for rows.Next() {
 		var d HeatmapDay
-		if err := rows.Scan(&d.Date, &d.LinesAdded, &d.LinesDeleted, &d.Commits); err != nil {
+		// stat_date may carry a time component depending on how the row was
+		// written; the heatmap contract is a plain YYYY-MM-DD calendar day.
+		// Scanning verbatim leaked "2025-10-11T00:00:00Z" to the frontend,
+		// whose grid keys on local YYYY-MM-DD — every cell missed and the
+		// heatmap rendered blank while the header totals (summed straight
+		// from these rows) stayed correct.
+		var date string
+		if err := rows.Scan(&date, &d.LinesAdded, &d.LinesDeleted, &d.Commits); err != nil {
 			return nil, err
 		}
+		if len(date) > 10 {
+			date = date[:10]
+		}
+		d.Date = date
 		days = append(days, d)
 	}
 	return days, rows.Err()

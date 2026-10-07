@@ -52,14 +52,20 @@ export function useProjectDetail(id: string | undefined) {
   // disable pattern used across the codebase.
   useEffect(() => { load() }, [load]) // eslint-disable-line react-hooks/set-state-in-effect
 
-  const handleLevelChange = async (direction: 'up' | 'down') => {
-    if (!id) return
+  // Returns the outcome so the page can flash visible feedback — the old
+  // version only setError()ed, and the error banner lives outside the normal
+  // render path, so a failed merge/split looked exactly like a dead button.
+  const handleLevelChange = async (direction: 'up' | 'down'): Promise<{ ok: boolean; error?: string }> => {
+    if (!id) return { ok: false }
     try {
       await updateProjectLevel(Number(id), direction)
       const updated = await getProjectDetail(Number(id))
       setProject(updated)
+      return { ok: true }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t('common.failed'))
+      const msg = e instanceof Error ? e.message : t('common.failed')
+      setError(msg)
+      return { ok: false, error: msg }
     }
   }
 
@@ -68,12 +74,18 @@ export function useProjectDetail(id: string | undefined) {
     if (project?.repos) {
       project.repos.forEach((repo) => {
         repo.stats?.forEach((stat) => {
-          const cur = map.get(stat.stat_date) || { added: 0, deleted: 0, files: 0, commits: 0 }
+          // Key on the bare calendar day: stat_date carries the DATETIME
+          // storage format ("2026-10-06T00:00:00Z") in some rows. trendData
+          // labels are sliced days — a datetime key made stats.get(day)
+          // return undefined and the whole detail page crashed (the "?!date=
+          // 一点就蹦" report).
+          const key = stat.stat_date.slice(0, 10)
+          const cur = map.get(key) || { added: 0, deleted: 0, files: 0, commits: 0 }
           cur.added += stat.lines_added
           cur.deleted += stat.lines_deleted
           cur.files += stat.files_changed
           cur.commits++
-          map.set(stat.stat_date, cur)
+          map.set(key, cur)
         })
       })
     }
@@ -81,7 +93,9 @@ export function useProjectDetail(id: string | undefined) {
   }, [project])
 
   const trendData = useMemo(() => {
-    let dates = Array.from(stats.keys()).sort()
+    // stat_date carries the DATETIME storage format in some rows; the axis
+    // must show bare calendar days, not "2025-10-09T00:00:00Z".
+    let dates = Array.from(stats.keys()).map(d => d.slice(0, 10)).sort()
     if (scope === 'week') {
       const weekDates = new Set(getLastDays(7))
       dates = dates.filter((d) => weekDates.has(d))

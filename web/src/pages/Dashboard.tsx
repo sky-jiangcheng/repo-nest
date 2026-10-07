@@ -146,7 +146,7 @@ function Dashboard() {
                   <h2 className="project-section-title">{t('dashboard.starredSection')}</h2>
                   <span className="project-section-count">{starredProjects.length}</span>
                 </div>
-                <div className="project-grid">
+                <div className="project-list-flat">
                   {starredProjects.map(p => (
                     <ProjectCard
                       key={p.id}

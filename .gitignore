@@ -62,3 +62,6 @@ assets/releases/
 
 # 根目录游离的 npm 依赖（图标脚本等的临时安装，真正的依赖树在 web/node_modules）
 /node_modules/
+
+# 本地 GUI 扫描测试产物（截图 + 报告，纯本地复查用）
+.tmp-ui-test/

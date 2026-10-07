@@ -30,6 +30,7 @@
 @import './design-system/features/settings.css';
 @import './design-system/features/block-editor.css';
 @import './design-system/features/status-bar.css';
+@import './design-system/features/fab.css';
 
 /* Connection banner */
 .conn-banner {

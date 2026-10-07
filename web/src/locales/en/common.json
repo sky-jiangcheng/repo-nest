@@ -106,7 +106,8 @@
       "authors": "Authors",
       "appearance": "Appearance",
       "plugins": "Plugins",
-      "actions": "Actions"
+      "actions": "Actions",
+      "ai": "AI"
     },
     "scanRoots": "Scan Root Directories",
     "addRoot": "Add directory:",
@@ -206,6 +207,30 @@
       "appearance": "Choose light, dark, or follow the system",
       "plugins": "Manage knowledge sources, global-memory targets and session capture",
       "actions": "Trigger a full rescan or import past memories on demand"
+    },
+    "ai": {
+      "title": "AI Chat Endpoint",
+      "desc": "Any OpenAI-compatible /chat/completions server works: a local LM Studio, vLLM, Ollama, or a remote provider. Used by the project AI Q&A panel.",
+      "baseUrl": "Base URL",
+      "baseUrlHint": "LM Studio: http://localhost:1234/v1 · OpenAI: https://api.openai.com/v1",
+      "model": "Model",
+      "modelHint": "The model name exactly as the endpoint reports it",
+      "apiKey": "API key",
+      "apiKeyPlaceholder": "******** (leave as-is to keep)",
+      "apiKeyHint": "Local servers usually need none. Stored server-side, never returned in plaintext.",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Connection OK — reply: {{reply}}",
+      "testFail": "Test failed: {{msg}}",
+      "missingFields": "Base URL and model are required",
+      "fetchModels": "Fetch models",
+      "fetching": "Fetching…",
+      "modelsFound": "{{count}} model(s) available — pick from the list",
+      "fetchFail": "Fetch failed: {{msg}}",
+      "apiKeyOptional": "API Key (optional)",
+      "testModel": "Test model",
+      "testingModel": "Testing…",
+      "modelsFoundResolved": "{{count}} model(s) available — base URL corrected to {{url}}"
     }
   },
   "project": {
@@ -324,7 +349,18 @@
     "unstar": "Unstar project",
     "refreshHistory": "Refresh history",
     "refreshingHistory": "Refreshing…",
-    "loadFailed": "Load failed"
+    "loadFailed": "Load failed",
+    "levelChanged": "Grouping updated",
+    "levelNoSibling": "No sibling projects here to merge or split",
+    "tab_overview": "Overview",
+    "tab_commits": "Commits",
+    "tab_repos": "Repositories",
+    "tab_notes": "Notes",
+    "grouping": "Grouping",
+    "tab_todos": "Todos",
+    "openEditor": "Open in VS Code",
+    "copyPath": "Copy path",
+    "showLess": "Show less"
   },
   "common": {
     "unknownError": "Unknown error",
@@ -410,7 +446,9 @@
     "less": "Less",
     "more": "More",
     "noData": "No data",
-    "noActivityInRange": "No activity in this range"
+    "noActivityInRange": "No activity in this range",
+    "show30d": "Show 30 days",
+    "showAll": "Show all"
   },
   "trend": {
     "commits": "Code Commits",
@@ -502,7 +540,7 @@
     "resultsCount": "{{count}} results"
   },
   "summaryBar": {
-    "repos": "Repos",
+    "repos": "Active repos",
     "teamAdded": "Team added",
     "teamDeleted": "Team deleted",
     "personalAdded": "Personal added",
@@ -527,5 +565,44 @@
     "title": "Page not found",
     "desc": "There is no page at this address. It may have been moved, or the link may be mistyped.",
     "backHome": "Back to home"
+  },
+  "fab": {
+    "open": "Quick capture",
+    "title": "Quick capture",
+    "project": "Project",
+    "placeholder": "Type anything… the first line becomes the note title",
+    "kind": "Type",
+    "kind_knowledge": "Knowledge",
+    "kind_log": "Log",
+    "kind_idea": "Idea",
+    "kind_other": "Other",
+    "saveNote": "Save note",
+    "saveTodo": "Save todo",
+    "saving": "Saving…",
+    "noteSaved": "Note saved",
+    "todoSaved": "Todo saved",
+    "saveFailed": "Save failed",
+    "noProjects": "No projects yet — scan repositories first"
+  },
+  "ai": {
+    "title": "AI Q&A",
+    "hint": "Copy the prompt pack (your question + the full project context) into any AI chat, paste the answer back, correct it freely, and keep it as a note.",
+    "question": "Question",
+    "questionPlaceholder": "Ask about this project…",
+    "copyPrompt": "Copy prompt pack",
+    "promptCopied": "Prompt pack copied — paste it into your AI chat",
+    "promptHeader": "Question",
+    "answer": "Answer",
+    "answerPlaceholder": "Paste the AI answer here; edit it before saving",
+    "saveAsNote": "Save as note",
+    "saved": "Saved as note",
+    "questionLabel": "Question",
+    "answerLabel": "Answer",
+    "send": "Send to AI",
+    "asking": "Asking…",
+    "replyReceived": "Reply received — edit freely, then save",
+    "sendFailed": "AI request failed",
+    "notConfigured": "AI chat is not configured yet.",
+    "goSettings": "Configure it in Settings → AI"
   }
 }

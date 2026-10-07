@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { setLanguage, getCurrentLanguage } from './i18n'
 import { getConnectionKind, subscribeConnection, startHealthPoll } from './api/transport'
 import Icon from './components/Icon'
+import QuickCaptureFab from './components/QuickCaptureFab'
 import BrandMark from './components/BrandMark'
 
 // Lazy-loaded pages. The initial route (Knowledge) is still eagerly loaded by
@@ -230,6 +231,7 @@ function App() {
         </main>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
         <ToastHost toasts={toasts} onDismiss={(id) => setToasts(prev => prev.filter(x => x.id !== id))} />
+        <QuickCaptureFab onToast={pushToast} />
       </div>
     </AppRouter>
   )

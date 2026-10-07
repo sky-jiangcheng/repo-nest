@@ -18,6 +18,9 @@ interface Props {
   projectId?: number
   /** Time window shown: week = 7d, month = 30d, all = ~52w. */
   scope?: Scope
+  /** Provided on pages whose scope is user-facing: lets the empty state offer
+      one-click widening instead of a dead "no activity" message. */
+  onScopeChange?: (s: Scope) => void
 }
 
 function getLevel(day: HeatmapDay | null): number {
@@ -34,7 +37,10 @@ function getLevel(day: HeatmapDay | null): number {
 function generateGrid(days: HeatmapDay[], daysToShow: number): (HeatmapDay | null)[][] {
   const dayMap = new Map<string, HeatmapDay>()
   for (const d of days) {
-    dayMap.set(d.date, d)
+    // Defensive: the API contract is YYYY-MM-DD, but rows written before the
+    // backend truncated the datetime leaked "2025-10-11T00:00:00Z" here and
+    // every grid cell missed its lookup.
+    dayMap.set(d.date.slice(0, 10), d)
   }
 
   const grid: (HeatmapDay | null)[][] = []
@@ -62,7 +68,7 @@ function generateGrid(days: HeatmapDay[], daysToShow: number): (HeatmapDay | nul
   return grid
 }
 
-export default function Heatmap({ onDayClick, projectId = 0, scope = 'all' }: Props) {
+export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onScopeChange }: Props) {
   const { t } = useTranslation()
   const [days, setDays] = useState<HeatmapDay[]>([])
   const [loading, setLoading] = useState(true)
@@ -104,9 +110,35 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all' }: Pr
   }
 
   if (stats.active === 0) {
+    // The component holds a full year of days regardless of scope, so it can
+    // tell "nothing anywhere" from "nothing in this narrow window" — the
+    // latter gets one-click widening instead of a dead end.
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayStr = toDateStr(today)
+    const mk = (n: number) => {
+      const c = new Date(today)
+      c.setDate(c.getDate() - (n - 1))
+      return toDateStr(c)
+    }
+    const activeSince = (n: number) =>
+      days.some(d => d.date >= mk(n) && d.date <= todayStr && (d.lines_added || 0) + (d.lines_deleted || 0) > 0)
+    const canWiden = onScopeChange && scope !== 'all' && activeSince(364)
     return (
       <div className="heatmap-simple heatmap-empty-state">
         <p className="empty-hint">{t('heatmap.noActivityInRange')}</p>
+        {canWiden && (
+          <div className="empty-actions">
+            {scope === 'week' && activeSince(30) && (
+              <button className="btn btn-secondary btn-sm" onClick={() => onScopeChange('month')}>
+                {t('heatmap.show30d')}
+              </button>
+            )}
+            <button className="btn btn-secondary btn-sm" onClick={() => onScopeChange('all')}>
+              {t('heatmap.showAll')}
+            </button>
+          </div>
+        )}
       </div>
     )
   }

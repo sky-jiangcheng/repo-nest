@@ -271,3 +271,23 @@ func (a *App) CaptureClaudeHandoff(projectID int64) (*service.HandoffResult, err
 func (a *App) RebuildEmbeddings() (int, error) {
 	return a.svc.RebuildEmbeddings()
 }
+
+// AskAI forwards the question (with generated project context for projectID>0)
+// to the OpenAI-compatible chat endpoint configured in Settings → AI, and
+// returns the assistant reply for the Q&A panel.
+func (a *App) AskAI(projectID int64, question string) (string, error) {
+	return a.svc.AskAI(projectID, question)
+}
+
+// ListAIModels probes the endpoint's /models (with path candidates and the
+// localhost fallback) using the form's current values — no save required.
+// ResolvedBaseURL is the base that actually worked, so the UI can adopt it.
+func (a *App) ListAIModels(baseURL, apiKey string) (*service.AIModelListResult, error) {
+	return service.ListAIModels(baseURL, apiKey)
+}
+
+// TestAIChat verifies a specific model responds to a minimal completion,
+// using the form's current values.
+func (a *App) TestAIChat(baseURL, model, apiKey string) (*service.AITestResult, error) {
+	return service.TestAIChat(baseURL, model, apiKey)
+}

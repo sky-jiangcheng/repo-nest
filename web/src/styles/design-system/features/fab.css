@@ -1,0 +1,109 @@
+/* ============================================
+   Quick capture floating ball (app-wide)
+   ============================================ */
+
+.fab-ball {
+  position: fixed;
+  right: 22px;
+  /* Sit above the status bar band, which is fixed-height app chrome. */
+  bottom: 52px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 90;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.fab-ball:hover {
+  transform: scale(1.06);
+  box-shadow: var(--shadow-lg);
+}
+
+.fab-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 95;
+}
+
+.fab-panel {
+  position: fixed;
+  right: 22px;
+  bottom: 52px;
+  width: 320px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 12px;
+  z-index: 96;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fab-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fab-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fab-close {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  border-radius: var(--radius-sm);
+}
+
+.fab-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.fab-project {
+  width: 100%;
+  font-size: 13px;
+}
+
+.fab-content {
+  width: 100%;
+  resize: vertical;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fab-kinds {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fab-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fab-empty {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 16px 0;
+}

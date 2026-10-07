@@ -44,6 +44,12 @@ var allowedConfigKeys = map[string]bool{
 	"vector_store_url":        true,
 	"vector_store_api_key":    true,
 	"vector_store_collection": true,
+	// AI Q&A chat (OpenAI-compatible /chat/completions): LM Studio
+	// (http://localhost:1234/v1) or any remote provider. ai_chat_api_key is
+	// a SECRET and is redacted in GetConfig.
+	"ai_chat_base_url": true,
+	"ai_chat_model":    true,
+	"ai_chat_api_key":  true,
 }
 
 // stringConfigKeys are exempt from the numeric-value check: they carry free-text
@@ -59,6 +65,9 @@ var stringConfigKeys = map[string]bool{
 	"vector_store_url":        true,
 	"vector_store_api_key":    true,
 	"vector_store_collection": true,
+	"ai_chat_base_url":        true,
+	"ai_chat_model":           true,
+	"ai_chat_api_key":         true,
 }
 
 // secretConfigKeys are never returned in plaintext by GetConfig — a set value
@@ -67,6 +76,7 @@ var stringConfigKeys = map[string]bool{
 var secretConfigKeys = map[string]bool{
 	"embedding_api_key":    true,
 	"vector_store_api_key": true,
+	"ai_chat_api_key":      true,
 }
 
 // secretMask replaces a configured secret in responses sent to the frontend.

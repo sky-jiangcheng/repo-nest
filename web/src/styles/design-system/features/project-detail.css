@@ -554,3 +554,223 @@
   min-height: 120px;
   padding: 24px;
 }
+
+/* ============================================
+   Compact tabbed head (detail page rework)
+   ============================================ */
+
+/* The old fixed header stacked a bordered card (title row + chips + a 4-column
+   stats grid + a meta row) that ate most of the viewport and pushed every
+   dynamic block below the fold. The compact head collapses all of that into
+   three slim lines — identity, one stat strip, tabs — and the tab panels own
+   the remaining height. */
+
+.detail-head-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 0 0;
+}
+
+.head-line1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.head-line1 h1 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.head-path {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.head-line1 .level-control {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.head-line1 .btn-primary {
+  flex-shrink: 0;
+}
+
+.head-stats-line {
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  padding: 2px 0;
+}
+
+.head-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.head-stat-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.head-stat-value {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.head-stat-value.green { color: var(--success, #4ade80); }
+.head-stat-value.red { color: var(--danger, #f87171); }
+
+/* Tab strip for the detail page. Same visual language as the settings tabs
+   (.tab-btn is shared) but without the settings page's negative-margin
+   sticky trick — the header above is already fixed. */
+.detail-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.detail-tabs .tab-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.detail-tabs .tab-btn:first-child {
+  padding-left: 0;
+}
+
+/* ============================================
+   Commits tab T-layout
+   ============================================ */
+
+/* Horizontal bar: the two bounded visuals side by side under one scope
+   toggle. The stem below splits into variable-length columns — the repo
+   breakdown grows with repo count, the activity/feed block with history. */
+.commit-visuals {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.commit-visual {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.commit-visual-trend .overview-sub-title {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+/* Bounded trend canvas: the shared canvas height was tuned for a full-width
+   column; in a side-by-side band it stays readable but must not stretch the
+   row. */
+.commit-visual-trend .chart-container {
+  height: 190px;
+}
+
+.commits-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .commit-visuals,
+  .commits-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Repo rows: enterable — tools sit inline on the header, "more" is a real
+   button that expands the full per-author list. */
+.repo-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.repo-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+.repo-tool:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.repo-more-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.repo-more-btn:hover {
+  color: var(--accent);
+}
+
+/* AI ask dialog shares the FAB panel shell; the answer area is the tall one. */
+.ai-ask-panel {
+  width: 420px;
+}
+
+.ai-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ai-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ai-answer {
+  font-family: var(--font-sans);
+}
+
+.ai-hint-config {
+  color: var(--warning);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: inherit;
+  text-decoration: underline;
+}

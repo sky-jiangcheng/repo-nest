@@ -105,7 +105,8 @@
       "authors": "作者配置",
       "appearance": "外观",
       "plugins": "插件",
-      "actions": "操作"
+      "actions": "操作",
+      "ai": "AI"
     },
     "scanRoots": "扫描根目录",
     "addRoot": "添加新目录：",
@@ -205,6 +206,30 @@
       "appearance": "选择浅色、深色或跟随系统",
       "plugins": "管理知识导入源、全局记忆归属项目与会话捕捉",
       "actions": "手动触发全量扫描或导入历史记忆"
+    },
+    "ai": {
+      "title": "AI 对话端点",
+      "desc": "支持任何 OpenAI 兼容的 /chat/completions 服务:本地 LM Studio、vLLM、Ollama,或远程大模型。用于项目 AI 问答面板。",
+      "baseUrl": "Base URL",
+      "baseUrlHint": "LM Studio: http://localhost:1234/v1 · OpenAI: https://api.openai.com/v1",
+      "model": "模型",
+      "modelHint": "与服务端报告的模型名完全一致",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "********(保持原样表示不修改)",
+      "apiKeyHint": "本地服务通常无需填写。密钥保存在本地数据库,不会明文返回。",
+      "test": "测试连接",
+      "testing": "测试中…",
+      "testOk": "连接成功——回复: {{reply}}",
+      "testFail": "测试失败: {{msg}}",
+      "missingFields": "Base URL 和模型为必填项",
+      "fetchModels": "拉取模型",
+      "fetching": "获取中…",
+      "modelsFound": "发现 {{count}} 个可用模型——从列表中选择",
+      "fetchFail": "拉取失败: {{msg}}",
+      "apiKeyOptional": "API Key(可选)",
+      "testModel": "测试模型",
+      "testingModel": "测试中…",
+      "modelsFoundResolved": "发现 {{count}} 个可用模型——Base URL 已自动修正为 {{url}}"
     }
   },
   "project": {
@@ -323,7 +348,18 @@
     "unstar": "取消星标",
     "refreshHistory": "刷新统计历史",
     "refreshingHistory": "正在刷新…",
-    "loadFailed": "加载失败"
+    "loadFailed": "加载失败",
+    "levelChanged": "分组已更新",
+    "levelNoSibling": "当前目录没有可合并或拆分的相邻项目",
+    "tab_overview": "概览",
+    "tab_commits": "提交",
+    "tab_repos": "仓库",
+    "tab_notes": "笔记",
+    "grouping": "分组",
+    "tab_todos": "待办",
+    "openEditor": "在 VS Code 中打开",
+    "copyPath": "复制路径",
+    "showLess": "收起"
   },
   "common": {
     "unknownError": "未知错误",
@@ -409,7 +445,9 @@
     "less": "少",
     "more": "多",
     "noData": "无数据",
-    "noActivityInRange": "该时间范围内暂无活动"
+    "noActivityInRange": "该时间范围内暂无活动",
+    "show30d": "查看 30 天",
+    "showAll": "查看全部"
   },
   "trend": {
     "commits": "代码提交",
@@ -501,7 +539,7 @@
     "resultsCount": "{{count}} 个结果"
   },
   "summaryBar": {
-    "repos": "仓库",
+    "repos": "活跃仓库",
     "teamAdded": "团队新增",
     "teamDeleted": "团队删除",
     "personalAdded": "个人新增",
@@ -526,5 +564,44 @@
     "title": "页面不存在",
     "desc": "该地址没有对应的页面。它可能已被移动，或者链接输入有误。",
     "backHome": "返回首页"
+  },
+  "fab": {
+    "open": "快捷收录",
+    "title": "快捷收录",
+    "project": "项目",
+    "placeholder": "随便写点什么……首行将作为笔记标题",
+    "kind": "类型",
+    "kind_knowledge": "知识",
+    "kind_log": "日志",
+    "kind_idea": "想法",
+    "kind_other": "其他",
+    "saveNote": "存为笔记",
+    "saveTodo": "存为待办",
+    "saving": "保存中…",
+    "noteSaved": "笔记已保存",
+    "todoSaved": "待办已保存",
+    "saveFailed": "保存失败",
+    "noProjects": "还没有项目——请先扫描仓库"
+  },
+  "ai": {
+    "title": "AI 问答",
+    "hint": "复制提问包(问题 + 完整项目上下文)到任意 AI 对话,把回答粘贴回来,可自由纠正后保存为笔记。",
+    "question": "问题",
+    "questionPlaceholder": "针对本项目提问……",
+    "copyPrompt": "复制提问包",
+    "promptCopied": "提问包已复制——粘贴到你的 AI 对话",
+    "promptHeader": "问题",
+    "answer": "回答",
+    "answerPlaceholder": "把 AI 的回答粘贴到这里,可先修改再保存",
+    "saveAsNote": "保存为笔记",
+    "saved": "已存为笔记",
+    "questionLabel": "问题",
+    "answerLabel": "回答",
+    "send": "直接发送",
+    "asking": "询问中…",
+    "replyReceived": "已收到回答——可自由编辑后保存",
+    "sendFailed": "AI 请求失败",
+    "notConfigured": "尚未配置 AI 对话端点。",
+    "goSettings": "去 设置 → AI 配置"
   }
 }

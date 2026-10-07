@@ -228,6 +228,37 @@ export function listTodos(projectId: number): Promise<Todo[]> {
   }).then(d => d ?? [])
 }
 
+export interface AIModelListResult {
+  models: string[]
+  resolved_base_url: string
+}
+
+export interface AITestResult {
+  reply: string
+  resolved_base_url: string
+}
+
+export function listAIModels(baseURL: string, apiKey: string): Promise<AIModelListResult> {
+  return call<AIModelListResult>({
+    method: 'ListAIModels',
+    args: [baseURL, apiKey],
+  }).then(d => d ?? { models: [], resolved_base_url: '' })
+}
+
+export function testAIChat(baseURL: string, model: string, apiKey: string): Promise<AITestResult> {
+  return call<AITestResult>({
+    method: 'TestAIChat',
+    args: [baseURL, model, apiKey],
+  }).then(d => d ?? { reply: '', resolved_base_url: '' })
+}
+
+export function askAI(projectId: number, question: string): Promise<string> {
+  return call<string>({
+    method: 'AskAI',
+    args: [projectId, question],
+  })
+}
+
 export function createTodo(projectId: number, title: string): Promise<Todo> {
   return call<Todo>({
     method: 'CreateTodo',

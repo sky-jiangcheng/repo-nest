@@ -7,8 +7,7 @@ import type { KindFilter } from '../types/kind'
  */
 export function useFilteredNotes(notes: Note[], filter: KindFilter): Note[] {
   return notes.filter(n => {
-    if (filter === 'knowledge') return n.kind === 'knowledge'
-    if (filter === 'other') return n.kind !== 'knowledge'
-    return true
+    if (filter === 'all') return true
+    return n.kind === filter
   })
 }

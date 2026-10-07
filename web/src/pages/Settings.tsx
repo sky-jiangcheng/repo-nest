@@ -5,14 +5,15 @@ import { getConfig, type AppConfig } from '../api/client'
 import { getStoredTheme, type ThemeMode } from '../utils/theme'
 import ScanRootsTab from './settings/ScanRootsTab'
 import StandardsTab from './settings/StandardsTab'
+import AiTab from './settings/AiTab'
 import AuthorsTab from './settings/AuthorsTab'
 import AppearanceTab from './settings/AppearanceTab'
 import PluginsTab from './settings/PluginsTab'
 import ActionsTab from './settings/ActionsTab'
 import ErrorBanner from '../components/ErrorBanner'
 
-type TabKey = 'scan' | 'standards' | 'authors' | 'appearance' | 'plugins' | 'actions'
-const TAB_KEYS: TabKey[] = ['scan', 'standards', 'authors', 'appearance', 'plugins', 'actions']
+type TabKey = 'scan' | 'standards' | 'authors' | 'appearance' | 'plugins' | 'ai' | 'actions'
+const TAB_KEYS: TabKey[] = ['scan', 'standards', 'authors', 'appearance', 'plugins', 'ai', 'actions']
 
 const isTabKey = (v: string | null): v is TabKey => !!v && (TAB_KEYS as string[]).includes(v)
 
@@ -150,6 +151,12 @@ function Settings() {
         {tab === 'plugins' && data && (
           <PluginsTab key="plugins" initialAutoImport={data.config.auto_import !== '0'} initialClaudeCapture={data.config.claude_session_capture === '1'} initialTargets={{ openclaw_project: data.config.openclaw_project || '', hermes_project: data.config.hermes_project || '' }} showMessage={showMessage} />
         )}
+        {tab === 'ai' && data && (
+          <div role="tabpanel" id="settings-panel-ai" aria-labelledby="settings-tab-ai">
+            <AiTab config={data.config} showMessage={showMessage} onSaved={loadConfig} />
+          </div>
+        )}
+
         {tab === 'actions' && <ActionsTab showMessage={showMessage} />}
       </div>
     </div>

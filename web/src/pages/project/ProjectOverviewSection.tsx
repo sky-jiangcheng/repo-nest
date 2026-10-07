@@ -14,10 +14,11 @@ interface Props {
 export default function ProjectOverviewSection({ overview }: Props) {
   const { t } = useTranslation()
 
+  // Activity metrics and the recent-commit feed live in the Commits tab —
+  // rendering them here too made Overview and Commits largely the same page.
   const hasContent =
     overview.readme_excerpt ||
     (overview.tech_stack?.length ?? 0) > 0 ||
-    (overview.recent_commits?.length ?? 0) > 0 ||
     (overview.dependencies?.length ?? 0) > 0 ||
     (overview.top_contributors?.length ?? 0) > 0
   if (!hasContent) {
@@ -96,56 +97,6 @@ export default function ProjectOverviewSection({ overview }: Props) {
         </div>
       )}
 
-      {overview.activity && (overview.activity.total_commits > 0 || overview.activity.commit_rate_30d > 0) && (
-        <div className="overview-activity">
-          <h4 className="overview-sub-title">{t('project.activity')}</h4>
-          <div className="activity-stats">
-            <div className="activity-stat">
-              <span className="activity-value">{overview.activity.total_commits}</span>
-              <span className="activity-label">{t('project.totalCommits')}</span>
-            </div>
-            <div className="activity-stat">
-              <span className="activity-value">{overview.activity.commit_rate_30d}</span>
-              <span className="activity-label">{t('project.last30d')}</span>
-            </div>
-            <div className="activity-stat">
-              <span className="activity-value">{overview.activity.active_days}</span>
-              <span className="activity-label">{t('project.activeDays90')}</span>
-            </div>
-            <div className="activity-stat">
-              <span className="activity-value">{overview.activity.active_months}</span>
-              <span className="activity-label">{t('project.activeMonths')}</span>
-            </div>
-            {overview.activity.last_commit_date && (
-              <div className="activity-stat">
-                <span className="activity-value-sm">{overview.activity.last_commit_date}</span>
-                <span className="activity-label">{t('project.lastCommit')}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {(overview.recent_commits?.length ?? 0) > 0 && (
-        <div className="overview-commits">
-          <h4 className="overview-sub-title">{t('project.recentCommits')}</h4>
-          <ul className="commit-feed">
-            {overview.recent_commits!.map((c, i) => (
-              <li key={i} className="commit-feed-item">
-                <span className="commit-dot" />
-                <div className="commit-feed-body">
-                  <div className="commit-feed-msg">{c.message}</div>
-                  <div className="commit-feed-meta">
-                    <span>{c.time}</span>
-                    {c.branch && <span className="commit-branch">{c.branch}</span>}
-                    <span className="commit-author">{c.author}</span>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   )
 }
