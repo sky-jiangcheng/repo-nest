@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"database/sql"
@@ -53,13 +54,13 @@ const DefaultBatchChatTimeout = 10 * time.Minute
 // model was still doing. That is the same class of bug as the batch ceiling
 // being too short, in the opposite direction.
 //
-// Deliberately still synchronous: unlike a batch job, this call has exactly one
-// caller waiting on it, and the panel already renders a pending state. Turning
-// it into a queued job would add a poll loop and a persisted answer to buy
-// nothing a user can perceive — the wait is the same length either way. What
-// actually needed fixing was the ceiling, so that is what changed. Streaming
-// (which would change the wait itself) stays out of scope; see
-// wiki_evidence.go's header.
+// Deliberately still synchronous in mechanism: unlike a batch job, this call
+// has exactly one caller waiting on it, and turning it into a queued job would
+// add a poll loop and a persisted answer to buy nothing a user can perceive.
+// What needed fixing first was the ceiling, so that is what changed. Streaming
+// (which changes the wait itself) is implemented separately as
+// AskAIWithEvidenceStream — same answer, different transport, so the quality
+// claim of W2 stays measurable independently of how the reply is delivered.
 const aiAskTimeout = 5 * time.Minute
 
 const aiProbeTimeout = 15 * time.Second
@@ -111,6 +112,30 @@ type chatResponse struct {
 		// once you only have the text — and they call for opposite user actions.
 		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
+}
+
+// chatStreamRequest is chatRequest plus stream:true. The body is identical to
+// the non-streaming shape except for the flag — anything else would risk an
+// endpoint applying different prompt handling to the two modes.
+type chatStreamRequest struct {
+	Model    string        `json:"model"`
+	Messages []chatMessage `json:"messages"`
+	Stream   bool          `json:"stream"`
+}
+
+// streamDelta is one SSE data: payload of a streaming /chat/completions
+// response. Delta content arrives piecemeal; finish_reason is normally present
+// only on the final chunk (it is a pointer so absent can be told from "stop").
+type streamDelta struct {
+	Choices []struct {
+		Delta struct {
+			Content string `json:"content"`
+		} `json:"delta"`
+		FinishReason *string `json:"finish_reason"`
+	} `json:"choices"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error"`
 }
 
 // aiFinishReason reports whether the model stopped on its own. Anything other
@@ -267,6 +292,112 @@ func aiPostJSON(ctx context.Context, rawURL, apiKey string, body []byte) (int, [
 		}
 	}
 	return status, raw, err
+}
+
+// aiPostJSONStream is aiPostJSON for stream:true: same transport (candidate
+// URL handled by the caller, localhost fallback inside), but the response
+// body is decoded as an SSE stream on the fly instead of buffered whole.
+// Each content delta is handed to onDelta as it arrives; the returned
+// finishReasons is the server's own verdict on the reply (see ChatGPT's
+// streamDelta for why it lands on the last chunk). A non-2xx response is
+// read into raw and returned verbatim so the caller can classify it (404 →
+// next candidate, auth → fail fast, etc.) exactly like the batch path.
+func aiPostJSONStream(ctx context.Context, rawURL, apiKey string, body []byte, onDelta func(string)) (int, finishReasons, error) {
+	try := func(u string) (int, finishReasons, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
+		if err != nil {
+			return 0, "", err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if apiKey != "" {
+			req.Header.Set("Authorization", "Bearer "+apiKey)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return 0, "", err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			raw, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+			return resp.StatusCode, "", fmt.Errorf("AI endpoint returned %d: %s", resp.StatusCode, truncateBytes(string(raw), 300))
+		}
+		reason, err := parseSSEStream(resp.Body, onDelta)
+		return http.StatusOK, reason, err
+	}
+	status, reason, err := try(rawURL)
+	if err != nil && status == 0 { // transport-level failure only; a 404/401 body is a verdict, not a retry
+		if fallback := aiLocalhostFallback(rawURL); fallback != "" {
+			status, reason, err = try(fallback)
+		}
+	}
+	return status, reason, err
+}
+
+// finishReasons is the server's verdict on the completed stream: "stop",
+// "length" (output budget exhausted mid-reply), "content_filter", ...; ""
+// when the stream ended without one. Purposely named in the plural: SSE
+// reports it once per chunk, and the last non-empty value wins.
+type finishReasons string
+
+// parseSSEStream consumes an OpenAI-compatible SSE response body. Every
+// content delta is delivered to onDelta as it is decoded; the first error
+// payload (an OpenAI endpoint can fold a failure into the 200 stream) is
+// reported, and "<-[DONE]->" ends the stream early.
+//
+// Kept as a pure function (io.Reader in, no network) so the streaming
+// parser can be unit-tested with a strings.Reader — the httptest loopback
+// is unavailable in the sandbox, and the alternative (only exercising
+// streaming via end-to-end tests) would leave the chunking logic untested.
+func parseSSEStream(r io.Reader, onDelta func(string)) (finishReasons, error) {
+	if onDelta == nil {
+		onDelta = func(string) {}
+	}
+	sc := bufio.NewScanner(r)
+	// SSE chunks are normally small; raise the cap so an unusually chatty
+	// server cannot be misread as a truncated stream.
+	sc.Buffer(make([]byte, 0, 16*1024), 4<<20)
+
+	var reason finishReasons
+	var streamErr error
+	for sc.Scan() {
+		line := sc.Text()
+		if !strings.HasPrefix(line, "data:") {
+			continue // ":comment" / "event:" / blank separator lines
+		}
+		payload := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		if payload == "" {
+			continue
+		}
+		if payload == "[DONE]" {
+			break
+		}
+		var delta streamDelta
+		if err := json.Unmarshal([]byte(payload), &delta); err != nil {
+			// A malformed chunk is a stream failure: without the full text
+			// the caller cannot tell truncation from corruption, so report
+			// it rather than silently ending with a half answer.
+			return reason, fmt.Errorf("malformed SSE chunk: %w", err)
+		}
+		if delta.Error != nil && delta.Error.Message != "" {
+			streamErr = fmt.Errorf("%s", delta.Error.Message)
+			continue
+		}
+		for _, c := range delta.Choices {
+			if c.Delta.Content != "" {
+				onDelta(c.Delta.Content)
+			}
+			if c.FinishReason != nil && *c.FinishReason != "" {
+				reason = finishReasons(*c.FinishReason)
+			}
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return reason, err
+	}
+	if streamErr != nil {
+		return reason, streamErr
+	}
+	return reason, nil
 }
 
 // aiNetworkHint turns a raw transport error into an actionable hint.
@@ -467,6 +598,65 @@ func (s *Service) AskAI(projectID int64, question string) (string, error) {
 		return "", err
 	}
 	return result.Reply, nil
+}
+
+// streamChatWithTimeout is testAIChatWithTimeout with stream:true: it probes the
+// candidate URLs in order (same 404-continue / auth-fail-fast / last-network-
+// error hint policy), streams each content delta to onDelta as it arrives, and
+// returns the fully received reply plus the server's finish_reason. The reply
+// aggregate stays in one place so both the streaming caller (which forwards
+// deltas) and the plain caller (which may ignore them) can rely on it.
+func streamChatWithTimeout(baseURL, model, apiKey string, messages []chatMessage, timeout time.Duration, onDelta func(string)) (string, finishReasons, error) {
+	base := strings.TrimSpace(baseURL)
+	if base == "" || strings.TrimSpace(model) == "" {
+		return "", "", fmt.Errorf("base URL and model are required")
+	}
+	body, err := json.Marshal(chatStreamRequest{Model: strings.TrimSpace(model), Messages: messages, Stream: true})
+	if err != nil {
+		return "", "", err
+	}
+	if timeout <= 0 {
+		timeout = aiChatTimeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	var b strings.Builder
+	delta := func(d string) {
+		b.WriteString(d)
+		if onDelta != nil {
+			onDelta(d)
+		}
+	}
+
+	var lastNet error
+	var lastStatus int
+	var lastBody string
+	for _, url := range aiCandidateURLs(base, "/chat/completions") {
+		status, reason, err := aiPostJSONStream(ctx, url, strings.TrimSpace(apiKey), body, delta)
+		if err != nil {
+			if status == http.StatusNotFound {
+				lastStatus, lastBody = status, err.Error()
+				continue
+			}
+			if status == http.StatusUnauthorized || status == http.StatusForbidden {
+				return b.String(), "", fmt.Errorf("auth failed (%d) — check the API key", status)
+			}
+			if status == 0 {
+				lastNet = err
+				continue
+			}
+			return b.String(), "", err
+		}
+		// Streaming worked even when the last finish_reason chunk never
+		// arrived; missing reason is not evidence of truncation (see
+		// truncatedHint), so success wins here.
+		return strings.TrimSpace(b.String()), reason, nil
+	}
+	if lastNet != nil {
+		return b.String(), "", aiNetworkHint(lastNet)
+	}
+	return b.String(), "", fmt.Errorf("no working path found — tried: %s (last status %d: %s)", strings.Join(aiCandidateURLs(base, "/chat/completions"), ", "), lastStatus, truncateBytes(lastBody, 120))
 }
 
 // aiProjectContext packs the mined project knowledge into a system prompt.

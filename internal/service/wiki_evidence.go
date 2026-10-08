@@ -27,6 +27,14 @@ import (
 // W2's whole claim is that evidence beats stuffing — so the transport work is a
 // separate step rather than something bundled in a way that makes the quality
 // claim harder to see.
+//
+// That separate step landed as AskAIWithEvidenceStream: same retrieval, same
+// message assembly, same endpoint probing — only delivery differs (see below).
+//
+// The separate step landed as AskAIWithEvidenceStream (same retrieval, same
+// message assembly, same endpoint probing; only the delivery differs), with the
+// SSE parsing kept as a pure function so streaming is unit-testable without a
+// live endpoint.
 
 // EvidenceBudget is the triple cap ADR-0014 决策 3 asks for: item count,
 // character quota, wall-clock deadline. Each one exists because the others can be
@@ -334,17 +342,12 @@ type EvidenceAnswer struct {
 	Truncated bool `json:"truncated,omitempty"`
 }
 
-func (s *Service) AskAIWithEvidence(projectID int64, question string, budget EvidenceBudget) (*EvidenceAnswer, error) {
-	question = strings.TrimSpace(question)
-	if question == "" {
-		return nil, fmt.Errorf("question is required")
-	}
-	cfg, err := s.aiChatConfig()
-	if err != nil {
-		return nil, err
-	}
-	ev := s.GatherEvidence(projectID, question, budget)
-
+// evidenceMessages assembles the system/user message list for an
+// evidence-backed ask: L3+L2 orientation, the retrieved evidence block, then
+// the question. Shared by the sync and streaming paths so the answer content
+// cannot drift between transports (the streaming claim is "same answer,
+// delivered sooner", which requires identical prompts).
+func (s *Service) evidenceMessages(projectID int64, question, ev string) []chatMessage {
 	messages := []chatMessage{}
 	if projectID > 0 {
 		// L3 (cross-project profile) + L2 (project scenario) as orientation, then
@@ -357,19 +360,32 @@ func (s *Service) AskAIWithEvidence(projectID int64, question string, budget Evi
 		if base == "" {
 			base = s.aiProjectBaseContext(projectID)
 		}
-		block := ev.Render()
 		switch {
-		case base != "" && block != "":
-			messages = append(messages, chatMessage{Role: "system", Content: base + "\n" + block})
+		case base != "" && ev != "":
+			messages = append(messages, chatMessage{Role: "system", Content: base + "\n" + ev})
 		case base != "":
 			messages = append(messages, chatMessage{Role: "system", Content: base})
-		case block != "":
-			messages = append(messages, chatMessage{Role: "system", Content: block})
+		case ev != "":
+			messages = append(messages, chatMessage{Role: "system", Content: ev})
 		}
-	} else if block := ev.Render(); block != "" {
-		messages = append(messages, chatMessage{Role: "system", Content: block})
+	} else if ev != "" {
+		messages = append(messages, chatMessage{Role: "system", Content: ev})
 	}
 	messages = append(messages, chatMessage{Role: "user", Content: question})
+	return messages
+}
+
+func (s *Service) AskAIWithEvidence(projectID int64, question string, budget EvidenceBudget) (*EvidenceAnswer, error) {
+	question = strings.TrimSpace(question)
+	if question == "" {
+		return nil, fmt.Errorf("question is required")
+	}
+	cfg, err := s.aiChatConfig()
+	if err != nil {
+		return nil, err
+	}
+	ev := s.GatherEvidence(projectID, question, budget)
+	messages := s.evidenceMessages(projectID, question, ev.Render())
 
 	result, err := TestAIChatWithTimeout(cfg.baseURL, cfg.model, cfg.apiKey, messages, aiAskTimeout)
 	if err != nil {
@@ -379,6 +395,35 @@ func (s *Service) AskAIWithEvidence(projectID int64, question string, budget Evi
 		Reply:     result.Reply,
 		Evidence:  ev,
 		Truncated: truncatedHint(result.FinishReason) != "",
+	}, nil
+}
+
+// AskAIWithEvidenceStream is the streaming version of AskAIWithEvidence:
+// identical evidence retrieval and prompt assembly (via evidenceMessages), but
+// the completion is requested with stream:true and every content delta is
+// delivered to onDelta as it decodes, so the caller can render the reply as it
+// forms instead of after a multi-minute wait. It still returns the fully
+// received answer, so callers that want to store it keep one code path.
+func (s *Service) AskAIWithEvidenceStream(projectID int64, question string, budget EvidenceBudget, onDelta func(string)) (*EvidenceAnswer, error) {
+	question = strings.TrimSpace(question)
+	if question == "" {
+		return nil, fmt.Errorf("question is required")
+	}
+	cfg, err := s.aiChatConfig()
+	if err != nil {
+		return nil, err
+	}
+	ev := s.GatherEvidence(projectID, question, budget)
+	messages := s.evidenceMessages(projectID, question, ev.Render())
+
+	reply, reason, err := streamChatWithTimeout(cfg.baseURL, cfg.model, cfg.apiKey, messages, aiAskTimeout, onDelta)
+	if err != nil {
+		return nil, err
+	}
+	return &EvidenceAnswer{
+		Reply:     reply,
+		Evidence:  ev,
+		Truncated: truncatedHint(string(reason)) != "",
 	}, nil
 }
 
