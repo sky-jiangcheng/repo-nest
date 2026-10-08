@@ -22,7 +22,24 @@ import (
 // and credentials live in the app config (ai_chat_*); RepoNest itself ships
 // no model, the user points it at one.
 
+// aiChatTimeout bounds the interactive path: a user staring at a chat box should
+// get an error, not a hung panel.
+//
+// It was also silently bounding the BATCH paths, which is wrong in the other
+// direction — a local 27B model needs well over 90s for one compile request, so
+// ingest-time compilation could never succeed no matter what the user configured.
+// Discovered by running the real rehearsal rather than by reading the code.
 const aiChatTimeout = 90 * time.Second
+
+// DefaultBatchChatTimeout bounds non-interactive batch calls (compile, model-backed
+// lint). These are explicit, user-initiated jobs that already carry their own
+// scope budgets, so a long ceiling is the correct trade: failing after 90 seconds
+// on hardware that would have answered in 4 is not a useful failure.
+// DefaultBatchChatTimeout is exported so the HTTP layer can prove its write
+// deadline sits above it (see cmd/server): a long LLM-backed call must never be
+// cut off after its work already committed.
+const DefaultBatchChatTimeout = 10 * time.Minute
+
 const aiProbeTimeout = 15 * time.Second
 
 // aiChatConfig is the resolved (non-redacted) chat configuration.
@@ -297,6 +314,15 @@ func TestAIChat(baseURL, model, apiKey string) (*AITestResult, error) {
 // TestAIChatWith is TestAIChat with explicit messages (AskAI reuses it so a
 // saved-but-imprecise base URL gets the same candidate probing).
 func TestAIChatWith(baseURL, model, apiKey string, messages []chatMessage) (*AITestResult, error) {
+	return testAIChatWithTimeout(baseURL, model, apiKey, messages, aiChatTimeout)
+}
+
+// TestAIChatWithTimeout is the batch-path variant: same contract, longer ceiling.
+func TestAIChatWithTimeout(baseURL, model, apiKey string, messages []chatMessage, timeout time.Duration) (*AITestResult, error) {
+	return testAIChatWithTimeout(baseURL, model, apiKey, messages, timeout)
+}
+
+func testAIChatWithTimeout(baseURL, model, apiKey string, messages []chatMessage, timeout time.Duration) (*AITestResult, error) {
 	base := strings.TrimSpace(baseURL)
 	if base == "" || strings.TrimSpace(model) == "" {
 		return nil, fmt.Errorf("base URL and model are required")
@@ -306,7 +332,10 @@ func TestAIChatWith(baseURL, model, apiKey string, messages []chatMessage) (*AIT
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), aiChatTimeout)
+	if timeout <= 0 {
+		timeout = aiChatTimeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	var lastNet error

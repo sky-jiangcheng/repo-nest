@@ -38,13 +38,24 @@ import (
 // a half-open connection before sending a request; without it, slowloris-style
 // hangs accumulate unbounded goroutines. IdleTimeout reaps keep-alive
 // connections a client stopped using (without it they live forever).
-// WriteTimeout is generous — the longest synchronous paths (llms.txt
-// generation, search) are second-scale, and long work like scans/stats
-// refresh is dispatched to background goroutines and returns immediately.
+// WriteTimeout used to rest on the premise that every long job is dispatched to
+// a background goroutine and returns at once. Ingest-time compilation broke that
+// premise: it is a synchronous call that waits on a local LLM, and a 27B model
+// can take minutes per note. With the old 60s ceiling the handler's work
+// COMMITTED but the response could no longer be written — the client saw a
+// connection error over a successful operation, which is the worst possible
+// failure mode (it teaches users to distrust a tool that actually worked).
+//
+// So this must stay above service.DefaultBatchChatTimeout, and the pairing is
+// enforced at runtime below rather than by a comment that decays.
+//
+// The real fix is an async job + polling surface, not an ever-longer synchronous
+// timeout; that is proposed separately (ADR-0016) and this is the stopgap.
 const (
 	headerTimeout = 10 * time.Second
-	writeTimeout  = 60 * time.Second
-	idleTimeout   = 120 * time.Second
+	// Must exceed the batch LLM ceiling; see the block above.
+	writeTimeout = service.DefaultBatchChatTimeout + 60*time.Second
+	idleTimeout  = 120 * time.Second
 )
 
 func main() {
@@ -80,6 +91,14 @@ func main() {
 	// Bind the same App object the desktop Wails layer exposes, so the browser
 	// frontend can reach every capability via /api/rpc (see httpapi/rpc.go).
 	mux := httpapi.New(svc, app.New(svc))
+	// Drift guard for the invariant stated above: if someone shortens either
+	// ceiling, fail loudly at startup instead of silently reintroducing the
+	// "committed but reported as failed" behaviour.
+	if writeTimeout <= service.DefaultBatchChatTimeout {
+		log.Fatalf("server misconfigured: WriteTimeout (%v) must exceed the batch chat ceiling (%v)",
+			writeTimeout, service.DefaultBatchChatTimeout)
+	}
+
 	srv := &http.Server{
 		Addr:              "127.0.0.1:" + *port,
 		Handler:           mux,
