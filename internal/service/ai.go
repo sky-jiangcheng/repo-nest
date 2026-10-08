@@ -22,13 +22,15 @@ import (
 // and credentials live in the app config (ai_chat_*); RepoNest itself ships
 // no model, the user points it at one.
 
-// aiChatTimeout bounds the interactive path: a user staring at a chat box should
-// get an error, not a hung panel.
+// aiChatTimeout bounds the PLAIN chat path (a short question, no retrieval): a
+// user staring at a chat box should get an error, not a hung panel.
 //
-// It was also silently bounding the BATCH paths, which is wrong in the other
-// direction — a local 27B model needs well over 90s for one compile request, so
-// ingest-time compilation could never succeed no matter what the user configured.
-// Discovered by running the real rehearsal rather than by reading the code.
+// It used to bound every path, which was wrong in the other direction — a local
+// 27B model needs well over 90s for one compile request, so ingest-time
+// compilation could never succeed no matter what the user configured. Discovered
+// by running the real rehearsal rather than by reading the code. The batch paths
+// moved to DefaultBatchChatTimeout and evidence-backed Q&A to aiAskTimeout; this
+// ceiling now covers only what it was written for.
 const aiChatTimeout = 90 * time.Second
 
 // DefaultBatchChatTimeout bounds non-interactive batch calls (compile, model-backed
@@ -39,6 +41,26 @@ const aiChatTimeout = 90 * time.Second
 // deadline sits above it (see cmd/server): a long LLM-backed call must never be
 // cut off after its work already committed.
 const DefaultBatchChatTimeout = 10 * time.Minute
+
+// aiAskTimeout bounds AskAIWithEvidence, the evidence-backed Q&A path.
+//
+// It is NOT aiChatTimeout, and the reason is payload size rather than
+// politeness. The plain chat path sends a short question; this one sends the
+// layered project context (L3 1200 + L2 1600 chars) plus up to 12 retrieved
+// items (~4000 chars) — the same order of magnitude as a compile request, which
+// was measured at 173s on a local 27B model. Under the 90s ceiling a legitimate
+// answer was reported as a timeout, i.e. the UI said "failed" about work the
+// model was still doing. That is the same class of bug as the batch ceiling
+// being too short, in the opposite direction.
+//
+// Deliberately still synchronous: unlike a batch job, this call has exactly one
+// caller waiting on it, and the panel already renders a pending state. Turning
+// it into a queued job would add a poll loop and a persisted answer to buy
+// nothing a user can perceive — the wait is the same length either way. What
+// actually needed fixing was the ceiling, so that is what changed. Streaming
+// (which would change the wait itself) stays out of scope; see
+// wiki_evidence.go's header.
+const aiAskTimeout = 5 * time.Minute
 
 const aiProbeTimeout = 15 * time.Second
 
@@ -82,7 +104,46 @@ type chatResponse struct {
 		Message struct {
 			Content string `json:"content"`
 		} `json:"message"`
+		// finish_reason is the server's own verdict on the reply: "stop" (it
+		// finished on its own), "length" (the output budget ran out mid-reply),
+		// "content_filter", etc. It is carried through rather than parsed
+		// because a truncated JSON array and a malformed one are indistinguishable
+		// once you only have the text — and they call for opposite user actions.
+		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
+}
+
+// aiFinishReason reports whether the model stopped on its own. Anything other
+// than the OpenAI-compatible "stop" (notably "length", i.e. truncated by the
+// output token budget) means the content we got back is a prefix, not a
+// finished reply. Empty is treated as "stop" because plenty of servers omit
+// the field on success and a missing reason is not evidence of truncation.
+func aiFinishReason(cr chatResponse) string {
+	if len(cr.Choices) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(cr.Choices[0].FinishReason)
+}
+
+// truncatedHint turns a non-"stop" finish_reason into the one sentence the user
+// can act on. Reasoning models routinely spend the output budget on hidden
+// tokens (reasoning_tokens=1600 in a real run here), so this fires on ordinary
+// configurations, not only exotic ones.
+//
+// Returns "" when the reply completed normally — callers use that to keep the
+// old "cannot parse" wording, which is still correct for a reply that really
+// was malformed rather than cut short.
+func truncatedHint(finishReason string) string {
+	switch finishReason {
+	case "", "stop", "end_turn", "stop_sequence":
+		return ""
+	case "length", "max_tokens", "model_length":
+		return "（回复被输出上限截断，并非格式错误：请换用输出预算更大的模型，或提高 max_tokens 后重试）"
+	case "content_filter":
+		return "（回复被内容过滤器拦截，请调整提问方式后重试）"
+	default:
+		return "（模型以 " + finishReason + " 结束本轮回复，未输出完整结果）"
+	}
 }
 
 // AIModelListResult is the payload of ListAIModels: the advertised model ids
@@ -97,6 +158,10 @@ type AIModelListResult struct {
 type AITestResult struct {
 	Reply           string `json:"reply"`
 	ResolvedBaseURL string `json:"resolved_base_url"`
+	// FinishReason is the server's verdict on the reply, "" when it completed
+	// normally. Callers that parse structured output need this to tell a
+	// truncated reply from a malformed one; see truncatedHint.
+	FinishReason string `json:"finish_reason,omitempty"`
 }
 
 // aiCandidateURLs builds the /models or /chat/completions URLs to probe in
@@ -367,6 +432,7 @@ func testAIChatWithTimeout(baseURL, model, apiKey string, messages []chatMessage
 		return &AITestResult{
 			Reply:           strings.TrimSpace(cr.Choices[0].Message.Content),
 			ResolvedBaseURL: strings.TrimSuffix(url, "/chat/completions"),
+			FinishReason:    aiFinishReason(cr),
 		}, nil
 	}
 	if lastNet != nil {

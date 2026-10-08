@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   approveWikiPage, cancelCompileJob, deleteCompiledPage, getProjects,
   listCompileJobs, listPendingWikiPages, listRejectedWikiPages,
-  rejectWikiPage, startCompileJob,
+  rejectWikiPage, startCompileJob, startLintJob,
 } from '../api/client'
 import type { CompileJob, Project, WikiPendingPage } from '../api/client'
 import ErrorBanner from '../components/ErrorBanner'
@@ -21,6 +21,14 @@ function statusKey(status: string): string {
   // status_* keys exist for every job state; unknown states render verbatim so a
   // new backend status is visible rather than silently labelled "queued".
   return `review.status_${status}`
+}
+
+// kindLabel names which queue a row came from. A missing kind means the backend
+// predates the column, and such a row is a compile job — so the fallback is the
+// compile label rather than a blank badge.
+function kindLabel(job: CompileJob, t: (k: string) => string): string {
+  const kind = job.kind || 'compile'
+  return kind === 'lint' ? t('review.kindLint') : t('review.kindCompile')
 }
 
 function ReviewPage() {
@@ -47,7 +55,7 @@ function ReviewPage() {
       getProjects(),
       listPendingWikiPages(projectFilter),
       listRejectedWikiPages(projectFilter),
-      listCompileJobs(projectFilter, 10),
+      listCompileJobs(projectFilter, '', 10),
     ]).then(([projs, pend, rej, jb]) => {
       if (cancelled) return
       setProjects(projs)
@@ -90,6 +98,9 @@ function ReviewPage() {
     void runGuarded(() => deleteCompiledPage(id))
   }
   const onStart = () => void runGuarded(() => startCompileJob(projectFilter, maxNotesPerRun))
+  // A queued lint job is per-project (db.CreateLintJob), so the button is
+  // disabled on "all projects" rather than failing after the click.
+  const onStartLint = () => void runGuarded(() => startLintJob(projectFilter))
   const onCancel = (id: number) => void runGuarded(() => cancelCompileJob(id))
 
   const projectLabel = useMemo(() => {
@@ -122,6 +133,16 @@ function ReviewPage() {
           >
             {t('review.startCompile')}
           </button>
+          {/* Not a primary button: two primaries on one toolbar compete, and
+              this one is off by default anyway (wiki_lint_llm). */}
+          <button
+            className="btn btn-sm"
+            onClick={onStartLint}
+            disabled={busy || projectFilter === 0}
+            title={projectFilter === 0 ? t('review.lintNeedsProject') : t('review.startLintHint')}
+          >
+            {t('review.startLint')}
+          </button>
         </div>
       </header>
 
@@ -136,11 +157,19 @@ function ReviewPage() {
               <li key={j.id} className={s.job}>
                 <div className={s.jobTop}>
                   <span className={`${s.badge} ${s['badge_' + j.status] ?? ''}`}>{t(statusKey(j.status), j.status)}</span>
+                  {/* One queue, two kernels (ADR-0016 待决 ①), so the counters are
+                      labelled per kind: "pages created" is always 0 on a lint row
+                      and "notes" is not what a lint row counts. */}
+                  <span className={s.badge}>{kindLabel(j, t)}</span>
                   <span className={s.jobMeta}>
-                    {t('review.progress', { done: j.notes_done, total: j.notes_total || j.requested_notes })}
-                    {' · '}{t('review.pagesCreated', { n: j.pages_created })}
-                    {j.rejected_ops > 0 && <> · {t('review.rejectedOps', { n: j.rejected_ops })}</>}
-                    {j.revision_todos > 0 && <> · {t('review.revisionTodos', { n: j.revision_todos })}</>}
+                    {j.kind === 'lint'
+                      ? t('review.lintProgress', { done: j.notes_done, total: j.notes_total || j.requested_notes })
+                      : t('review.progress', { done: j.notes_done, total: j.notes_total || j.requested_notes })}
+                    {' · '}{j.kind === 'lint'
+                      ? t('review.findingsCount', { n: j.findings })
+                      : t('review.pagesCreated', { n: j.pages_created })}
+                    {j.kind !== 'lint' && j.rejected_ops > 0 && <> · {t('review.rejectedOps', { n: j.rejected_ops })}</>}
+                    {j.kind !== 'lint' && j.revision_todos > 0 && <> · {t('review.revisionTodos', { n: j.revision_todos })}</>}
                   </span>
                   {(j.status === 'queued' || j.status === 'running') && (
                     <button className="btn btn-sm" onClick={() => onCancel(j.id)} disabled={busy}>

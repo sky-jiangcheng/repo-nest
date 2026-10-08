@@ -11,11 +11,12 @@ import {
   type Evidence,
 } from '../api/client'
 import s from './AIAskPanel.module.css'
+import type { PushToast } from '../hooks/useToast'
 
 interface Props {
   projectId: number
   projectName: string
-  onToast: (item: { kind: 'success' | 'error'; title: string; message?: string; duration?: number }) => void
+  onToast: PushToast
   onGoToSettings: () => void
 }
 
@@ -113,9 +114,15 @@ export default function AIAskPanel({ projectId, projectName, onToast, onGoToSett
       setAnswer(res.reply)
       setEvidence({ projectId, data: res.evidence })
       const n = res.evidence?.items?.length ?? 0
-      onToast(n > 0
-        ? { kind: 'success', title: t('ai.replyReceived'), message: t('ai.evidenceCount', { n }) }
-        : { kind: 'success', title: t('ai.replyReceived'), message: t('ai.evidenceNone') })
+      // A truncated reply is reported as a warning, not folded into the success
+      // toast: the answer did arrive and is usable, but it is a prefix, and the
+      // one remedy (bigger output budget / different model) is not something the
+      // user would guess from "收到回复".
+      onToast(res.truncated
+        ? { kind: 'info', title: t('ai.replyTruncated'), message: t('ai.replyTruncatedHint') }
+        : n > 0
+          ? { kind: 'success', title: t('ai.replyReceived'), message: t('ai.evidenceCount', { n }) }
+          : { kind: 'success', title: t('ai.replyReceived'), message: t('ai.evidenceNone') })
     } catch (e) {
       onToast({ kind: 'error', title: t('ai.sendFailed'), message: e instanceof Error ? e.message : undefined })
     } finally {

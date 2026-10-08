@@ -45,6 +45,35 @@ func (s *Service) StartCompileJob(projectID int64, maxNotes int) (int64, error) 
 	return db.CreateCompileJob(s.db, projectID, maxNotes)
 }
 
+// StartLintJob enqueues the model-backed lint pass and returns the job id
+// without calling the model (ADR-0016 待决 ①).
+//
+// It refuses when the model half is switched off, rather than enqueueing a job
+// that would do nothing: wiki_lint_llm defaults to off precisely because the
+// pass sends page content to a model, and a queued job that silently no-ops is
+// harder to reason about than a refused one.
+func (s *Service) StartLintJob(projectID int64) (int64, error) {
+	if projectID <= 0 {
+		// A queued lint is per-project. The all-pages pass runs on the scheduled
+		// synchronous path; see db.CreateLintJob for why a job cannot span projects.
+		return 0, fmt.Errorf("a project id is required to start a lint job")
+	}
+	if !s.wikiLintLLMEnabled() {
+		return 0, fmt.Errorf("the model-backed checks are off: set %s=1 to let lint read your pages", wikiLintLLMKey)
+	}
+	if _, err := s.aiChatConfig(); err != nil {
+		return 0, fmt.Errorf("no AI endpoint configured: %w", err)
+	}
+	pages, err := db.ListWikiPages(s.db, "", projectID)
+	if err != nil {
+		return 0, err
+	}
+	if len(pages) == 0 {
+		return 0, fmt.Errorf("there are no pages to lint yet")
+	}
+	return db.CreateLintJob(s.db, projectID, len(pages))
+}
+
 // GetCompileJob and ListCompileJobs are the polling surface.
 func (s *Service) GetCompileJob(jobID int64) (*db.CompileJob, error) {
 	j, err := db.GetCompileJob(s.db, jobID)
@@ -54,9 +83,14 @@ func (s *Service) GetCompileJob(jobID int64) (*db.CompileJob, error) {
 	return j, nil
 }
 
-// ListCompileJobs returns recent jobs, newest first.
-func (s *Service) ListCompileJobs(projectID int64, limit int) ([]db.CompileJob, error) {
-	return db.ListCompileJobs(s.db, projectID, limit)
+// ListCompileJobs returns recent jobs, newest first. kind == "" lists both kinds;
+// the review panel filters so a compile row's page counters and a lint row's
+// finding count are never rendered under one set of labels.
+func (s *Service) ListCompileJobs(projectID int64, kind string, limit int) ([]db.CompileJob, error) {
+	if kind != "" && kind != db.JobKindCompile && kind != db.JobKindLint {
+		return nil, fmt.Errorf("unknown job kind %q", kind)
+	}
+	return db.ListCompileJobs(s.db, projectID, kind, limit)
 }
 
 // CancelCompileJob stops a job from processing further notes. An LLM request
@@ -87,6 +121,9 @@ func (s *Service) startCompileJobWorker() {
 
 // runNextCompileJob claims and drains one job. It is a method rather than inline
 // so a test can drive the queue deterministically without waiting on the ticker.
+//
+// The claimed row's kind picks the kernel. Both kernels are the existing
+// synchronous entry points, unchanged — the queue is transport, not logic.
 func (s *Service) runNextCompileJob(ctx context.Context) bool {
 	job, err := db.ClaimCompileJob(s.db)
 	if err != nil {
@@ -96,7 +133,70 @@ func (s *Service) runNextCompileJob(ctx context.Context) bool {
 	if job == nil {
 		return false
 	}
+	if job.Kind == db.JobKindLint {
+		s.runLintJob(ctx, job)
+		return true
+	}
+	return s.runCompileJob(ctx, job)
+}
 
+// runLintJob drains one queued lint pass. The structural half (orphan pages,
+// missing cross-references, data gaps) is pure SQL and stays on the synchronous
+// path — it is milliseconds, and making the user wait on a job row for it would
+// be theatre. Only the model-backed half is queued, which is the half that can
+// take minutes.
+func (s *Service) runLintJob(ctx context.Context, job *db.CompileJob) {
+	if err := ctx.Err(); err != nil {
+		s.finishJob(job.ID, db.CompileJobCanceled, "", "worker shutting down")
+		return
+	}
+	if canceled, _ := db.CompileJobIsCanceled(s.db, job.ID); canceled {
+		s.finishJob(job.ID, db.CompileJobCanceled, "", "canceled before the model pass started")
+		return
+	}
+	rep, err := s.RunWikiLint(job.ProjectID, true)
+	if err != nil {
+		s.failJob(job.ID, fmt.Sprintf("wiki lint: %v", err))
+		return
+	}
+	row := &db.CompileJob{
+		NotesTotal: rep.Pages,
+		NotesDone:  rep.Pages,
+		Findings:   len(rep.Findings),
+		Note:       rep.LLMNote,
+		Stopped:    lintStopNote(rep),
+	}
+	if err := db.UpdateCompileJobProgress(s.db, job.ID, row); err != nil {
+		log.Printf("lint job %d: progress write failed: %v", job.ID, err)
+	}
+	// A canceled job must not be flipped back to succeeded by this late write —
+	// FinishCompileJob is unconditional, so the flag is re-read here.
+	if canceled, _ := db.CompileJobIsCanceled(s.db, job.ID); canceled {
+		return
+	}
+	note := row.Stopped
+	if note == "" {
+		note = "lint finished"
+	}
+	s.finishJob(job.ID, db.CompileJobDone, note, "")
+}
+
+// lintStopNote says what the pass actually did, in the job row's own terms. An
+// LLM pass that was switched off is not a pass that found nothing, and the two
+// must not read the same in a list.
+func lintStopNote(rep *WikiLintReport) string {
+	switch {
+	case !rep.LLMRan && rep.LLMNote != "":
+		return rep.LLMNote
+	case len(rep.Findings) == 0:
+		return "no findings"
+	default:
+		return fmt.Sprintf("%d finding(s), %d todo(s) filed", len(rep.Findings), rep.TodosCreated)
+	}
+}
+
+// runCompileJob drains one queued compile, a note at a time.
+func (s *Service) runCompileJob(ctx context.Context, job *db.CompileJob) bool {
 	notes, err := db.ListNotes(s.db, job.ProjectID)
 	if err != nil {
 		s.failJob(job.ID, fmt.Sprintf("list notes: %v", err))

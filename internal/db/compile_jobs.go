@@ -28,10 +28,26 @@ const (
 	CompileJobCanceled = "canceled"
 )
 
+// Job kinds. The table is a general long-task queue, not a compile-log: the lint
+// model pass is just as long (same 10-minute ceiling, same local-model latency)
+// and ADR-0016 待决 ① resolved it as "one table, one polling surface".
+//
+// The discriminator exists because the counters are not interchangeable — a
+// compile job counts pages, a lint job counts findings — so the worker has to
+// know which kernel to call before it reads a single row. Rows written before
+// this column existed are all compile jobs, which is why the default is
+// 'compile' and not ”.
+const (
+	JobKindCompile = "compile"
+	JobKindLint    = "lint"
+)
+
 var compileJobStatements = []string{
 	`CREATE TABLE IF NOT EXISTS compile_jobs (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		project_id INTEGER NOT NULL,
+		kind TEXT NOT NULL DEFAULT 'compile'
+			CHECK (kind IN ('compile','lint')),
 		requested_notes INTEGER NOT NULL,
 		status TEXT NOT NULL DEFAULT 'queued'
 			CHECK (status IN ('queued','running','succeeded','failed','canceled')),
@@ -43,6 +59,7 @@ var compileJobStatements = []string{
 		attachments INTEGER NOT NULL DEFAULT 0,
 		revision_todos INTEGER NOT NULL DEFAULT 0,
 		rejected_ops INTEGER NOT NULL DEFAULT 0,
+		findings INTEGER NOT NULL DEFAULT 0,
 		stopped TEXT NOT NULL DEFAULT '',
 		note TEXT NOT NULL DEFAULT '',
 		error TEXT NOT NULL DEFAULT '',
@@ -53,6 +70,37 @@ var compileJobStatements = []string{
 	)`,
 	`CREATE INDEX IF NOT EXISTS idx_compile_jobs_status ON compile_jobs(status, id)`,
 	`CREATE INDEX IF NOT EXISTS idx_compile_jobs_project ON compile_jobs(project_id, id DESC)`,
+	// The worker claims the oldest queued row of ANY kind, so the claim query
+	// filters on status alone. This index serves the review UI's "lint jobs
+	// only" listing, which is the one query that filters on kind.
+	`CREATE INDEX IF NOT EXISTS idx_compile_jobs_kind ON compile_jobs(kind, id DESC)`,
+}
+
+// EnsureCompileJobQueue turns the v19 compile-job table into the general
+// long-task queue ADR-0016 待决 ① asks for: a kind discriminator plus the lint
+// pass's own counter. ALTER rather than a new table — job history is derived
+// operational state, but there is no reason to throw away a user's compile
+// history to add a column.
+//
+// Idempotent, and every pre-existing row becomes kind='compile' / findings=0 via
+// the DEFAULTs, which is the truth: lint jobs could not be written before this.
+func EnsureCompileJobQueue(db *sql.DB) error {
+	stmts := []string{
+		`ALTER TABLE compile_jobs ADD COLUMN kind TEXT NOT NULL DEFAULT 'compile'
+			CHECK (kind IN ('compile','lint'))`,
+		`ALTER TABLE compile_jobs ADD COLUMN findings INTEGER NOT NULL DEFAULT 0`,
+		`CREATE INDEX IF NOT EXISTS idx_compile_jobs_kind ON compile_jobs(kind, id DESC)`,
+	}
+	for _, stmt := range stmts {
+		if _, err := db.Exec(stmt); err != nil {
+			msg := err.Error()
+			if strings.Contains(msg, "duplicate column name") || isAlreadyExistsErr(err) {
+				continue
+			}
+			return fmt.Errorf("db: ensure compile job queue columns: %w", err)
+		}
+	}
+	return nil
 }
 
 // EnsureCompileJobs creates the job table. Idempotent and re-run at every open,
@@ -75,6 +123,7 @@ func DropCompileJobs(db *sql.DB) error {
 	for _, o := range []struct{ kind, name string }{
 		{"INDEX", "idx_compile_jobs_project"},
 		{"INDEX", "idx_compile_jobs_status"},
+		{"INDEX", "idx_compile_jobs_kind"},
 		{"TABLE", "compile_jobs"},
 	} {
 		if _, err := db.Exec("DROP " + o.kind + " IF EXISTS " + o.name); err != nil {
@@ -88,6 +137,7 @@ func DropCompileJobs(db *sql.DB) error {
 type CompileJob struct {
 	ID            int64  `json:"id"`
 	ProjectID     int64  `json:"project_id"`
+	Kind          string `json:"kind"`
 	Requested     int    `json:"requested_notes"`
 	Status        string `json:"status"`
 	NotesTotal    int    `json:"notes_total"`
@@ -98,19 +148,24 @@ type CompileJob struct {
 	Attachments   int    `json:"attachments"`
 	RevisionTodos int    `json:"revision_todos"`
 	RejectedOps   int    `json:"rejected_ops"`
-	Stopped       string `json:"stopped,omitempty"`
-	Note          string `json:"note,omitempty"`
-	Error         string `json:"error,omitempty"`
-	CreatedAt     string `json:"created_at"`
-	StartedAt     string `json:"started_at,omitempty"`
-	FinishedAt    string `json:"finished_at,omitempty"`
+	// Findings is the lint job's counter — the analogue of PagesCreated for a
+	// compile job. Kept as its own column rather than folded into an existing
+	// one because "rejected_ops" means "ops the model emitted that we refused",
+	// which is a different fact from "findings filed as todos".
+	Findings   int    `json:"findings"`
+	Stopped    string `json:"stopped,omitempty"`
+	Note       string `json:"note,omitempty"`
+	Error      string `json:"error,omitempty"`
+	CreatedAt  string `json:"created_at"`
+	StartedAt  string `json:"started_at,omitempty"`
+	FinishedAt string `json:"finished_at,omitempty"`
 }
 
-const compileJobCols = `id, project_id, requested_notes, status, notes_total, notes_done,
+const compileJobCols = `id, project_id, kind, requested_notes, status, notes_total, notes_done,
 	pages_created, pages_updated, links_created, attachments, revision_todos, rejected_ops,
-	stopped, note, error, COALESCE(created_at, ''), COALESCE(started_at, ''), COALESCE(finished_at, '')`
+	findings, stopped, note, error, COALESCE(created_at, ''), COALESCE(started_at, ''), COALESCE(finished_at, '')`
 
-// CreateCompileJob enqueues a job and returns its id, so the caller can leave.
+// CreateCompileJob enqueues a compile job and returns its id, so the caller can leave.
 func CreateCompileJob(db *sql.DB, projectID int64, requested int) (int64, error) {
 	if projectID <= 0 {
 		return 0, fmt.Errorf("db: a compile job needs a project")
@@ -119,9 +174,37 @@ func CreateCompileJob(db *sql.DB, projectID int64, requested int) (int64, error)
 		return 0, fmt.Errorf("db: a compile job needs a note count")
 	}
 	res, err := db.Exec(
-		"INSERT INTO compile_jobs(project_id, requested_notes) VALUES (?, ?)", projectID, requested)
+		"INSERT INTO compile_jobs(project_id, kind, requested_notes) VALUES (?, ?, ?)",
+		projectID, JobKindCompile, requested)
 	if err != nil {
 		return 0, fmt.Errorf("db: create compile job: %w", err)
+	}
+	return res.LastInsertId()
+}
+
+// CreateLintJob enqueues the model-backed half of one project's lint pass.
+//
+// A job is always scoped to a project, exactly like a compile job: the table's
+// project_id is NOT NULL under a foreign key, and inventing a sentinel row to
+// mean "every project" would put a fake project in the user's project list. The
+// all-pages pass therefore stays on the synchronous path that already runs it
+// (the scheduled lint), and what gets queued is the per-project model run the
+// panel triggers.
+//
+// requestedPages is recorded in requested_notes for the progress display; that
+// column is the queue's item counter, not a claim that notes are involved.
+func CreateLintJob(db *sql.DB, projectID int64, requestedPages int) (int64, error) {
+	if projectID <= 0 {
+		return 0, fmt.Errorf("db: a lint job needs a project")
+	}
+	if requestedPages <= 0 {
+		return 0, fmt.Errorf("db: a lint job needs a page count")
+	}
+	res, err := db.Exec(
+		"INSERT INTO compile_jobs(project_id, kind, requested_notes) VALUES (?, ?, ?)",
+		projectID, JobKindLint, requestedPages)
+	if err != nil {
+		return 0, fmt.Errorf("db: create lint job: %w", err)
 	}
 	return res.LastInsertId()
 }
@@ -153,11 +236,17 @@ func ClaimCompileJob(db *sql.DB) (*CompileJob, error) {
 
 func scanCompileJob(rows *sql.Rows) (*CompileJob, error) {
 	var j CompileJob
-	err := rows.Scan(&j.ID, &j.ProjectID, &j.Requested, &j.Status, &j.NotesTotal, &j.NotesDone,
+	err := rows.Scan(&j.ID, &j.ProjectID, &j.Kind, &j.Requested, &j.Status, &j.NotesTotal, &j.NotesDone,
 		&j.PagesCreated, &j.PagesUpdated, &j.LinksCreated, &j.Attachments, &j.RevisionTodos,
-		&j.RejectedOps, &j.Stopped, &j.Note, &j.Error, &j.CreatedAt, &j.StartedAt, &j.FinishedAt)
+		&j.RejectedOps, &j.Findings, &j.Stopped, &j.Note, &j.Error,
+		&j.CreatedAt, &j.StartedAt, &j.FinishedAt)
 	if err != nil {
 		return nil, err
+	}
+	if j.Kind == "" {
+		// A row predating the kind column: it is a compile job, because lint
+		// jobs could not be written before it existed.
+		j.Kind = JobKindCompile
 	}
 	return &j, nil
 }
@@ -169,10 +258,10 @@ func UpdateCompileJobProgress(db *sql.DB, id int64, j *CompileJob) error {
 	_, err := db.Exec(
 		`UPDATE compile_jobs SET status='running', notes_total=?, notes_done=?, pages_created=?,
 		        pages_updated=?, links_created=?, attachments=?, revision_todos=?, rejected_ops=?,
-		        stopped=?, note=?
+		        findings=?, stopped=?, note=?
 		  WHERE id = ? AND status <> 'canceled'`,
 		j.NotesTotal, j.NotesDone, j.PagesCreated, j.PagesUpdated, j.LinksCreated,
-		j.Attachments, j.RevisionTodos, j.RejectedOps, j.Stopped, j.Note, id)
+		j.Attachments, j.RevisionTodos, j.RejectedOps, j.Findings, j.Stopped, j.Note, id)
 	if err != nil {
 		return fmt.Errorf("db: update compile job %d: %w", id, err)
 	}
@@ -209,7 +298,9 @@ func GetCompileJob(db *sql.DB, id int64) (*CompileJob, error) {
 
 // ListCompileJobs returns recent jobs for a project (0 = all projects), newest
 // first, bounded so a long-lived desktop session cannot grow an unbounded panel.
-func ListCompileJobs(db *sql.DB, projectID int64, limit int) ([]CompileJob, error) {
+// kind == "" means both kinds; the review panel asks for one kind at a time
+// because the counters it renders mean different things per kind.
+func ListCompileJobs(db *sql.DB, projectID int64, kind string, limit int) ([]CompileJob, error) {
 	if limit <= 0 || limit > 50 {
 		limit = 10
 	}
@@ -218,6 +309,13 @@ func ListCompileJobs(db *sql.DB, projectID int64, limit int) ([]CompileJob, erro
 	if projectID > 0 {
 		q += " WHERE project_id = ?"
 		args = append(args, projectID)
+		if kind != "" {
+			q += " AND kind = ?"
+			args = append(args, kind)
+		}
+	} else if kind != "" {
+		q += " WHERE kind = ?"
+		args = append(args, kind)
 	}
 	q += " ORDER BY id DESC LIMIT ?"
 	args = append(args, limit)

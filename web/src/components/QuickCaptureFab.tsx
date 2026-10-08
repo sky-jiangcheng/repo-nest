@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next'
 import Icon from './Icon'
 import { createNoteWithMeta, createTodo, getProjects, type NoteKind, type Project } from '../api/client'
 import AIAskPanel from './AIAskPanel'
+import type { PushToast } from '../hooks/useToast'
 
 type Tab = 'capture' | 'ask'
 
 interface Props {
-  onToast: (item: { kind: 'success' | 'error'; title: string; message?: string; duration?: number }) => void
+  onToast: PushToast
 }
 
 /**

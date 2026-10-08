@@ -574,8 +574,14 @@ export function getCompileJob(jobId: number): Promise<CompileJob | null> {
   return call<CompileJob | null>({ method: 'GetCompileJob', args: [jobId] })
 }
 
-export function listCompileJobs(projectId: number, limit: number): Promise<CompileJob[]> {
-  return call<CompileJob[]>({ method: 'ListCompileJobs', args: [projectId, limit] }).then(d => d ?? [])
+// kind: '' lists both queues, 'compile' / 'lint' filter to one. The review panel
+// asks for '' and renders each row against its own counters.
+export function listCompileJobs(projectId: number, kind: string, limit: number): Promise<CompileJob[]> {
+  return call<CompileJob[]>({ method: 'ListCompileJobs', args: [projectId, kind, limit] }).then(d => d ?? [])
+}
+
+export function startLintJob(projectId: number): Promise<number> {
+  return call<number>({ method: 'StartLintJob', args: [projectId] })
 }
 
 export function cancelCompileJob(jobId: number): Promise<CompileJob | null> {

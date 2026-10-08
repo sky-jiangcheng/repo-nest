@@ -324,6 +324,12 @@ func (s *Service) runWikiLintLLM(pages []db.WikiPage) ([]WikiFinding, string) {
 	if !ok {
 		// An unparseable reply yields no findings rather than a best-effort guess:
 		// a hallucinated "contradiction" todo is noise the user clears by hand.
+		//
+		// Truncation is reported separately because the remedy differs: raise the
+		// output budget or switch model, rather than re-running the same call.
+		if hint := truncatedHint(reply.FinishReason); hint != "" {
+			return nil, "LLM 回复被截断，未能解析为 JSON：本次不采信任何建议" + hint
+		}
 		return nil, "LLM 回复无法解析为 JSON：本次不采信任何建议"
 	}
 	byID := make(map[int64]db.WikiPage, len(pages))

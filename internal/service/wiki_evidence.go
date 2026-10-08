@@ -326,6 +326,12 @@ func resolveAgainstEvidence(ev *Evidence, refs []string) []EvidenceItem {
 type EvidenceAnswer struct {
 	Reply    string    `json:"reply"`
 	Evidence *Evidence `json:"evidence"`
+	// Truncated is true when the server cut the reply off (finish_reason
+	// "length") rather than the model finishing. The interactive panel is the
+	// one place where the difference is fully visible — a half-sentence answer
+	// reads as a complete one — so the UI appends the hint itself instead of
+	// baking advice into the answer text the user might quote or file as a page.
+	Truncated bool `json:"truncated,omitempty"`
 }
 
 func (s *Service) AskAIWithEvidence(projectID int64, question string, budget EvidenceBudget) (*EvidenceAnswer, error) {
@@ -365,11 +371,15 @@ func (s *Service) AskAIWithEvidence(projectID int64, question string, budget Evi
 	}
 	messages = append(messages, chatMessage{Role: "user", Content: question})
 
-	result, err := TestAIChatWith(cfg.baseURL, cfg.model, cfg.apiKey, messages)
+	result, err := TestAIChatWithTimeout(cfg.baseURL, cfg.model, cfg.apiKey, messages, aiAskTimeout)
 	if err != nil {
 		return nil, err
 	}
-	return &EvidenceAnswer{Reply: result.Reply, Evidence: ev}, nil
+	return &EvidenceAnswer{
+		Reply:     result.Reply,
+		Evidence:  ev,
+		Truncated: truncatedHint(result.FinishReason) != "",
+	}, nil
 }
 
 func max0(n int) int {

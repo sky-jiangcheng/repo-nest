@@ -282,6 +282,10 @@ export interface Evidence {
 export interface EvidenceAnswer {
   reply: string
   evidence: Evidence
+  // True when the server cut the reply off (finish_reason "length") instead of
+  // the model finishing. A half-sentence answer is indistinguishable from a
+  // complete one on screen, so the panel has to say so itself.
+  truncated?: boolean
 }
 
 // --- Wiki review & compile jobs (ADR-0015 / ADR-0016) -----------------------
@@ -320,6 +324,10 @@ export interface WikiPendingPage {
 export interface CompileJob {
   id: number
   project_id: number
+  // 'compile' | 'lint' — one queue, two kernels (ADR-0016 待决 ①). The counters
+  // below mean different things per kind, so a row must be labelled before it is
+  // rendered: notes_done is "notes compiled" for one and "pages linted" for the other.
+  kind: string
   requested_notes: number
   status: string
   notes_total: number
@@ -330,6 +338,8 @@ export interface CompileJob {
   attachments: number
   revision_todos: number
   rejected_ops: number
+  // Lint jobs only: findings filed as todos. Always 0 for a compile job.
+  findings: number
   stopped?: string
   note?: string
   error?: string

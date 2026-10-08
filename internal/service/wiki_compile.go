@@ -251,6 +251,14 @@ func (s *Service) askCompilePlan(cfg aiChatConfig, note *db.Note) ([]compileOp, 
 	if !ok {
 		// Unparseable means nothing is written at all. A guessed subset of a
 		// malformed plan is exactly how an unreviewed page enters the store.
+		//
+		// A reply the server itself cut short is a different failure with a
+		// different fix, and the raw text cannot tell them apart: a truncated
+		// JSON array is a prefix, which is also what a malformed reply looks
+		// like. So the finish_reason decides which note the user gets.
+		if hint := truncatedHint(reply.FinishReason); hint != "" {
+			return nil, "模型回复被截断，未能解析为 JSON：本次不写入任何东西" + hint
+		}
 		return nil, "模型回复无法解析为 JSON：本次不写入任何东西"
 	}
 	return ops, ""

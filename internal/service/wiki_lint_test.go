@@ -315,6 +315,72 @@ func TestWikiLint_LLMChecksAreGatedAndSkeptical(t *testing.T) {
 	}
 }
 
+// A reply the server itself cut off is NOT the same failure as a malformed one:
+// both arrive as "not valid JSON", but the user's next move differs (raise the
+// output budget / switch model vs. re-run). Before finish_reason was carried
+// through, both rendered as the same 无法解析 note.
+func TestWikiLint_TruncatedReplyIsDistinguishedFromMalformed(t *testing.T) {
+	svc, _ := setupService(t)
+	ids := lintFixture(t, svc)
+
+	serve := func(finishReason, content string) {
+		t.Helper()
+		body := mustJSON(finishReason, content)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, body)
+		}))
+		t.Cleanup(srv.Close)
+		if err := svc.UpdateConfig("ai_chat_base_url", srv.URL+"/v1"); err != nil {
+			t.Fatal(err)
+		}
+		if err := svc.UpdateConfig("ai_chat_model", "stub"); err != nil {
+			t.Fatal(err)
+		}
+		if err := svc.UpdateConfig(wikiLintLLMKey, "1"); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// A prefix of a JSON array: the shape a truncated reply actually has.
+	serve("length", fmt.Sprintf(`[{"type":"contradiction","page_id":%d,"other_id":%d,"detail":"两页对超时时间陈`,
+		ids["auth-module"], ids["payment-gateway-retry"]))
+	rep, err := svc.RunWikiLint(0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.LLMRan {
+		t.Error("a truncated reply must not count as a successful LLM pass")
+	}
+	if !strings.Contains(rep.LLMNote, "截断") {
+		t.Errorf("LLMNote = %q, want it to name truncation as the cause", rep.LLMNote)
+	}
+	if !strings.Contains(rep.LLMNote, "max_tokens") {
+		t.Errorf("LLMNote = %q, want it to carry the actionable remedy", rep.LLMNote)
+	}
+	if strings.Contains(rep.LLMNote, "无法解析为 JSON") {
+		t.Errorf("LLMNote = %q still blames the format for a truncated reply", rep.LLMNote)
+	}
+	for _, f := range rep.Findings {
+		if f.Check == "contradiction" || f.Check == "stale" {
+			t.Errorf("model findings survived a truncated reply: %+v", f)
+		}
+	}
+
+	// A complete reply that simply is not JSON keeps the old wording.
+	serve("stop", "我找到了几个冲突，但没法给你 JSON。")
+	rep2, err := svc.RunWikiLint(0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rep2.LLMNote, "无法解析") {
+		t.Errorf("LLMNote = %q, want the format wording for a genuinely malformed reply", rep2.LLMNote)
+	}
+	if strings.Contains(rep2.LLMNote, "截断") {
+		t.Errorf("LLMNote = %q blames truncation for a malformed reply", rep2.LLMNote)
+	}
+}
+
 func TestWikiLint_EmptyStoreIsQuiet(t *testing.T) {
 	svc, _ := setupService(t)
 	rep, err := svc.RunWikiLint(0, true)

@@ -46,7 +46,7 @@ describe('wiki review & compile-job endpoints', () => {
     callMock.mockResolvedValue(null)
     expect(await listPendingWikiPages(0)).toEqual([])
     expect(await listRejectedWikiPages(0)).toEqual([])
-    expect(await listCompileJobs(0, 10)).toEqual([])
+    expect(await listCompileJobs(0, '', 10)).toEqual([])
     expect(await startCompileJob(1, 5)).toBe(0)
   })
 

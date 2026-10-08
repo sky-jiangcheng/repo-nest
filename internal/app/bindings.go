@@ -32,9 +32,10 @@ import (
 //   Wiki: RunWikiLint (ADR-0014 W4 lint; read-only over pages, writes todos only)
 //   Memory layers (ADR-0014 W5): LayeredProjectContext (orientation-first,
 //             budget-bounded L3/L2/L1/L0 assembly; read-only)
-//   Async jobs (ADR-0016): StartCompileJob, GetCompileJob, ListCompileJobs,
-//             CancelCompileJob — submission returns at once so a multi-minute LLM
-//             batch never blocks a caller
+//   Async jobs (ADR-0016): StartCompileJob, StartLintJob, GetCompileJob,
+//             ListCompileJobs, CancelCompileJob — submission returns at once so a
+//             multi-minute LLM batch never blocks a caller. One queue with two
+//             kernels (待决 ①); ListCompileJobs filters by kind.
 //   Wiki compile & review (ADR-0015): CompileNote, CompileProjectNotes,
 //             ListPendingWikiPages, ApproveWikiPage, RejectWikiPage. Deliberately
 //             no MCP twin: an agent able to write pending knowledge would bypass
@@ -355,8 +356,18 @@ func (a *App) StartCompileJob(projectID int64, maxNotes int) (int64, error) {
 func (a *App) GetCompileJob(jobID int64) (*db.CompileJob, error) { return a.svc.GetCompileJob(jobID) }
 
 // ListCompileJobs returns recent jobs (newest first) for the review panel.
-func (a *App) ListCompileJobs(projectID int64, limit int) ([]db.CompileJob, error) {
-	return a.svc.ListCompileJobs(projectID, limit)
+// kind filters by queue ("compile" / "lint"); "" returns both, which is what the
+// panel wants since it renders each row's own counters (see db.CompileJob.Kind).
+func (a *App) ListCompileJobs(projectID int64, kind string, limit int) ([]db.CompileJob, error) {
+	return a.svc.ListCompileJobs(projectID, kind, limit)
+}
+
+// StartLintJob enqueues the model-backed half of a lint pass and returns the job
+// id without calling the model. Same shape as StartCompileJob and for the same
+// measured reason: the model pass runs under a 10-minute ceiling, so a
+// synchronous binding would either hang the UI or be cut off (ADR-0016 待决 ①).
+func (a *App) StartLintJob(projectID int64) (int64, error) {
+	return a.svc.StartLintJob(projectID)
 }
 
 // CancelCompileJob stops a job from taking further notes. An in-flight request is

@@ -29,7 +29,9 @@ const schemaVersionKey = "schema_version"
 // prerequisite for letting a model write into the layer at all.
 // v19 added the async compile-job table (ADR-0016), so a long LLM-backed batch no
 // longer has to be a synchronous HTTP call.
-const ExpectedSchemaVersion = 19
+// v20 added compile_jobs.kind, turning that table into the general long-task
+// queue ADR-0016 待决 ① asked for (the lint model pass joins it).
+const ExpectedSchemaVersion = 20
 
 // StaleAfterDays is the age at which the repo_meta knowledge cache is reported
 // as stale. The cache feeds generated knowledge (tech stack, readme excerpt,

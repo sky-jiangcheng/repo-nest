@@ -302,6 +302,13 @@ func upgradeSchema(db *sql.DB) error {
 		// on a local model, which is the evidence that a synchronous call is the
 		// wrong shape regardless of timeouts. Purely additive operational state.
 		{id: 19, fn: EnsureCompileJobs},
+		// v20: the job table becomes a general long-task queue (ADR-0016 待决 ①,
+		// resolved as "yes"). The lint model pass is the same shape of work — a
+		// 10-minute ceiling on a local model — so it gets the same queue, the same
+		// polling surface and the same crash recovery rather than a second state
+		// machine. Additive: one discriminator column, and pre-existing rows are all
+		// compile jobs because lint jobs could not be written before it existed.
+		{id: 20, fn: EnsureCompileJobQueue},
 	}
 
 	for _, m := range migrations {
