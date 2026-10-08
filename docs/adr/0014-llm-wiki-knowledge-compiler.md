@@ -86,6 +86,8 @@ L0 = 会话转录（已有 capture 链路）/ L1 = 原子笔记（现在的 `pro
 > 1. **四类改五类**。决策 1 原列 entity / concept / source / synthesis，但决策 3 承诺的 query 闭环（「好答案回档成新页」）需要一个归宿，而 Karpathy 模式与 `nashsu/llm_wiki` 的目录里都确有 `queries/` 一类。缺了它，答案只能写回普通笔记，页面层就缺一类真实存在的产物。实现因此是五类，多出的 `query` 由 SQLite 的 `CHECK` 与 Go 侧枚举双重守住。
 > 2. **「可逆」必须配自愈**。迁移带版本戳、v16 只跑一次，而派生层按定义允许被丢弃重建（决策 5 把 SSOT 留在 `project_notes`）。只在迁移里建表的话，一次 `DropWikiSchema` 之后重启就是 `schema_version=16` 却没有表的死库。故 `InitDB` 现在无条件 `EnsureWikiSchema`，沿用 `EnsureFTSIndex`「可对任何库安全调用」的同一契约。这一条是**被可逆性测试抓出来的**，不是设计时想到的——测试先失败，才看见漏洞。
 >
+> 3. **W1b 也已落地，并更正本文的命令名**：原文写的 `reponest wiki export` 并不存在——根 `reponest` 是 Wails 桌面应用、没有任何子命令派发。实际交付的是独立二进制 `reponest-wiki-export`（`cmd/wiki-export`），且比原计划多做两件：陈旧文件只报告不删除（删除等于宣称树归导出所有，正是决策 2 拒绝的立场），以及统计页正文里指向不存在页的 `[[链接]]`（页→页的边由 FK CASCADE 保证不悬空，正文链接是唯一会烂的地方，这份计数即 W4 lint 的输入）。
+>
 > 另修一处测试脆断言：v15 迁移测试把版本号绝对断言为 15，v16 一落地即红；不变量应是「v15 跑过了」（`>= 15`），否则每次加迁移都得回改老测试。
 
 ## 晋升条件（Proposed → Accepted）
