@@ -6,7 +6,8 @@
     "search": "搜索",
     "searchLabel": "打开搜索 (⌘K)",
     "main": "主导航",
-    "language": "切换语言"
+    "language": "切换语言",
+    "review": "审核"
   },
   "dashboard": {
     "title": "仪表盘",
@@ -620,5 +621,43 @@
     "pageSaved": "已存为页面",
     "pageSavedDetail": "页面 #{{id}}，链到 {{refs}} 条引用",
     "pageSaveFailed": "存页失败"
+  },
+  "review": {
+    "title": "知识页面审核与编译进度",
+    "subtitle": "本地模型编译出的页面在此待审；不合格的结果会被替换为错误页而非删除，引用它的链接不会失效。",
+    "pendingHeading": "待审核",
+    "rejectedHeading": "错误页（已被替换）",
+    "emptyPending": "没有待审核页面。",
+    "emptyRejected": "没有被判为不合格的页面。",
+    "approve": "批准",
+    "reject": "标记不合格",
+    "deletePermanently": "彻底删除",
+    "confirmDelete": "彻底删除此页？其链接与来源挂接会一并移除，且不可恢复。",
+    "sourceNotes": "来源笔记",
+    "outLinks": "出链",
+    "inLinks": "反向链接",
+    "globalProject": "跨项目 / 全局",
+    "projectFilter": "项目",
+    "allProjects": "全部项目",
+    "jobHeading": "编译任务",
+    "startCompile": "开始编译",
+    "projectRequired": "请先在\"项目\"里选择一个项目再开始编译",
+    "cancelJob": "取消",
+    "progress": "已完成 {{done}} / {{total}} 条笔记",
+    "pagesCreated": "新建 {{n}} 页",
+    "rejectedOps": "拒绝 {{n}} 个非法操作",
+    "revisionTodos": "修订建议 {{n}} 条",
+    "stopped": "停止原因：{{reason}}",
+    "error": "错误：{{msg}}",
+    "status_queued": "排队中",
+    "status_running": "进行中",
+    "status_succeeded": "已完成",
+    "status_failed": "失败",
+    "status_canceled": "已取消",
+    "emptyJobs": "暂无编译任务。",
+    "reload": "刷新",
+    "loadError": "加载审核队列失败",
+    "actionError": "操作失败",
+    "noProjects": "尚未发现任何项目。请先在仪表盘扫描本地仓库。"
   }
 }

@@ -297,7 +297,7 @@ func TestWikiCompile_StopsAtPerNoteBudget(t *testing.T) {
 	}
 }
 
-// Reject deletes only what was never published.
+// Reject replaces a never-published page with an error-page tombstone; approve stays safe.
 func TestWikiCompile_RejectCannotTouchApproved(t *testing.T) {
 	svc, _ := setupService(t)
 	_, noteID := compileNoteFixture(t, svc)
@@ -321,14 +321,72 @@ func TestWikiCompile_RejectCannotTouchApproved(t *testing.T) {
 	if err := svc.RejectWikiPage(rej.ID); err != nil {
 		t.Fatalf("rejecting a pending page failed: %v", err)
 	}
+	// Reject is now a tombstone, not a delete: the row survives as an error page
+	// so anything that linked to it does not dangle.
+	after, err := db.GetWikiPageByID(svc.db, rej.ID)
+	if err != nil {
+		t.Fatalf("rejected page vanished: %v", err)
+	}
+	if after.Status != db.WikiStatusRejected {
+		t.Errorf("rejected page status = %q, want %q", after.Status, db.WikiStatusRejected)
+	}
+	if after.Content == rej.Content || after.Content == "" {
+		t.Error("rejected page kept its original body; it must be replaced by the error placeholder")
+	}
+	// Gone from the pending feed, present in the rejected feed.
+	if pending, _ := svc.ListPendingWikiPages(0); len(pending) != 0 {
+		t.Errorf("rejected page still in pending feed: %+v", pending)
+	}
+	rejected, err := svc.ListRejectedWikiPages(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rejected) != 1 || rejected[0].WikiPage.ID != rej.ID {
+		t.Errorf("rejected feed = %+v, want the one tombstone", rejected)
+	}
+	// The escape hatch: permanent delete works on a rejected page.
+	if err := svc.DeleteCompiledPage(rej.ID); err != nil {
+		t.Fatalf("delete compiled page: %v", err)
+	}
 	if _, err := db.GetWikiPageByID(svc.db, rej.ID); err == nil {
-		t.Error("rejected page still exists")
+		t.Error("DeleteCompiledPage did not remove the tombstone")
 	}
 	if err := svc.RejectWikiPage(apr.ID); err == nil {
-		t.Error("RejectWikiPage deleted an approved page: the review surface must not be a way to destroy published knowledge")
+		t.Error("RejectWikiPage accepted an approved page: rejection only applies to pending")
+	}
+	if err := svc.DeleteCompiledPage(apr.ID); err == nil {
+		t.Error("DeleteCompiledPage removed an approved page: cleaning the queue must not destroy published knowledge")
 	}
 	if _, err := db.GetWikiPageByID(svc.db, apr.ID); err != nil {
 		t.Errorf("approved page vanished anyway: %v", err)
+	}
+}
+
+// Rejecting must not sever the graph: a page that linked to the rejected one
+// keeps its edge, and the tombstone still appears in that link's target list.
+func TestWikiCompile_RejectPreservesInboundLinks(t *testing.T) {
+	svc, _ := setupService(t)
+	pid := seedProject(t, svc.db, "tomb", "/tmp/tomb")
+	src, err := db.CreateWikiPageAs(svc.db, db.WikiKindEntity, "src-page", "Src Page", pid, "source content long enough to survive the thin-page threshold in this check", db.WikiStatusApproved, "manual")
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := db.CreateWikiPageAs(svc.db, db.WikiKindConcept, "target-page", "Target Page", pid, "target content long enough to survive the thin-page threshold in this check", db.WikiStatusPending, compileSourceTag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.LinkWikiPages(svc.db, src.ID, target.ID, "cites"); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.RejectWikiPage(target.ID); err != nil {
+		t.Fatal(err)
+	}
+	out, err := db.WikiEdgesFrom(svc.db, src.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 1 || out[0].PageID != target.ID {
+		t.Fatalf("inbound link was dropped when the target was rejected: %+v", out)
 	}
 }
 

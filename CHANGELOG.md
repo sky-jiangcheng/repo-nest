@@ -18,6 +18,10 @@
   - `RebuildEmbeddings` 现在会持久化它学到的 `embedding_dim`（增量工作的解锁条件），并且**只有完整跑完才清空队列**——中途 bail 时那些没 embed 的笔记全靠这条队列兜着。顺带暴露一个既有契约：rebuild 中途失败时返回的是计数而不是 error，所以真正防止半截重建丢笔记的是这个持久队列，不是返回值
   - 回归 11 例：`internal/db/embed_dirty_test.go`（触发器只在内容写时排队、元数据写不排队、live/gone 分流、limit、DDL 重放安全）+ `internal/service/embed_drain_test.go`（importer 直写端到端可召回、删除后不再召回且零 embedding 请求、开关关时零外发、两道门前置条件、端点挂掉与 store 拒删都不消费队列、半截重建不清空队列）。`internal/integrity` 的 `ExpectedSchemaVersion` 同步升到 14——该常量与迁移列表漂移会让自检说谎，仓库里的 `TestExpectedSchemaVersionMatchesMigrations` 正是为此而设，本次就是它抓出来的
 
+### 变更
+
+- **⚠️ 审核流的「拒绝」从删除改为错误页（用户可见的行为变更）**：`RejectWikiPage` 过去删除待审行，会级联带走它的所有链接，于是每个引用过它的页面都静默多出死链。现在改为 `status=rejected` 并把正文替换成错误占位，**保留节点与入链**——标记不合格不该破坏图谱，删除是可选的后续动作。配套 `ListRejectedWikiPages` 让错误页可见可清理，`DeleteCompiledPage` 提供只对未发布页开放的彻底删除逃生阀（防错误页无限堆积，且明确拒绝删除已批准页）。无新增迁移：`status` 的 CHECK 早已允许 `rejected`，此前只是没人写入。
+- **新增独立「审核」tab（`/review`）**：待审页面列表（含来源笔记与出入链）可批准 / 标记不合格 / 彻底删除；编译任务列表显示进度条与 `notes_done/notes_total`、产出计数、停止原因与错误，运行中每 5 秒轮询、无活动即停；「开始编译」提交 job（未设 `wiki_compile=1` 时按钮可用但会报错，门槛本身仍未前置到设置页）。前端 API 层新增 9 个端点与契约测试（绑定返回 null 时一律降级为空数组，避免列表页崩溃）。
 ### 修复
 
 - **两处超时把长任务判成失败，真库演练才暴露**：① 批量 LLM 调用（摄入编译、lint 的模型侧）此前与交互问答共用 90 秒客户端超时，而本地 27B 模型单条笔记就要 >90s，结果编译在任何真实配置下都不可能成功——批量路径改用 10 分钟天花板（`DefaultBatchChatTimeout`），交互问答仍为 90 秒（人不该对着输入框挂十分钟）；② 无头服务 `WriteTimeout=60s` 会在 handler 早已提交数据之后掐断响应，演练中 curl 收到 `http=000` 而库里确实多出了待审页——一次成功操作被报成失败，是能让用户不再信任工具的那类 bug。现在写超时对齐到批量天花板之上，并在启动期用断言守住该不等式（不靠注释，注释会腐烂）。异步化是正式解法（见新增 ADR-0016），本次是止血。

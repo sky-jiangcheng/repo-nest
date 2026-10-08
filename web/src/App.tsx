@@ -19,6 +19,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Knowledge = lazy(() => import('./pages/Knowledge'))
+const Review = lazy(() => import('./pages/Review'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 type LanguageOption = 'zh-CN' | 'en'
@@ -77,6 +78,9 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
             </Link>
             <Link to="/dashboard" className={navClass(pathname === '/dashboard' || pathname.startsWith('/project'))}>
               {t('nav.dashboard')}
+            </Link>
+            <Link to="/review" className={navClass(pathname === '/review')}>
+              {t('nav.review')}
             </Link>
             <Link to="/settings" className={navClass(pathname === '/settings')}>
               {t('nav.settings')}
@@ -257,6 +261,7 @@ function RoutedApp() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/project/:id" element={<ProjectDetail />} />
           <Route path="/knowledge" element={<Knowledge />} />
+          <Route path="/review" element={<Review />} />
           <Route path="/settings" element={<Settings />} />
           {/* Catch-all: without it an unmatched URL renders nothing at all —
               a blank page below the navbar that reads like a crash. */}

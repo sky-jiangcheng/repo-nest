@@ -376,7 +376,19 @@ func (a *App) ListPendingWikiPages(projectID int64) ([]service.WikiPendingPage, 
 func (a *App) ApproveWikiPage(pageID int64) error { return a.svc.ApproveWikiPage(pageID) }
 
 // RejectWikiPage discards a pending page and its edges; it refuses approved pages.
+// RejectWikiPage replaces a pending page with an error-page tombstone (its
+// inbound links stay valid); it no longer deletes the row.
 func (a *App) RejectWikiPage(pageID int64) error { return a.svc.RejectWikiPage(pageID) }
+
+// ListRejectedWikiPages returns the error-page tombstones so the review tab can
+// show what was rejected without hiding the nodes other pages still reference.
+func (a *App) ListRejectedWikiPages(projectID int64) ([]service.WikiPendingPage, error) {
+	return a.svc.ListRejectedWikiPages(projectID)
+}
+
+// DeleteCompiledPage permanently removes a never-published page (pending or
+// rejected); the escape hatch that keeps rejected tombstones from piling up.
+func (a *App) DeleteCompiledPage(pageID int64) error { return a.svc.DeleteCompiledPage(pageID) }
 
 // LayeredProjectContext assembles project memory from most stable to least
 // (L3 cross-project profile, L2 project scenario, L1 curated notes, L0 raw

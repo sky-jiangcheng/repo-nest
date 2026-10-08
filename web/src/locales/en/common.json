@@ -6,7 +6,8 @@
     "search": "Search",
     "searchLabel": "Open search (⌘K)",
     "main": "Main navigation",
-    "language": "Switch language"
+    "language": "Switch language",
+    "review": "Review"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -621,5 +622,43 @@
     "pageSaved": "Filed as page",
     "pageSavedDetail": "page #{{id}}, linked to {{refs}} citation(s)",
     "pageSaveFailed": "Could not file the page"
+  },
+  "review": {
+    "title": "Knowledge Review & Compile Progress",
+    "subtitle": "Pages compiled by the local model wait here. An unqualified result is replaced by an error page rather than deleted, so links to it keep resolving.",
+    "pendingHeading": "Pending review",
+    "rejectedHeading": "Error pages (replaced)",
+    "emptyPending": "No pages pending review.",
+    "emptyRejected": "No pages were marked unqualified.",
+    "approve": "Approve",
+    "reject": "Mark unqualified",
+    "deletePermanently": "Delete permanently",
+    "confirmDelete": "Delete this page for good? Its links and source attachments are removed and cannot be recovered.",
+    "sourceNotes": "Source notes",
+    "outLinks": "Outgoing links",
+    "inLinks": "Backlinks",
+    "globalProject": "Cross-project / global",
+    "projectFilter": "Project",
+    "allProjects": "All projects",
+    "jobHeading": "Compile jobs",
+    "startCompile": "Start compile",
+    "projectRequired": "Pick a project above before starting a compile",
+    "cancelJob": "Cancel",
+    "progress": "{{done}} / {{total}} notes done",
+    "pagesCreated": "{{n}} page(s) created",
+    "rejectedOps": "{{n}} invalid op(s) rejected",
+    "revisionTodos": "{{n}} revision suggestion(s)",
+    "stopped": "Stopped: {{reason}}",
+    "error": "Error: {{msg}}",
+    "status_queued": "Queued",
+    "status_running": "Running",
+    "status_succeeded": "Succeeded",
+    "status_failed": "Failed",
+    "status_canceled": "Canceled",
+    "emptyJobs": "No compile jobs yet.",
+    "reload": "Refresh",
+    "loadError": "Failed to load the review queue",
+    "actionError": "Action failed",
+    "noProjects": "No projects yet. Scan your local repositories from the dashboard first."
   }
 }

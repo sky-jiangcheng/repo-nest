@@ -431,8 +431,25 @@ type WikiPendingPage struct {
 
 // ListPendingWikiPages is the review surface's feed: newest-compiled pages first,
 // each with its provenance so a reviewer can open the source and compare.
+// ListPendingWikiPages is the review surface's feed of unreviewed compiler output:
+// each entry carries its provenance so a reviewer can compare before approving.
 func (s *Service) ListPendingWikiPages(projectID int64) ([]WikiPendingPage, error) {
-	pages, err := db.ListWikiPagesByStatus(s.db, db.WikiStatusPending, projectID)
+	return s.wikiReviewFeed(db.WikiStatusPending, projectID)
+}
+
+// ListRejectedWikiPages returns the error-page tombstones (ADR-0015 review flow:
+// an unqualified local-model result is REPLACED by an error page, not deleted).
+// They stay in the graph so inbound [[links]] keep resolving — the alternative
+// (delete) silently dangles every page that cited the rejected one.
+func (s *Service) ListRejectedWikiPages(projectID int64) ([]WikiPendingPage, error) {
+	return s.wikiReviewFeed(db.WikiStatusRejected, projectID)
+}
+
+// wikiReviewFeed is the single projection behind both review feeds. One
+// implementation, because pending and rejected differ only by status and the UI
+// must not get two subtly different shapes for the same kind of row.
+func (s *Service) wikiReviewFeed(status string, projectID int64) ([]WikiPendingPage, error) {
+	pages, err := db.ListWikiPagesByStatus(s.db, status, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -472,13 +489,43 @@ func (s *Service) ApproveWikiPage(pageID int64) error {
 // rows. It refuses to touch anything already approved: the review surface must
 // not be a way to delete published knowledge by accident, and dropping that
 // distinction here would make "reject" a destructive act on human work.
+// rejectedPageBody replaces an unqualified compiler result. The row is kept so
+// inbound links stay valid; only its content becomes an honest error placeholder.
+const rejectedPageBody = "⚠️ 此页面由本地模型生成，经人工审核判定为不合格，内容已被替换为错误页。" +
+	"引用它的页面仍能看到这个节点（链接不会失效），但它不再作为知识被检索。" +
+	"如需彻底移除，请在审核界面点“彻底删除”。"
+
+// RejectWikiPage replaces a pending page with an error page (tombstone): status
+// flips to 'rejected' and the body is overwritten with an error notice. It does
+// NOT delete the row — deleting would cascade away every inbound link and
+// silently dangle the pages that cited it, which is worse than keeping a marked
+// node. Approved pages cannot be rejected.
 func (s *Service) RejectWikiPage(pageID int64) error {
 	p, err := db.GetWikiPageByID(s.db, pageID)
 	if err != nil {
 		return fmt.Errorf("page %d not found: %w", pageID, err)
 	}
 	if p.Status == db.WikiStatusApproved {
-		return fmt.Errorf("refusing to delete approved page %d: rejection only applies to pending pages", pageID)
+		return fmt.Errorf("refusing to reject approved page %d: rejection only applies to pending pages", pageID)
+	}
+	if err := db.UpdateWikiPage(s.db, p.ID, p.Title, p.Kind, rejectedPageBody); err != nil {
+		return fmt.Errorf("replace page %d with error page: %w", pageID, err)
+	}
+	return db.SetWikiPageStatus(s.db, pageID, db.WikiStatusRejected)
+}
+
+// DeleteCompiledPage permanently removes a page that was never published
+// (pending or already rejected). It is the escape hatch that keeps rejected
+// tombstones from accumulating forever. Approved pages are refused here too —
+// destroying published knowledge must not be a side effect of cleaning the
+// review queue.
+func (s *Service) DeleteCompiledPage(pageID int64) error {
+	p, err := db.GetWikiPageByID(s.db, pageID)
+	if err != nil {
+		return fmt.Errorf("page %d not found: %w", pageID, err)
+	}
+	if p.Status == db.WikiStatusApproved {
+		return fmt.Errorf("refusing to delete approved page %d: unpublish it first", pageID)
 	}
 	return db.DeleteWikiPage(s.db, pageID)
 }

@@ -5,6 +5,7 @@
 import { call } from './transport'
 import type {
   AppConfig,
+  CompileJob,
   DailyStat,
   Evidence,
   EvidenceAnswer,
@@ -27,6 +28,7 @@ import type {
   Summary,
   Todo,
   TodoCount,
+  WikiPendingPage,
 } from './types'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
@@ -535,3 +537,48 @@ export function triggerKnowledgeImport(name: string): Promise<ImportRun> {
     init: jsonInit('POST', { source: name }),
   }).then(d => d ?? empty)
 }
+
+// --- Wiki review & compile jobs ------------------------------------------------------------
+
+// listPendingWikiPages feeds the review tab: unreviewed local-model output, each
+// with its source notes so a reviewer can compare before approving.
+export function listPendingWikiPages(projectId: number): Promise<WikiPendingPage[]> {
+  return call<WikiPendingPage[]>({ method: 'ListPendingWikiPages', args: [projectId] }).then(d => d ?? [])
+}
+
+// listRejectedWikiPages returns the error-page tombstones (a rejected result is
+// replaced by an error page, not deleted, so inbound links keep resolving).
+export function listRejectedWikiPages(projectId: number): Promise<WikiPendingPage[]> {
+  return call<WikiPendingPage[]>({ method: 'ListRejectedWikiPages', args: [projectId] }).then(d => d ?? [])
+}
+
+export function approveWikiPage(pageId: number): Promise<void> {
+  return call<void>({ method: 'ApproveWikiPage', args: [pageId] })
+}
+
+export function rejectWikiPage(pageId: number): Promise<void> {
+  return call<void>({ method: 'RejectWikiPage', args: [pageId] })
+}
+
+export function deleteCompiledPage(pageId: number): Promise<void> {
+  return call<void>({ method: 'DeleteCompiledPage', args: [pageId] })
+}
+
+// startCompileJob queues a batch compile and returns the job id immediately; the
+// caller polls. Submission is not supposed to block on the model.
+export function startCompileJob(projectId: number, maxNotes: number): Promise<number> {
+  return call<number>({ method: 'StartCompileJob', args: [projectId, maxNotes] }).then(d => d ?? 0)
+}
+
+export function getCompileJob(jobId: number): Promise<CompileJob | null> {
+  return call<CompileJob | null>({ method: 'GetCompileJob', args: [jobId] })
+}
+
+export function listCompileJobs(projectId: number, limit: number): Promise<CompileJob[]> {
+  return call<CompileJob[]>({ method: 'ListCompileJobs', args: [projectId, limit] }).then(d => d ?? [])
+}
+
+export function cancelCompileJob(jobId: number): Promise<CompileJob | null> {
+  return call<CompileJob | null>({ method: 'CancelCompileJob', args: [jobId] })
+}
+

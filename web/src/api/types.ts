@@ -283,3 +283,57 @@ export interface EvidenceAnswer {
   reply: string
   evidence: Evidence
 }
+
+// --- Wiki review & compile jobs (ADR-0015 / ADR-0016) -----------------------
+// Shapes mirror internal/db.WikiPage / PageEdge / CompileJob and
+// internal/service.WikiPendingPage. Kept here rather than inlined so the review
+// tab and the endpoints agree on one definition.
+
+export interface WikiPage {
+  id: number
+  slug: string
+  title: string
+  kind: string
+  project_id: number
+  content: string
+  updated_at: string
+  status: string
+  source: string
+}
+
+export interface PageEdge {
+  page_id: number
+  slug: string
+  title: string
+  kind: string
+  relation: string
+  inbound: boolean
+}
+
+export interface WikiPendingPage {
+  page: WikiPage
+  source_note_ids: number[]
+  out_links: PageEdge[]
+  in_links: PageEdge[]
+}
+
+export interface CompileJob {
+  id: number
+  project_id: number
+  requested_notes: number
+  status: string
+  notes_total: number
+  notes_done: number
+  pages_created: number
+  pages_updated: number
+  links_created: number
+  attachments: number
+  revision_todos: number
+  rejected_ops: number
+  stopped?: string
+  note?: string
+  error?: string
+  created_at: string
+  started_at?: string
+  finished_at?: string
+}
