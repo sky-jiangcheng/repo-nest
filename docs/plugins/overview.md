@@ -7,11 +7,11 @@ order: 8
 
 > ⚠️ **实验性**：插件系统接口可能变更，不作为平台扩展方向（见 [ADR-0006](../adr/0006-scope-freeze.md)）。
 
-RepoNest 支持通过 yaegi 解释执行的 Go 脚本向知识库幂等导入文档。
+RepoNest 向知识库幂等导入文档。内置 6 个源都是普通的 Go 实现（`plugin.KnowledgeImporter`），**不经过 yaegi**；yaegi 只承载用户自己写的脚本插件。
 
 ```mermaid
 flowchart TB
-    SRC["知识源<br/>5 个内置 agent 记忆源"] --> RUN["内置 importer 读取<br/>或 yaegi 解释执行"]
+    SRC["知识源<br/>6 个内置 agent 记忆源"] --> RUN["内置 importer 读取<br/>或 yaegi 脚本插件产出"]
     RUN --> KEY["幂等键<br/>(project_id, source, title)"]
     KEY --> HIT{"命中已有笔记?"}
     HIT -->|"是"| UPD["更新既有笔记<br/>内容 + 元数据"]
