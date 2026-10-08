@@ -101,6 +101,10 @@ type WikiPage struct {
 	Kind      string `json:"kind"`
 	ProjectID int64  `json:"project_id"` // 0 when the page spans projects
 	Content   string `json:"content"`
+	// UpdatedAt is exported and used by the lint's staleness pass: "which of two
+	// conflicting pages is the newer claim" cannot be answered without it, so the
+	// field belongs on the struct rather than in a second query.
+	UpdatedAt string `json:"updated_at"`
 }
 
 // PageEdge is one directed link; Direction says which end the query came from.
@@ -237,18 +241,18 @@ func isUniqueSlugErr(err error) bool {
 // GetWikiPageByID loads one page. Returns sql.ErrNoRows when absent.
 func GetWikiPageByID(db *sql.DB, id int64) (*WikiPage, error) {
 	return scanPage(db.QueryRow(
-		`SELECT id, slug, title, kind, COALESCE(project_id, 0), content FROM wiki_pages WHERE id = ?`, id))
+		`SELECT id, slug, title, kind, COALESCE(project_id, 0), content, COALESCE(updated_at, '') FROM wiki_pages WHERE id = ?`, id))
 }
 
 // GetWikiPageBySlug loads one page by its canonical slug.
 func GetWikiPageBySlug(db *sql.DB, slug string) (*WikiPage, error) {
 	return scanPage(db.QueryRow(
-		`SELECT id, slug, title, kind, COALESCE(project_id, 0), content FROM wiki_pages WHERE slug = ?`, slug))
+		`SELECT id, slug, title, kind, COALESCE(project_id, 0), content, COALESCE(updated_at, '') FROM wiki_pages WHERE slug = ?`, slug))
 }
 
 func scanPage(row *sql.Row) (*WikiPage, error) {
 	var p WikiPage
-	err := row.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content)
+	err := row.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +261,7 @@ func scanPage(row *sql.Row) (*WikiPage, error) {
 
 // ListWikiPages returns pages ordered by kind then slug; kind empty lists all.
 func ListWikiPages(db *sql.DB, kind string, projectID int64) ([]WikiPage, error) {
-	q := `SELECT id, slug, title, kind, COALESCE(project_id, 0), content FROM wiki_pages`
+	q := `SELECT id, slug, title, kind, COALESCE(project_id, 0), content, COALESCE(updated_at, '') FROM wiki_pages`
 	var (
 		wh []string
 		qa []any
@@ -282,7 +286,7 @@ func ListWikiPages(db *sql.DB, kind string, projectID int64) ([]WikiPage, error)
 	var out []WikiPage
 	for rows.Next() {
 		var p WikiPage
-		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content); err != nil {
+		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
@@ -407,7 +411,7 @@ func DetachNoteFromPage(db *sql.DB, noteID, pageID int64) error {
 // affects these pages").
 func PagesForNote(db *sql.DB, noteID int64) ([]WikiPage, error) {
 	return pagesQuery(db,
-		`SELECT p.id, p.slug, p.title, p.kind, COALESCE(p.project_id, 0), p.content
+		`SELECT p.id, p.slug, p.title, p.kind, COALESCE(p.project_id, 0), p.content, COALESCE(p.updated_at, '')
 		   FROM wiki_pages p JOIN note_pages np ON np.page_id = p.id
 		  WHERE np.note_id = ? ORDER BY p.kind, p.slug`, noteID)
 }
@@ -487,7 +491,7 @@ func pagesQuery(db *sql.DB, q string, arg int64) ([]WikiPage, error) {
 	var out []WikiPage
 	for rows.Next() {
 		var p WikiPage
-		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content); err != nil {
+		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, p)

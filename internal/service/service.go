@@ -167,6 +167,10 @@ func (s *Service) Startup() {
 		// ahead of the rt guard below rather than being skipped by it.
 		s.startEmbedDrainer()
 
+		// Wiki lint (ADR-0014 决策 5): the scheduled half of the two trigger paths.
+		// Its first pass is one interval away, so opening the app files no todos.
+		s.startWikiLintTicker()
+
 		if s.rt == nil {
 			return
 		}

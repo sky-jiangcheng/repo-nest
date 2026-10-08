@@ -48,6 +48,11 @@ var allowedConfigKeys = map[string]bool{
 	// AI Q&A chat (OpenAI-compatible /chat/completions): LM Studio
 	// (http://localhost:1234/v1) or any remote provider. ai_chat_api_key is
 	// a SECRET and is redacted in GetConfig.
+	// M6-W4 lint: gates ONLY the model-backed contradiction/staleness checks. The
+	// structural half needs no permission because it costs nothing and cannot write
+	// a page. Follows semantic_search's treatment (numeric 0/1, so no
+	// stringConfigKeys entry).
+	"wiki_lint_llm":    true,
 	"ai_chat_base_url": true,
 	"ai_chat_model":    true,
 	"ai_chat_api_key":  true,
@@ -108,6 +113,14 @@ func (s *Service) GetConfig() (*ConfigData, error) {
 		}
 	}
 	return &ConfigData{Config: configs, ScanRoots: roots}, nil
+}
+
+// wikiLintLLMEnabled is the explicit opt-in for the model-backed lint checks.
+// Anything other than "1" skips them, and the report says why rather than looking
+// like a clean run.
+func (s *Service) wikiLintLLMEnabled() bool {
+	v, err := db.GetConfig(s.db, wikiLintLLMKey)
+	return err == nil && v == "1"
 }
 
 // autoImportEnabled reports whether startup may read other tools' memory files

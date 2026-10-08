@@ -1,6 +1,10 @@
 package db
 
-import "database/sql"
+import (
+	"fmt"
+
+	"database/sql"
+)
 
 // CreateTodo inserts a new todo for a project, assigning the next sort_order.
 // The MAX+INSERT pair runs in a transaction: two interleaved creates used to
@@ -122,4 +126,19 @@ func getTodoByID(db *sql.DB, id int64) (*Todo, error) {
 		return nil, err
 	}
 	return t, nil
+}
+
+// HasTodoWithTitle reports whether an OPEN todo with this exact title already
+// exists for the project. The lint pass files findings as todos, so without this
+// every run would add another copy of the same checkbox; a CLOSED match does not
+// count, because a page that drifts again after being ticked off is new news.
+func HasTodoWithTitle(db *sql.DB, projectID int64, title string) (bool, error) {
+	var n int
+	err := db.QueryRow(
+		"SELECT COUNT(*) FROM project_todos WHERE project_id = ? AND title = ? AND completed = 0",
+		projectID, title).Scan(&n)
+	if err != nil {
+		return false, fmt.Errorf("db: todo title exists check: %w", err)
+	}
+	return n > 0, nil
 }

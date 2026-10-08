@@ -88,6 +88,8 @@ Externally, still only the two existing surfaces: MCP tools and `/api/rpc`. **Do
 >
 > 3. **W1b shipped too, with the command name corrected**: `reponest wiki export` as written above does not exist — the root `reponest` binary is the Wails app with no subcommand dispatch. What actually landed is a separate `reponest-wiki-export` binary (`cmd/wiki-export`), and it does two things the plan did not call for: stale files left by deleted pages are reported rather than removed (deleting them would claim the tree belongs to the exporter, the very stance Decision 2 rejects), and `[[wikilinks]]` typed into page bodies that point at missing pages are counted (page-to-page edges cannot dangle, FK cascades cover them; body links are the only rot path) — that count is W4 lint's input.
 >
+> 4. **W4 split the "five checks" into two tiers when it landed.** The original text treated lint as one kind of action, but three of the five checks (orphans, missing cross-references, data gaps) are decidable in SQL while two (contradictions, stale claims) need a model, cost tokens and can be wrong. So the structural tier runs any time and the model tier sits behind its own `wiki_lint_llm` switch, off by default, with `llm_note` separating "found nothing" from "not enabled". Two adoption rules the plan did not state were added: a model-supplied `page_id` becomes a finding only if that page exists, and a reply that is not parseable JSON yields no findings at all.
+
 Also fixed a brittle assertion: the v15 migration test asserted the schema version as exactly 15 and went red the moment v16 landed. The invariant is "v15 has run" (`>= 15`); otherwise every migration forces a rewrite of an old test.
 
 ## Promotion criteria (Proposed → Accepted)

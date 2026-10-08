@@ -27,6 +27,7 @@ import (
 //             GetRepoCommits, GetProjectCommits
 //   AI: AskAIWithEvidence, FileAnswerAsPage (evidence-gated Q&A and its query-loop
 //       filing; the desktop UI is their consumer, so no MCP twin by design)
+//   Wiki: RunWikiLint (ADR-0014 W4 lint; read-only over pages, writes todos only)
 //   Scan: GetScanStatus (progress polling)
 //   Dashboard: GetSummary, GetHeatmapData, GetStatusBar, GetTodoCounts, GetNoteCounts
 //   Notes lifecycle: DeleteNote, PinNote, MoveNote, ListNoteVersions,
@@ -309,6 +310,15 @@ func (a *App) AskAIWithEvidence(projectID int64, question string) (*service.Evid
 // only be resolved against it (and an invented ref resolves to nothing).
 func (a *App) FileAnswerAsPage(projectID int64, question, answer string, evidence *service.Evidence, citedRefs []string) (int64, error) {
 	return a.svc.FileAnswerAsPage(projectID, question, answer, evidence, citedRefs)
+}
+
+// RunWikiLint runs ADR-0014 W4's five checks over projectID (0 = every page) and
+// files findings as todos on the owning project. wantLLM asks for the
+// model-backed contradiction/staleness pair, which additionally needs the
+// wiki_lint_llm config key. It never rewrites a page — the whole safety argument
+// for leaving lint on is that a finding is a suggestion with a checkbox on it.
+func (a *App) RunWikiLint(projectID int64, wantLLM bool) (*service.WikiLintReport, error) {
+	return a.svc.RunWikiLint(projectID, wantLLM)
 }
 
 // ListAIModels probes the endpoint's /models (with path candidates and the
