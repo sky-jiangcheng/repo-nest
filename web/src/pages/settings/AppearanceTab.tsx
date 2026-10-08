@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { applyTheme, storeTheme, type ThemeMode } from '../../utils/theme'
+import s from './AppearanceTab.module.css'
 
 interface Props {
   themeMode: ThemeMode
@@ -27,17 +28,17 @@ export default function AppearanceTab({ themeMode, onThemeChange, showMessage }:
     <div className="settings-section">
       <h2>{t('settings.tabs.appearance')}</h2>
       <p className="section-desc">{t('settings.appearanceDesc')}</p>
-      <div className="theme-options">
+      <div className={s.themeOptions}>
         {THEME_OPTIONS.map((opt) => (
           <button
             key={opt.value}
-            className={`theme-option ${themeMode === opt.value ? 'theme-option-active' : ''}`}
+            className={themeMode === opt.value ? `${s.themeOption} ${s.themeOptionActive}` : s.themeOption}
             onClick={() => handleThemeChange(opt.value)}
           >
-            <div className="theme-preview" data-preview={opt.value} />
-            <div className="theme-info">
-              <span className="theme-label">{t(opt.labelKey)}</span>
-              <span className="theme-desc">{t(opt.descKey)}</span>
+            <div className={s.themePreview} data-preview={opt.value} />
+            <div className={s.themeInfo}>
+              <span className={s.themeLabel}>{t(opt.labelKey)}</span>
+              <span className={s.themeDesc}>{t(opt.descKey)}</span>
             </div>
           </button>
         ))}

@@ -53,9 +53,13 @@
 }
 
 /* Cap the measure so long settings forms do not stretch to a 1280px line
-   length, which makes labels and inputs hard to associate visually. */
+   length, which makes labels and inputs hard to associate visually.
+
+   The appearance tab's option list used to be grouped into this rule; its own
+   component stylesheet already carries the same 560px cap, so the layout-level
+   entry was redundant. Reaching from a layout file into a class a component owns
+   is exactly the coupling P35 removes. */
 .settings-section > .form-group,
-.settings-section > .theme-options,
 .settings-group .form-group,
 .settings-group > .toggle-row {
   max-width: 560px;

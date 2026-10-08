@@ -1,0 +1,131 @@
+/* --- Theme options ---
+   The three choices differ only in surface colour, so a 40x28 two-tone
+   diagonal was far too small a sample to tell them apart — light/dark/system
+   read as "three small grey rectangles". Each swatch is now a miniature of
+   the app itself (page, card, text line, accent), drawn in that theme's real
+   palette, so the difference is legible at a glance instead of by reading
+   the label. */
+.themeOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 560px;
+}
+
+.themeOption {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+}
+
+.themeOption:hover {
+  border-color: var(--text-muted);
+  background: var(--bg-hover);
+}
+
+.themeOption:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.themeOptionActive,
+.themeOptionActive:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Swatch: a 64x44 schematic of the app's own layout. Fixed light-mode
+   colours per option — these previews must NOT follow the active theme, or
+   choosing "dark" would repaint its own preview and the comparison collapses. */
+.themePreview {
+  position: relative;
+  width: 64px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Page ground. The "system" swatch is split down the middle because that is
+   literally what the mode does — half the OS is light, half is dark. */
+.themePreview[data-preview="light"] { background: #f5f5f3; }
+.themePreview[data-preview="dark"] { background: #1a1a1a; }
+.themePreview[data-preview="system"] { background: linear-gradient(90deg, #f5f5f3 0 50%, #1a1a1a 50% 100%); }
+
+/* Card block — the lightest surface in each theme. Kept low-contrast so the
+   accent strokes below stay the thing the eye lands on. */
+.themePreview::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 7px;
+  right: 5px;
+  bottom: 7px;
+  border-radius: 3px;
+  opacity: 0.9;
+}
+
+.themePreview[data-preview="light"]::before { background: #ffffff; border: 1px solid #e0ded8; }
+.themePreview[data-preview="dark"]::before { background: #2a2a2a; border: 1px solid #3a3a3a; }
+.themePreview[data-preview="system"]::before {
+  background: linear-gradient(90deg, #ffffff 0 50%, #2a2a2a 50% 100%);
+  border: 1px solid transparent;
+}
+
+/* Text lines — three strokes of decreasing length so the swatch reads as a
+   content block rather than a coloured rectangle. */
+.themePreview::after {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 15px;
+  width: 30px;
+  height: 2px;
+  border-radius: 1px;
+  /* Accent-coloured: the one hue that actually differs between themes. */
+  background: #2563eb;
+  box-shadow:
+    0 6px 0 0 currentColor,
+    0 12px 0 0 rgba(0, 0, 0, 0.22);
+}
+
+.themePreview[data-preview="light"]::after { color: #6a6a6a; }
+.themePreview[data-preview="dark"]::after { color: #949494; }
+.themePreview[data-preview="system"]::after {
+  /* Each stroke takes the hue of the half it sits in: left side light, right
+     side dark. Drawn as two masked gradients so the split stays crisp at the
+     same 50% line as the swatch ground. */
+  color: transparent;
+  background:
+    linear-gradient(90deg, #6a6a6a 0 50%, #949494 50% 100%) no-repeat 0 6px / 100% 2px,
+    linear-gradient(90deg, #2563eb 0 50%, #60a5fa 50% 100%) no-repeat 0 0 / 100% 2px;
+  box-shadow: 0 12px 0 0 rgba(0, 0, 0, 0.28);
+}
+
+.themeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.themeLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.themeDesc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
