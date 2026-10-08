@@ -288,6 +288,10 @@ func upgradeSchema(db *sql.DB) error {
 		// TestUpgradeSchema_WikiIsReversible asserts exactly that.
 		// project_notes remains the single source of truth (ADR-0014 决策 5).
 		{id: 16, fn: EnsureWikiSchema},
+		// v17: the page search index (ADR-0014 决策 3 / TODO M6-W2). Kept in its
+		// own migration so a page index can be dropped and rebuilt without
+		// touching the page tables, and so DropWikiSchema reverses both.
+		{id: 17, fn: EnsureWikiFTS},
 	}
 
 	for _, m := range migrations {

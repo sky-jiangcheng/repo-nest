@@ -11,7 +11,7 @@ v1.15.1 的知识层是一个**写入通道丰富、结构很薄、检索局部�
 1. **写入零加工**。人写 Markdown、5 个外部 agent 记忆源幂等导入（`service/plugin.go:114-120`，仅 claude 自动）、agent 经 MCP `notes_create` / `handoff` 回写——三条通道都是「原文搬运」，没有任何一步是 LLM 抽取、整合、标注矛盾。
 2. **结构扁平**。`project_notes` 只有 title / tags / kind / pinned / source（`internal/db/db.go:131-144`），全部挂在 project 一层：笔记**不关联具体 repository**，笔记之间**零引用**（全库无 backlink / wiki-link / 链接表，grep 零命中）。它是「打了标签的列表」，不是知识网。
 3. **检索局部融合**。FTS5 trigram 覆盖 notes + todos（`db/migrate.go:27-38`、`db/search.go:21-79`），但语义 RRF 只作用于 notes 且默认关（`service/search_semantic.go:15-30`、`service/search.go:27`，`SearchAll` 不做语义融合 `search.go:30-44`）；`repo_meta`（tech stack / README / 依赖 / 贡献者，`db/migrate.go:79-88`）与提交记录**根本不在同一个可检索面上**。
-4. **消费端不取证**。桌面 `AskAI` 的上下文是「最近 10 条笔记，每条截 500 字节」（`service/ai.go:380-436`，尤其 `ai.go:431`），无检索排序、无流式、无工具调用、无引用——**它既不是 RAG，也不是编译，只是把库的头部 5KB 塞进 prompt**。讽刺的是消费面早就 agent-ready：MCP 13 工具 + `/api/rpc` 反射全部 Wails 绑定（`cmd/mcp/main.go:72`、`internal/httpapi/rpc.go:12-45`）。
+4. **消费端不取证**。桌面 `AskAI` 的上下文是「10 条笔记，每条截 500 字节」（`service/ai.go:380-436`，尤其 `ai.go:431`），无检索排序、无流式、无工具调用、无引用——**它既不是 RAG，也不是编译，只是把库的一小段塞进 prompt**。W2 实现时还纠正了本文原稿的一处措辞：那 10 条不是「最近」写的，而是**最早**写的——`db.ListNotes` 的排序是 `pinned DESC, sort_order ASC, created_at ASC, id ASC`（oldest first），`aiProjectContext` 直接取前 10 条。也就是说笔记越多，最新沉淀越不可能进 prompt；这比"按时间取前 10"还要更反直觉。讽刺的是消费面早就 agent-ready：MCP 13 工具 + `/api/rpc` 反射全部 Wails 绑定（`cmd/mcp/main.go:72`、`internal/httpapi/rpc.go:12-45`）。
 
 这个反差就是机会：**取证能力已经对外卖出去了，对内却还没用上。**
 

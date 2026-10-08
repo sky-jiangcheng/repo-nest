@@ -75,6 +75,21 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ensure wiki schema: %w", err)
 	}
 
+	// Same self-healing contract for the page index (v17).
+	if err := EnsureWikiFTS(db); err != nil {
+		db.Close() //nolint:errcheck
+		return nil, fmt.Errorf("failed to ensure wiki FTS: %w", err)
+	}
+
+	// Triggers cannot backfill: pages that existed before this index was created
+	// would stay unsearchable forever. Rebuild is cheap (pages are a derived,
+	// bounded artifact) and idempotent, and doing it here is what stops the v7
+	// "empty index that never got repaired" failure from repeating.
+	if err := RebuildWikiFTS(db); err != nil {
+		db.Close() //nolint:errcheck
+		return nil, err
+	}
+
 	if err := insertDefaults(db); err != nil {
 		db.Close() //nolint:errcheck
 		return nil, fmt.Errorf("failed to insert defaults: %w", err)

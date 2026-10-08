@@ -25,6 +25,8 @@ import (
 // Desktop-only (no MCP equivalent by design — GUI state, admin, or file UX):
 //   Projects: UpdateProjectLevel, ToggleStar, RefreshProjectHistory,
 //             GetRepoCommits, GetProjectCommits
+//   AI: AskAIWithEvidence, FileAnswerAsPage (evidence-gated Q&A and its query-loop
+//       filing; the desktop UI is their consumer, so no MCP twin by design)
 //   Scan: GetScanStatus (progress polling)
 //   Dashboard: GetSummary, GetHeatmapData, GetStatusBar, GetTodoCounts, GetNoteCounts
 //   Notes lifecycle: DeleteNote, PinNote, MoveNote, ListNoteVersions,
@@ -292,6 +294,21 @@ func (a *App) RebuildEmbeddings() (int, error) {
 // returns the assistant reply for the Q&A panel.
 func (a *App) AskAI(projectID int64, question string) (string, error) {
 	return a.svc.AskAI(projectID, question)
+}
+
+// AskAIWithEvidence answers with a retrieved, citable context and returns the
+// evidence it used, so the panel can render refs and offer 存为页面. AskAI stays
+// as the plain path (and as the no-evidence fallback inside this one).
+func (a *App) AskAIWithEvidence(projectID int64, question string) (*service.EvidenceAnswer, error) {
+	return a.svc.AskAIWithEvidence(projectID, question, service.DefaultEvidenceBudget)
+}
+
+// FileAnswerAsPage closes ADR-0014's query loop: a good answer becomes a `query`
+// wiki page linked to what it cited. evidence must be the SAME set the answer was
+// generated from — refs are positional labels from that retrieval, so they can
+// only be resolved against it (and an invented ref resolves to nothing).
+func (a *App) FileAnswerAsPage(projectID int64, question, answer string, evidence *service.Evidence, citedRefs []string) (int64, error) {
+	return a.svc.FileAnswerAsPage(projectID, question, answer, evidence, citedRefs)
 }
 
 // ListAIModels probes the endpoint's /models (with path candidates and the

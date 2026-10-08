@@ -156,7 +156,13 @@ var wikiObjects = []struct {
 }
 
 // DropWikiSchema removes the whole derived layer, restoring the pre-v16 schema.
+// It also drops the v17 page index first: an external-content FTS5 table whose
+// content table vanishes underneath it is exactly the broken-index state that
+// migration v12 had to repair once already for notes.
 func DropWikiSchema(db *sql.DB) error {
+	if err := dropWikiFTS(db); err != nil {
+		return err
+	}
 	// Children first: page_links references wiki_pages, so dropping the parent
 	// table first would leave the FK pointing at nothing.
 	for _, o := range wikiObjects {
