@@ -130,6 +130,136 @@ function initOnlineDetection() {
 }
 initOnlineDetection()
 
+// --- Streaming evidence-backed ask ---------------------------------------------
+//
+// The one call that cannot go through call(): a multi-minute LLM reply should
+// render as it forms, not after a spinner. Two transports, same wire contract:
+//
+//   - Wails mode: StartAskStream returns a stream id immediately; the backend
+//     pushes "ai.ask.stream" events tagged with it (delta / done / error).
+//   - Browser/standalone: POST /api/ai/ask-stream, an SSE stream of the same
+//     events (done carries reply + evidence + truncated, mirroring the
+//     AskAIWithEvidence JSON shape).
+//
+// Returns a cancel function: unsubscribe the event / abort the fetch.
+
+import type { Evidence, EvidenceAnswer } from './types'
+
+export interface AskStreamHandlers {
+  /** Called once per content fragment as it decodes. */
+  onDelta: (delta: string) => void
+  /** Terminal success — reply, evidence and truncation flag. */
+  onDone: (ans: EvidenceAnswer) => void
+  /** Terminal failure (transport or backend-reported error). */
+  onError: (err: Error) => void
+}
+
+function normalizeDone(ev: Record<string, unknown>): EvidenceAnswer {
+  return {
+    reply: String(ev.reply ?? ''),
+    evidence: (ev.evidence ?? { items: [], dropped: 0, elapsed_ms: 0, truncated: false }) as Evidence,
+    truncated: !!ev.truncated,
+  }
+}
+
+function wailAskStream(projectId: number, question: string, handlers: AskStreamHandlers): () => void {
+  let disposed = false
+  let off: (() => void) | null = null
+  wail<{ stream_id: string }>('StartAskStream', projectId, question)
+    .then(({ stream_id }) => {
+      if (disposed) return
+      const w = window as unknown as RuntimeGlobal
+      if (!w.runtime?.EventsOn) {
+        handlers.onError(new Error('Wails runtime events unavailable'))
+        return
+      }
+      off = w.runtime.EventsOn('ai.ask.stream', (data) => {
+        const ev = (data ?? {}) as Record<string, unknown>
+        if (String(ev.stream_id) !== stream_id) return
+        if (typeof ev.delta === 'string') {
+          handlers.onDelta(ev.delta)
+        } else if (ev.error) {
+          handlers.onError(new Error(String(ev.error)))
+        } else if (ev.done) {
+          handlers.onDone(normalizeDone(ev))
+        }
+      })
+    })
+    .catch(e => handlers.onError(e instanceof Error ? e : new Error(String(e))))
+  return () => {
+    disposed = true
+    off?.()
+  }
+}
+
+function httpAskStream(projectId: number, question: string, handlers: AskStreamHandlers): () => void {
+  const ctrl = new AbortController()
+  fetch(`${BASE}/ai/ask-stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project_id: projectId, question }),
+    signal: ctrl.signal,
+  })
+    .then(async (res) => {
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
+      // SSE parse: frames are "data: {...}\n\n"; a frame may split across
+      // chunks, so decode into a buffer and cut on the blank line.
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      const handleFrame = (frame: string) => {
+        for (const line of frame.split('\n')) {
+          if (!line.startsWith('data:')) continue
+          const payload = line.slice(5).trim()
+          if (!payload) continue
+          let ev: Record<string, unknown>
+          try {
+            ev = JSON.parse(payload) as Record<string, unknown>
+          } catch {
+            continue // non-JSON data: line (e.g. a stray comment) — skip
+          }
+          if (typeof ev.delta === 'string') {
+            handlers.onDelta(ev.delta)
+          } else if (ev.error) {
+            handlers.onError(new Error(String(ev.error)))
+          } else if (ev.done) {
+            handlers.onDone(normalizeDone(ev))
+          }
+        }
+      }
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        let idx: number
+        while ((idx = buf.indexOf('\n\n')) >= 0) {
+          handleFrame(buf.slice(0, idx))
+          buf = buf.slice(idx + 2)
+        }
+      }
+      if (buf.trim()) handleFrame(buf) // trailing frame without final blank line
+    })
+    .catch(e => {
+      if (e instanceof DOMException && e.name === 'AbortError') return
+      handlers.onError(e instanceof Error ? e : new Error(String(e)))
+    })
+  return () => ctrl.abort()
+}
+
+/**
+ * Streaming evidence-backed ask, routed per transport. The returned cancel
+ * function stops delivery (unsubscribes / aborts); the terminal handler is not
+ * called after cancel.
+ */
+export function askAIWithEvidenceStream(
+  projectId: number,
+  question: string,
+  handlers: AskStreamHandlers,
+): () => void {
+  if (isWails()) return wailAskStream(projectId, question, handlers)
+  return httpAskStream(projectId, question, handlers)
+}
+
 // --- Wails runtime events -----------------------------------------------------
 
 interface RuntimeGlobal {
