@@ -22,7 +22,9 @@ const schemaVersionKey = "schema_version"
 // v14 added the incremental-embedding queue (note_embed_dirty + its three
 // project_notes triggers, internal/db/embed_dirty.go).
 // v15 turned startup auto-import OFF for existing databases (ADR-0014 W0).
-const ExpectedSchemaVersion = 15
+// v16 added the wiki layer (wiki_pages / page_links / note_pages /
+// note_repositories, internal/db/wiki.go) — purely additive, reversible by drop.
+const ExpectedSchemaVersion = 16
 
 // StaleAfterDays is the age at which the repo_meta knowledge cache is reported
 // as stale. The cache feeds generated knowledge (tech stack, readme excerpt,

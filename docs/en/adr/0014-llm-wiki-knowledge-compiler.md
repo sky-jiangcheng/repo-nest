@@ -79,7 +79,14 @@ Externally, still only the two existing surfaces: MCP tools and `/api/rpc`. **Do
 - The privacy surface widens: see the prerequisite in decision 4.
 - New migration + new config keys + new UI: three layers move at once; this is not a one-sprint job.
 
-**Open questions**: whether four page kinds suffice (add `question` / `decision`?); whether the `schema.md` equivalent is global or per-project (leaning global default + per-project override); the relationship with `dsh-plugin-reponest` (should the export bypass feed a dsh session?); whether the semantic fusion scope should extend from notes to `wiki_pages` once page volume grows (currently constrained by ADR-0012's "fuse notes only").
+**Open questions**: ~~whether four page kinds suffice~~ (→ **decided by W1: five kinds**); whether the `schema.md` equivalent is global or per-project (leaning global default + per-project override); the relationship with `dsh-plugin-reponest` (should the export bypass feed a dsh session?); whether the semantic fusion scope should extend from notes to `wiki_pages` once page volume grows (currently constrained by ADR-0012's "fuse notes only").
+
+> **Two corrections made while implementing W1 (2026-10-08, schema v16)**
+>
+> 1. **Four kinds became five.** Decision 1 listed entity / concept / source / synthesis, but the query loop promised by Decision 3 ("file good answers back as new pages") needs a destination, and both Karpathy's pattern and the `nashsu/llm_wiki` reference keep a `queries/` area. Without it an answer can only be written back as an ordinary note. The implementation therefore has five kinds, guarded twice over by a SQLite `CHECK` and the Go enum.
+> 2. **"Reversible" needs self-healing to mean anything.** Migrations are stamped, so v16 runs once, while a derived layer is by definition allowed to be dropped and rebuilt (Decision 5 keeps the SSOT in `project_notes`). Building the tables only inside the migration would leave a database stamped v16 with no tables after a single `DropWikiSchema`. `InitDB` now calls `EnsureWikiSchema` unconditionally, under the same "safe to call on any database" contract as `EnsureFTSIndex`. This was **caught by the reversibility test**, not thought of at design time: the test failed first.
+>
+Also fixed a brittle assertion: the v15 migration test asserted the schema version as exactly 15 and went red the moment v16 landed. The invariant is "v15 has run" (`>= 15`); otherwise every migration forces a rewrite of an old test.
 
 ## Promotion criteria (Proposed → Accepted)
 

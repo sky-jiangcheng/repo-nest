@@ -279,6 +279,15 @@ func upgradeSchema(db *sql.DB) error {
 		// OFF). Re-running is harmless, which is what makes the upgrade safe to
 		// retry after a mid-migration crash.
 		{id: 15, sql: "UPDATE app_config SET value = '0' WHERE key = 'auto_import' AND value <> '0'"},
+		// v16: the wiki layer (ADR-0014 决策 1 「先补结构，再让 LLM 写」).
+		//
+		// Four new tables (pages, links, note->page, note->repository) and their
+		// indexes. Nothing existing is ALTERed and no trigger is added to a
+		// pre-existing table, which is what makes this migration reversible by
+		// construction: DropWikiSchema restores byte-identical schema state, and
+		// TestUpgradeSchema_WikiIsReversible asserts exactly that.
+		// project_notes remains the single source of truth (ADR-0014 决策 5).
+		{id: 16, fn: EnsureWikiSchema},
 	}
 
 	for _, m := range migrations {

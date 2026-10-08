@@ -3,6 +3,8 @@ package db
 import (
 	"database/sql"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -51,8 +53,11 @@ func TestInitDB_V15DisablesLegacyAutoImport(t *testing.T) {
 	if v := readConfig(t, db2, "auto_import"); v != "0" {
 		t.Errorf("after v15 auto_import = %q, want %q — legacy installs must not keep auto-importing", v, "0")
 	}
-	if v := readConfig(t, db2, migrationVersionKey); v != "15" {
-		t.Errorf("schema_version = %q, want 15", v)
+	// Assert the invariant ("v15 has run"), not an exact stamp: a version equality
+	// here has to be edited on every later migration, and a stale assertion is how
+	// this very test broke when v16 landed.
+	if v := readConfig(t, db2, migrationVersionKey); !versionAtLeast(v, 15) {
+		t.Errorf("schema_version = %q, want >= 15 so the auto-import normalization has run", v)
 	}
 	if v := readConfig(t, db2, "junk_probe"); v != "keep-me" {
 		t.Errorf("unrelated config row was touched: %q", v)
@@ -134,6 +139,11 @@ func TestInitDB_V15DoesNotCreateAnEnablingRow(t *testing.T) {
 	if v := readConfig(t, db2, "auto_import"); v == "1" {
 		t.Fatal("v15 seeded an ON row where none existed")
 	}
+}
+
+func versionAtLeast(v string, want int) bool {
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	return err == nil && n >= want
 }
 
 func readConfig(t *testing.T, database *sql.DB, key string) string {

@@ -61,6 +61,20 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to upgrade schema: %w", err)
 	}
 
+	// Re-assert the derived wiki layer on every open, not just at migration time.
+	//
+	// Why this is not redundant: migrations are stamped, so v16 never runs twice.
+	// DropWikiSchema is a supported operation (the layer is derived cache, and the
+	// reversibility test uses it), and without this line a database whose layer was
+	// dropped would come back with schema_version=16 and NO tables — every wiki
+	// query from then on fails with "no such table" and nothing short of manually
+	// re-running the migration repairs it. Same contract as EnsureFTSIndex: safe to
+	// call on any database that already has project_notes.
+	if err := EnsureWikiSchema(db); err != nil {
+		db.Close() //nolint:errcheck
+		return nil, fmt.Errorf("failed to ensure wiki schema: %w", err)
+	}
+
 	if err := insertDefaults(db); err != nil {
 		db.Close() //nolint:errcheck
 		return nil, fmt.Errorf("failed to insert defaults: %w", err)
