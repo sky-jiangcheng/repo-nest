@@ -45,7 +45,9 @@ Why this ordering: it improves an existing feature without touching the data mod
 
 Upgrade importers from "upsert the external Markdown as a note" to "read source → extract → create/update pages → update index + append log → flag contradictions with existing notes". Three constraints: every LLM write carries `source='llm-wiki'` (the field already exists) and defaults to **pending review**, entering the index only after a human approves; one source at a time with the human in the loop (Karpathy works this way himself); and the whole chain is off by default, continuing the ADR-0010/0012 discipline of "sensitive capability off by default, documented".
 
-**Blocking prerequisite:** `auto_import` currently defaults to `"1"` (`db/migrate.go:452`), so startup runs `ImportAll` over every automatic source. The compiler amplifies this existing privacy risk (raw text in the store → a crop of derived LLM synthesis pages), so tighten the default and the per-source gate **before** compilation.
+**Blocking prerequisite:** `auto_import` then defaulted to `"1"` (`db/migrate.go:452`), so startup ran `ImportAll` over every automatic source. The compiler would amplify this existing privacy risk (raw text in the store → a crop of derived LLM synthesis pages), so tighten the default and the per-source gate **before** compilation.
+
+> **Closed (schema v15, 2026-10-07)**: implementing it surfaced a deeper problem than assumed — `db.GetConfig` maps `sql.ErrNoRows` to `("", nil)` while the startup test was `v != "0"`, so **"never configured" was itself equivalent to consent**; the default value was not the bug. The fix inverts the predicate to `== "1"` (making the safe state the default), seeds `"0"`, and adds a one-time migration normalizing legacy databases. W3 still needs its own per-source gate: v15 only removes "import at startup".
 
 ### 5. Lint is mandatory maintenance, not an optional extra
 

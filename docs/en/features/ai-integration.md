@@ -21,7 +21,7 @@ The whitelist in `internal/service/config.go` splits into two groups. **Core con
 
 | Key | Type | Default | Purpose |
 |-----|------|---------|---------|
-| `auto_import` | 0 / 1 | `1` | Whether startup auto-imports knowledge sources (today only `claude` is an automatic source; the other four are manual) |
+| `auto_import` | 0 / 1 | **`0` (unreleased breaking change: existing databases are normalized to off)** | Whether startup auto-imports knowledge sources (today only `claude` is an automatic source; the other four are manual). **Only the value `1` enables it**: a missing row, an empty string, or junk all mean OFF. The old test was "not equal to `0`", and configuration reads map a missing row to an empty string — so **anyone who never configured it was defaulted in**, a real bug fixed here |
 | `daily_code_standard` | integer | `500` | The daily code target (lines per day), used for the dashboard goal display. The name says "code standard" but it is not an AI standard — easy to misread |
 | `scan_depth` | integer | `2` | Scan directory depth |
 | `git_author` | string | System git user | Affects "My" statistics / heatmap attribution |

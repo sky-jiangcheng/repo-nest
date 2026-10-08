@@ -16,7 +16,6 @@ import (
 
 	"repo-nest/internal/core/git"
 	pluginruntime "repo-nest/internal/core/plugin/runtime"
-	"repo-nest/internal/db"
 	"repo-nest/internal/version"
 )
 
@@ -179,11 +178,10 @@ func (s *Service) Startup() {
 		log.Printf("plugin runtime ready: %d plugin(s), %d source(s)",
 			len(s.rt.PluginStatuses()), len(s.rt.SourceStatuses()))
 
-		// Auto-import knowledge sources on startup (issue #36). Defaults to
-		// on; a user can disable it via the auto_import config key. Tracked
-		// via bgGo so Shutdown waits for it instead of closing the database
-		// underneath a mid-import upsert.
-		if v, err := db.GetConfig(s.db, "auto_import"); err == nil && v != "0" {
+		// Auto-import knowledge sources on startup (issue #36) — but only on an
+		// explicit opt-in. Tracked via bgGo so Shutdown waits for it instead of
+		// closing the database underneath a mid-import upsert.
+		if s.autoImportEnabled() {
 			s.bgGo("auto-import", func(ctx context.Context) {
 				for _, r := range s.TriggerAllKnowledgeImports() {
 					if ctx.Err() != nil {

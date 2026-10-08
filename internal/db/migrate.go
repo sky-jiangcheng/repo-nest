@@ -263,6 +263,22 @@ func upgradeSchema(db *sql.DB) error {
 		// importers use. Goes through the Go fn so the statement list stays in
 		// one place with EnsureNoteEmbedDirty (idempotent, already-exists safe).
 		{id: 14, fn: noteEmbedDirtyMigration},
+		// v15: turn startup auto-import off for existing databases (ADR-0014 W0).
+		//
+		// The privacy problem this closes is that reading another tool's memory
+		// files and writing them into this database was never an explicit choice:
+		// insertDefaults seeded `auto_import='1'` as a ROW, so an untouched install
+		// looks identical to one where a user deliberately turned it on. That is
+		// also why "just change the default" could not work — hence a one-time
+		// normalization here plus a flipped predicate in the service layer
+		// (an absent row must mean OFF, and db.GetConfig maps a missing row to
+		// "", which the old `v != "0"` test read as ON).
+		//
+		// Only rows that were actually ON are rewritten: an explicit '0' stays,
+		// and a missing row is not inserted (the service now treats missing as
+		// OFF). Re-running is harmless, which is what makes the upgrade safe to
+		// retry after a mid-migration crash.
+		{id: 15, sql: "UPDATE app_config SET value = '0' WHERE key = 'auto_import' AND value <> '0'"},
 	}
 
 	for _, m := range migrations {
@@ -454,10 +470,16 @@ func migrateV13NormalizeTagsAndDropMultiRepoMeta(db *sql.DB) error {
 }
 
 func insertDefaults(db *sql.DB) error {
+	// `auto_import` is seeded at "0" since v15: reading another tool's memory at
+	// startup is a privacy-relevant choice and must not be something the app did
+	// on the user's behalf. It is seeded rather than left absent only so the
+	// settings page shows a real value; the service predicate is now `== "1"`, so
+	// absent, "0" and any junk all mean OFF (the old `!= "0"` test made an absent
+	// row mean ON, which is how a "default off" setting silently stayed on).
 	defaults := map[string]string{
 		"daily_code_standard": "500",
 		"scan_depth":          "2",
-		"auto_import":         "1",
+		"auto_import":         "0",
 	}
 
 	for key, value := range defaults {

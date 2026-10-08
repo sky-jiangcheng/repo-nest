@@ -30,7 +30,7 @@ How to read it: the two entries (built-in `claude` memory, plugin scripts) **con
 |----|------|
 | `claude` | Imports `~/.claude/projects/*/memory/*.md`, matching ownership by project name / repository path |
 
-Startup auto-import can be toggled in **Settings → Plugins** (the `auto_import` config item). Manual triggering is available on the settings page.
+Startup auto-import is toggled in **Settings → Plugins** (the `auto_import` config item, **off by default**: reading another tool's memory files and writing them into this database is privacy-relevant, so it requires an explicit opt-in; upgrading normalizes a legacy "on" to "off" — see CHANGELOG). Manual triggering is available on the settings page.
 
 ## Idempotent import semantics
 

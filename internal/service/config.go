@@ -110,6 +110,21 @@ func (s *Service) GetConfig() (*ConfigData, error) {
 	return &ConfigData{Config: configs, ScanRoots: roots}, nil
 }
 
+// autoImportEnabled reports whether startup may read other tools' memory files
+// and write them into this database without being asked. Explicit opt-in only
+// (ADR-0014 W0, schema v15): anything other than "1" means OFF.
+//
+// The absent-row case is the reason this is a helper rather than an inline test.
+// db.GetConfig maps sql.ErrNoRows to ("", nil), so the previous predicate
+// (`err == nil && v != "0"`) read an untouched database as ON — which is how a
+// setting documented as "the user can disable it" stayed effectively enabled
+// for anyone who never touched it. Comparing against "1" makes the safe state
+// the default state and takes the load off the seeded row.
+func (s *Service) autoImportEnabled() bool {
+	v, err := db.GetConfig(s.db, "auto_import")
+	return err == nil && v == "1"
+}
+
 // UpdateConfig sets a single configuration key-value pair after validating
 // the key against the allow-list and numeric values.
 func (s *Service) UpdateConfig(key, value string) error {
