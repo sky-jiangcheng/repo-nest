@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	pluginruntime "repo-nest/internal/core/plugin/runtime"
+	"repo-nest/internal/db"
 	"repo-nest/internal/domain"
 	"repo-nest/internal/service"
 	"repo-nest/internal/stats"
@@ -31,6 +32,9 @@ import (
 //   Wiki: RunWikiLint (ADR-0014 W4 lint; read-only over pages, writes todos only)
 //   Memory layers (ADR-0014 W5): LayeredProjectContext (orientation-first,
 //             budget-bounded L3/L2/L1/L0 assembly; read-only)
+//   Async jobs (ADR-0016): StartCompileJob, GetCompileJob, ListCompileJobs,
+//             CancelCompileJob — submission returns at once so a multi-minute LLM
+//             batch never blocks a caller
 //   Wiki compile & review (ADR-0015): CompileNote, CompileProjectNotes,
 //             ListPendingWikiPages, ApproveWikiPage, RejectWikiPage. Deliberately
 //             no MCP twin: an agent able to write pending knowledge would bypass
@@ -338,6 +342,27 @@ func (a *App) CompileNote(noteID int64) (*service.WikiCompileReport, error) {
 // shared budget (<= 0 uses the default). Still a human action, never a timer.
 func (a *App) CompileProjectNotes(projectID int64, maxNotes int) (*service.WikiCompileReport, error) {
 	return a.svc.CompileProjectNotes(projectID, maxNotes)
+}
+
+// StartCompileJob queues a batch compile and returns the job id immediately: one
+// note measured 173s on a local model, so this is the path the UI should use.
+// CompileProjectNotes stays for callers that genuinely want to wait.
+func (a *App) StartCompileJob(projectID int64, maxNotes int) (int64, error) {
+	return a.svc.StartCompileJob(projectID, maxNotes)
+}
+
+// GetCompileJob is the poll endpoint for a single job's status and totals.
+func (a *App) GetCompileJob(jobID int64) (*db.CompileJob, error) { return a.svc.GetCompileJob(jobID) }
+
+// ListCompileJobs returns recent jobs (newest first) for the review panel.
+func (a *App) ListCompileJobs(projectID int64, limit int) ([]db.CompileJob, error) {
+	return a.svc.ListCompileJobs(projectID, limit)
+}
+
+// CancelCompileJob stops a job from taking further notes. An in-flight request is
+// allowed to finish (its cost is already paid) — see ADR-0016 决策 3.
+func (a *App) CancelCompileJob(jobID int64) (*db.CompileJob, error) {
+	return a.svc.CancelCompileJob(jobID)
 }
 
 // ListPendingWikiPages is the review queue, each entry carrying its source notes

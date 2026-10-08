@@ -27,7 +27,9 @@ const schemaVersionKey = "schema_version"
 // v17 added the page search index (wiki_pages_fts + its three triggers).
 // v18 added the page review state (wiki_pages.status / .source, ADR-0015), the
 // prerequisite for letting a model write into the layer at all.
-const ExpectedSchemaVersion = 18
+// v19 added the async compile-job table (ADR-0016), so a long LLM-backed batch no
+// longer has to be a synchronous HTTP call.
+const ExpectedSchemaVersion = 19
 
 // StaleAfterDays is the age at which the repo_meta knowledge cache is reported
 // as stale. The cache feeds generated knowledge (tech stack, readme excerpt,

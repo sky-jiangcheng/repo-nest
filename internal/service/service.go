@@ -171,6 +171,12 @@ func (s *Service) Startup() {
 		// Its first pass is one interval away, so opening the app files no todos.
 		s.startWikiLintTicker()
 
+		// Async compile jobs (ADR-0016). Recovery runs before the worker, so a job
+		// left 'running' by a dead process is marked failed and never picked up as
+		// if it knew where it stopped.
+		s.recoverInterruptedCompileJobs()
+		s.startCompileJobWorker()
+
 		if s.rt == nil {
 			return
 		}

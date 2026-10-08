@@ -61,6 +61,13 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to upgrade schema: %w", err)
 	}
 
+	// Operational job queue (v19) is re-asserted too: a dropped table must not
+	// leave a database stamped with a version whose object is missing.
+	if err := EnsureCompileJobs(db); err != nil {
+		db.Close() //nolint:errcheck
+		return nil, fmt.Errorf("failed to ensure compile jobs: %w", err)
+	}
+
 	// Re-assert the derived wiki layer on every open, not just at migration time.
 	//
 	// Why this is not redundant: migrations are stamped, so v16 never runs twice.

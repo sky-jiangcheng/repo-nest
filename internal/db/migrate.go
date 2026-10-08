@@ -298,6 +298,10 @@ func upgradeSchema(db *sql.DB) error {
 		// representation at all, and the retrieval paths would feed unreviewed
 		// model output into AskAI the instant a compiler exists.
 		{id: 18, fn: EnsureWikiReviewColumns},
+		// v19: async batch jobs (ADR-0016). The rehearsal measured 173s per note
+		// on a local model, which is the evidence that a synchronous call is the
+		// wrong shape regardless of timeouts. Purely additive operational state.
+		{id: 19, fn: EnsureCompileJobs},
 	}
 
 	for _, m := range migrations {

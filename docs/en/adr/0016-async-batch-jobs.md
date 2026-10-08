@@ -1,6 +1,6 @@
 # ADR-0016: Async long-running batch jobs — submit returns, progress is queryable, results survive
 
-- Status: Proposed (a plan; not implemented)
+- Status: Proposed (the async job is implemented and tested; **no review UI is wired yet** — compilation is reachable today only through bindings and `/api/rpc`. Interactive Q&A is still a synchronous 90-second call; async covers batch compilation only, and the two should not be conflated)
 - Date: 2026-10-08
 - Relates to: [ADR-0015](0015-w3-minimal-compile-loop.md) (compilation), [ADR-0014](0014-llm-wiki-knowledge-compiler.md) (W3/W5), TODO M6
 

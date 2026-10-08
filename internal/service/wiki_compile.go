@@ -68,18 +68,52 @@ type compileOp struct {
 
 // WikiCompileReport is what one compile did.
 type WikiCompileReport struct {
-	ProjectID     int64  `json:"project_id"`
-	NotesScanned  int    `json:"notes_scanned"`
-	NotesCompiled int    `json:"notes_compiled"`
-	PagesCreated  int    `json:"pages_created"`
-	PagesUpdated  int    `json:"pages_updated"` // pending rows from an earlier compile
-	LinksCreated  int    `json:"links_created"`
-	Attachments   int    `json:"attachments"`
-	RevisionTodos int    `json:"revision_todos"` // requests to edit approved pages, downgraded
-	RejectedOps   int    `json:"rejected_ops"`   // invalid or unresolvable ops
-	LLMNote       string `json:"llm_note,omitempty"`
-	Stopped       string `json:"stopped,omitempty"`
-	ElapsedMS     int64  `json:"elapsed_ms"`
+	ProjectID    int64 `json:"project_id"`
+	NotesScanned int   `json:"notes_scanned"`
+	// NotesRequested / NotesDone exist for the async path only: they are what a
+	// poller renders as progress. They stay zero on the synchronous paths.
+	NotesRequested int    `json:"notes_requested,omitempty"`
+	NotesDone      int    `json:"notes_done,omitempty"`
+	NotesCompiled  int    `json:"notes_compiled"`
+	PagesCreated   int    `json:"pages_created"`
+	PagesUpdated   int    `json:"pages_updated"` // pending rows from an earlier compile
+	LinksCreated   int    `json:"links_created"`
+	Attachments    int    `json:"attachments"`
+	RevisionTodos  int    `json:"revision_todos"` // requests to edit approved pages, downgraded
+	RejectedOps    int    `json:"rejected_ops"`   // invalid or unresolvable ops
+	LLMNote        string `json:"llm_note,omitempty"`
+	Stopped        string `json:"stopped,omitempty"`
+	ElapsedMS      int64  `json:"elapsed_ms"`
+}
+
+// absorb folds one note's report into a run-level total. Summing rather than
+// replacing keeps "how much did this job do" answerable after 20 notes, and keeps
+// the stop reason of the note that hit a budget visible.
+func (r *WikiCompileReport) absorb(one *WikiCompileReport) {
+	if one == nil {
+		return
+	}
+	r.NotesCompiled += one.NotesCompiled
+	r.PagesCreated += one.PagesCreated
+	r.PagesUpdated += one.PagesUpdated
+	r.LinksCreated += one.LinksCreated
+	r.Attachments += one.Attachments
+	r.RevisionTodos += one.RevisionTodos
+	r.RejectedOps += one.RejectedOps
+	if one.Stopped != "" && r.Stopped == "" {
+		r.Stopped = one.Stopped
+	}
+}
+
+// toJobRow projects the run totals onto the job record the poller reads.
+func (r *WikiCompileReport) toJobRow() *db.CompileJob {
+	return &db.CompileJob{
+		NotesTotal: r.NotesRequested, NotesDone: r.NotesDone,
+		PagesCreated: r.PagesCreated, PagesUpdated: r.PagesUpdated,
+		LinksCreated: r.LinksCreated, Attachments: r.Attachments,
+		RevisionTodos: r.RevisionTodos, RejectedOps: r.RejectedOps,
+		Stopped: r.Stopped, Note: r.LLMNote,
+	}
 }
 
 func (s *Service) wikiCompileEnabled() bool {
@@ -145,17 +179,17 @@ func (s *Service) CompileProjectNotes(projectID int64, maxNotes int) (*WikiCompi
 	if err != nil {
 		return nil, err
 	}
-	for i := range notes {
-		note := notes[i]
-		if rep.NotesScanned >= maxNotes {
-			rep.Stopped = fmt.Sprintf("达到单次运行的笔记数上限（%d），其余未处理", maxNotes)
-			break
-		}
+	targets := compileNoteTargets(notes, maxNotes)
+	if len(targets) < len(notes) {
+		rep.Stopped = fmt.Sprintf("本次覆盖 %d 条（共 %d 条笔记），其余未处理", len(targets), len(notes))
+	}
+	rep.NotesScanned = len(targets)
+	for i := range targets {
+		note := targets[i]
 		if rep.PagesCreated+rep.PagesUpdated >= compileMaxPagesPerRun {
 			rep.Stopped = fmt.Sprintf("达到单次产出的页面上限（%d），其余未处理", compileMaxPagesPerRun)
 			break
 		}
-		rep.NotesScanned++
 		ops, skip := s.askCompilePlan(cfg, &note)
 		if skip != "" {
 			// One bad note must not abort the run: record and continue, but keep
