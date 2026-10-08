@@ -292,6 +292,12 @@ func upgradeSchema(db *sql.DB) error {
 		// own migration so a page index can be dropped and rebuilt without
 		// touching the page tables, and so DropWikiSchema reverses both.
 		{id: 17, fn: EnsureWikiFTS},
+		// v18: review state for the page layer (ADR-0015 决策 1), the hard
+		// prerequisite for W3. Without status + source the rule "the compiler
+		// writes pending pages and only a human lets them into search" has no
+		// representation at all, and the retrieval paths would feed unreviewed
+		// model output into AskAI the instant a compiler exists.
+		{id: 18, fn: EnsureWikiReviewColumns},
 	}
 
 	for _, m := range migrations {

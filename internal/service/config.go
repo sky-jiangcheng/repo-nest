@@ -52,6 +52,11 @@ var allowedConfigKeys = map[string]bool{
 	// structural half needs no permission because it costs nothing and cannot write
 	// a page. Follows semantic_search's treatment (numeric 0/1, so no
 	// stringConfigKeys entry).
+	// M6-W3 compile: gates the ONLY path that lets a model write into the wiki
+	// layer. Off by default, independent of semantic_search (that sends text out
+	// to get a vector back; this sends text out to get stored content back) and
+	// independent of wiki_lint_llm (which only reads).
+	"wiki_compile":     true,
 	"wiki_lint_llm":    true,
 	"ai_chat_base_url": true,
 	"ai_chat_model":    true,

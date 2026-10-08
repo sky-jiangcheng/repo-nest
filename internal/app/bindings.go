@@ -28,6 +28,10 @@ import (
 //   AI: AskAIWithEvidence, FileAnswerAsPage (evidence-gated Q&A and its query-loop
 //       filing; the desktop UI is their consumer, so no MCP twin by design)
 //   Wiki: RunWikiLint (ADR-0014 W4 lint; read-only over pages, writes todos only)
+//   Wiki compile & review (ADR-0015): CompileNote, CompileProjectNotes,
+//             ListPendingWikiPages, ApproveWikiPage, RejectWikiPage. Deliberately
+//             no MCP twin: an agent able to write pending knowledge would bypass
+//             the human gate the whole design rests on.
 //   Scan: GetScanStatus (progress polling)
 //   Dashboard: GetSummary, GetHeatmapData, GetStatusBar, GetTodoCounts, GetNoteCounts
 //   Notes lifecycle: DeleteNote, PinNote, MoveNote, ListNoteVersions,
@@ -320,6 +324,31 @@ func (a *App) FileAnswerAsPage(projectID int64, question, answer string, evidenc
 func (a *App) RunWikiLint(projectID int64, wantLLM bool) (*service.WikiLintReport, error) {
 	return a.svc.RunWikiLint(projectID, wantLLM)
 }
+
+// CompileNote runs the ingest-time compile for one note. Everything it writes
+// lands as a pending page; nothing becomes searchable until a human approves it.
+func (a *App) CompileNote(noteID int64) (*service.WikiCompileReport, error) {
+	return a.svc.CompileNote(noteID)
+}
+
+// CompileProjectNotes compiles up to maxNotes notes of one project under one
+// shared budget (<= 0 uses the default). Still a human action, never a timer.
+func (a *App) CompileProjectNotes(projectID int64, maxNotes int) (*service.WikiCompileReport, error) {
+	return a.svc.CompileProjectNotes(projectID, maxNotes)
+}
+
+// ListPendingWikiPages is the review queue, each entry carrying its source notes
+// and edges so a reviewer can compare before approving.
+func (a *App) ListPendingWikiPages(projectID int64) ([]service.WikiPendingPage, error) {
+	return a.svc.ListPendingWikiPages(projectID)
+}
+
+// ApproveWikiPage publishes a pending page into retrieval. This transition has no
+// other caller: the compiler and lint cannot reach it.
+func (a *App) ApproveWikiPage(pageID int64) error { return a.svc.ApproveWikiPage(pageID) }
+
+// RejectWikiPage discards a pending page and its edges; it refuses approved pages.
+func (a *App) RejectWikiPage(pageID int64) error { return a.svc.RejectWikiPage(pageID) }
 
 // ListAIModels probes the endpoint's /models (with path candidates and the
 // localhost fallback) using the form's current values — no save required.

@@ -1,6 +1,6 @@
 # ADR-0015: W3 最小编译闭环——LLM 只写 pending 页，人批准才进检索
 
-- 状态：Proposed（本文是要被批准的方案，不是已实现的事实；晋升条件在末尾）
+- 状态：Proposed（schema v18 与编译器已实现并通过契约测试；晋升 Accepted 仍差"真实库上编译一轮并由人审"这一条，见末尾）
 - 日期：2026-10-08
 - 关联：[ADR-0014](0014-llm-wiki-knowledge-compiler.md)（本方案实现其决策 4 与决策 5 的前半）、[ADR-0012](0012-semantic-search.md)、[ADR-0011](0011-multi-agent-memory-importers.md)、[ADR-0007](0007-session-memory-protocol.md)、TODO **M6-W3**；前置 W1（schema v16）、W1b（v17 页索引）、W4（lint）均已落地
 
@@ -27,7 +27,9 @@ wiki_pages.source  TEXT NOT NULL DEFAULT 'manual'
 ```
 
 - 默认值必须是 `approved`：现存页面全部由人发起（应用内手写、W2 的"存为页面"按钮），它们本来就已被信任；把默认设成 `pending` 会让一次升级把用户的既有知识从检索里全部撤走。
-- 迁移完成后，`SearchWikiPages` / `SearchWikiPagesMatch` / `ListWikiPages` 一律加 `status = 'approved'` 过滤，并加一个 `ListPendingWikiPages` 供审核面使用。**顺序很重要**：先有过滤，编译器才有地方写。
+- 迁移完成后，`SearchWikiPages` / `SearchWikiPagesMatch`（两处 FTS 查询）加 `p.status = 'approved'` 过滤，并加 `ListPendingWikiPages` 供审核面使用。**顺序很重要**：先有过滤，编译器才有地方写。
+>
+> **实现时对本条做了一处收窄**：原计划让 `ListWikiPages` 也过滤 approved，实测会把 **W1b 的导出旁路和 W4 的 lint 一起废掉**——pending 页正是导出要标出来给人审、lint 要检查的对象（`no-source` 那一条就是为编译器产物准备的）。因此落地为：**检索/取证路径过滤 approved，清点路径（导出、lint、审核队列）保留全部状态并显式带出 `status`/`source`**。这是"什么存在"与"什么可以回答问题"两个不同的问题，本条以现状为准。
 - 可逆性沿用 W1 的标准：新增列而非新表，`DROP COLUMN` 即回到 v17 形状；迁移测试断言升级前已存在的页面在升级后仍可被检索到（否则"默认 approved"是一条会悄悄失效的注释）。
 
 ### 2. 编译单元 = 一条笔记，一次模型调用，严格 JSON 契约

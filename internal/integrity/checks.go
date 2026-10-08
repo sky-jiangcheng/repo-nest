@@ -25,7 +25,9 @@ const schemaVersionKey = "schema_version"
 // v16 added the wiki layer (wiki_pages / page_links / note_pages /
 // note_repositories, internal/db/wiki.go) — purely additive, reversible by drop.
 // v17 added the page search index (wiki_pages_fts + its three triggers).
-const ExpectedSchemaVersion = 17
+// v18 added the page review state (wiki_pages.status / .source, ADR-0015), the
+// prerequisite for letting a model write into the layer at all.
+const ExpectedSchemaVersion = 18
 
 // StaleAfterDays is the age at which the repo_meta knowledge cache is reported
 // as stale. The cache feeds generated knowledge (tech stack, readme excerpt,

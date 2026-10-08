@@ -228,6 +228,10 @@ func (s *Service) renderPage(byID map[int64]db.WikiPage, bySlug map[string]db.Wi
 	var b strings.Builder
 	b.WriteString("---\n")
 	fmt.Fprintf(&b, "reponest_page_id: %d\nslug: %s\ntitle: %s\nkind: %s\n", p.ID, p.Slug, yamlQuote(p.Title), p.Kind)
+	// Status is exported so the tree can be reviewed where it is read: pending
+	// pages appear here tagged pending (that is the review surface we have today),
+	// while index.md below lists approved pages only.
+	fmt.Fprintf(&b, "status: %s\nsource: %s\n", p.Status, p.Source)
 	if p.ProjectID > 0 {
 		fmt.Fprintf(&b, "project_id: %d\n", p.ProjectID)
 	}
@@ -290,7 +294,9 @@ func renderIndex(pages []db.WikiPage, byID map[int64]db.WikiPage) string {
 	for _, kind := range order {
 		var group []db.WikiPage
 		for _, p := range pages {
-			if p.Kind == kind {
+			// The index is a retrieval artifact, so it stays approved-only: an
+			// index an agent reads first must not route it into unreviewed pages.
+			if p.Kind == kind && p.Status == db.WikiStatusApproved {
 				group = append(group, p)
 			}
 		}

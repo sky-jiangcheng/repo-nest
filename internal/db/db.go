@@ -81,6 +81,13 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ensure wiki FTS: %w", err)
 	}
 
+	// ...and for the review columns (v18). A database that predates them must not
+	// stay half-migrated just because CREATE TABLE IF NOT EXISTS is a no-op.
+	if err := EnsureWikiReviewColumns(db); err != nil {
+		db.Close() //nolint:errcheck
+		return nil, fmt.Errorf("failed to ensure wiki review columns: %w", err)
+	}
+
 	// Triggers cannot backfill: pages that existed before this index was created
 	// would stay unsearchable forever. Rebuild is cheap (pages are a derived,
 	// bounded artifact) and idempotent, and doing it here is what stops the v7

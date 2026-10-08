@@ -1,6 +1,6 @@
 # ADR-0015: W3 minimal compile loop — the LLM writes pending pages only, and humans decide what enters search
 
-- Status: Proposed (this is the plan to be approved, not an implemented fact; promotion criteria at the end)
+- Status: Proposed (schema v18 and the compiler are implemented and contract-tested; promotion to Accepted still needs one real-library run reviewed by a human — see the end of this document)
 - Date: 2026-10-08
 - Relates to: [ADR-0014](0014-llm-wiki-knowledge-compiler.md) (this realizes its Decisions 4 and 5a), [ADR-0012](0012-semantic-search.md), [ADR-0011](0011-multi-agent-memory-importers.md), [ADR-0007](0007-session-memory-protocol.md), TODO **M6-W3**; prerequisites W1 (schema v16), W1b (v17 page index) and W4 (lint) have landed. (Chinese original: `docs/adr/0015-*.md`.)
 
@@ -27,7 +27,9 @@ wiki_pages.source  TEXT NOT NULL DEFAULT 'manual'
 ```
 
 - The default must be `approved`: every existing page was human-initiated (written in the app, or filed via W2's "File as page" button) and is already trusted. Defaulting to `pending` would silently evict the user's existing knowledge from search on upgrade.
-- Once migrated, `SearchWikiPages`, `SearchWikiPagesMatch` and `ListWikiPages` all filter `status = 'approved'`, and a new `ListPendingWikiPages` serves the review surface. **Order matters**: the filter must exist before the compiler has somewhere to write.
+- Once migrated, `SearchWikiPages` and `SearchWikiPagesMatch` (the two FTS queries) filter `p.status = 'approved'`, and `ListPendingWikiPages` serves the review surface. **Order matters**: the filter must exist before the compiler has somewhere to write.
+>
+> **One narrowing made during implementation**: the plan also had `ListWikiPages` filter on approved, which in practice would have broken **both the W1b export bypass and W4 lint** — pending pages are precisely what the export must surface for review and what lint must check (the `no-source` rule exists to police compiler output). Landed behaviour is therefore: **retrieval and evidence paths filter approved; inventory paths (export, lint, review queue) keep every status and carry `status`/`source` explicitly.** "What exists" and "what may answer a question" are different questions, and this line reflects the shipped behaviour rather than the original wording.
 - Reversibility follows W1's bar: columns are added rather than tables, so `DROP COLUMN` restores the v17 shape; the migration test asserts that pages which existed before the upgrade are still retrievable after it — otherwise "default approved" is a comment that quietly fails.
 
 ### 2. Compile unit = one note, one model call, a strict JSON contract

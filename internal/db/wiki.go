@@ -44,12 +44,20 @@ var wikiSchemaStatements = []string{
 		kind TEXT NOT NULL CHECK (kind IN ('entity','concept','source','synthesis','query')),
 		project_id INTEGER,
 		content TEXT NOT NULL DEFAULT '',
+		-- ADR-0015: review state + write provenance. status defaults to 'approved'
+		-- on purpose: every page predating this migration was human-initiated
+		-- (written in the app, or filed via W2's File-as-page), and defaulting to
+		-- 'pending' would silently evict the user's existing knowledge from
+		-- retrieval the moment the app is upgraded.
+		status TEXT NOT NULL DEFAULT 'approved' CHECK (status IN ('pending','approved','rejected')),
+		source TEXT NOT NULL DEFAULT 'manual',
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 	)`,
 	`CREATE INDEX IF NOT EXISTS idx_wiki_pages_project ON wiki_pages(project_id)`,
 	`CREATE INDEX IF NOT EXISTS idx_wiki_pages_kind ON wiki_pages(kind)`,
+	`CREATE INDEX IF NOT EXISTS idx_wiki_pages_status ON wiki_pages(status)`,
 	`CREATE TABLE IF NOT EXISTS page_links (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		from_page_id INTEGER NOT NULL,
@@ -105,6 +113,140 @@ type WikiPage struct {
 	// conflicting pages is the newer claim" cannot be answered without it, so the
 	// field belongs on the struct rather than in a second query.
 	UpdatedAt string `json:"updated_at"`
+	// Status gates retrieval: only "approved" pages may answer a query
+	// (ADR-0015 决策 1). Inventory paths — the export bypass, lint, the review
+	// surface — deliberately still see every status, because pending pages are
+	// exactly what they must show and check.
+	Status string `json:"status"`
+	// Source is provenance of the write, not of the idea: manual | ai |
+	// wiki-compile | import:<source>. It is what makes "the compiler may only
+	// touch its own pending output" a checkable property instead of a promise.
+	Source string `json:"source"`
+}
+
+// scanPageFields is the single Scan counterpart for the page projection. Every
+// query returning WikiPage must go through it: when columns are listed in two
+// places (SELECT and Scan) they drift silently after any column is added, which
+// this package already did once when updated_at went in.
+func scanPageFields(rows interface{ Scan(dest ...any) error }, p *WikiPage) error {
+	return rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content,
+		&p.UpdatedAt, &p.Status, &p.Source)
+}
+
+// pageColumns is the projection used by queries against wiki_pages directly.
+const pageColumns = "id, slug, title, kind, COALESCE(project_id, 0), content, " +
+	"COALESCE(updated_at, ''), COALESCE(status, 'approved'), COALESCE(source, 'manual')"
+
+// pageColumnsP is the same projection for queries that alias wiki_pages as p.
+const pageColumnsP = "p.id, p.slug, p.title, p.kind, COALESCE(p.project_id, 0), p.content, " +
+	"COALESCE(p.updated_at, ''), COALESCE(p.status, 'approved'), COALESCE(p.source, 'manual')"
+
+// scanPageFieldsWithRank is the rank-carrying variant, kept adjacent to
+// scanPageFields so the column order remains one fact rather than two.
+func scanPageFieldsWithRank(rows interface{ Scan(dest ...any) error }, p *WikiPage, rank *float64) error {
+	return rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content,
+		&p.UpdatedAt, &p.Status, &p.Source, rank)
+}
+
+// WikiPageStatus values (ADR-0015 决策 1).
+const (
+	WikiStatusPending  = "pending"
+	WikiStatusApproved = "approved"
+	WikiStatusRejected = "rejected"
+)
+
+// EnsureWikiReviewColumns is migration v18 (ADR-0015 决策 1): it adds status and
+// source to a wiki_pages that already exists.
+//
+// Why it is a separate step rather than folded into EnsureWikiSchema: that
+// function's CREATE TABLE IF NOT EXISTS is a no-op against an existing table, so
+// a database created before these columns existed would keep the old shape while
+// still being stamped v16/v17 — the silent half-migrated state this repo has
+// already been burned by once with the notes FTS index (migration v12).
+//
+// Both errors are tolerated because a fresh database arrives with the columns
+// already present from wikiSchemaStatements, so replaying the ALTER is normal,
+// not exceptional.
+func EnsureWikiReviewColumns(db *sql.DB) error {
+	stmts := []string{
+		`ALTER TABLE wiki_pages ADD COLUMN status TEXT NOT NULL DEFAULT 'approved' CHECK (status IN ('pending','approved','rejected'))`,
+		`ALTER TABLE wiki_pages ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'`,
+		`CREATE INDEX IF NOT EXISTS idx_wiki_pages_status ON wiki_pages(status)`,
+	}
+	for _, stmt := range stmts {
+		if _, err := db.Exec(stmt); err != nil {
+			msg := err.Error()
+			if strings.Contains(msg, "duplicate column name") || isAlreadyExistsErr(err) {
+				continue
+			}
+			return fmt.Errorf("db: ensure wiki review columns: %w", err)
+		}
+	}
+	return nil
+}
+
+// ListWikiPagesByStatus is the review surface's query: pending pages are precisely
+// the ones a human has to look at, and they must be reachable without the
+// approved-only retrieval path seeing them.
+func ListWikiPagesByStatus(db *sql.DB, status string, projectID int64) ([]WikiPage, error) {
+	q := "SELECT " + pageColumns + " FROM wiki_pages WHERE status = ?"
+	args := []any{status}
+	if projectID > 0 {
+		q += " AND project_id = ?"
+		args = append(args, projectID)
+	}
+	q += " ORDER BY kind, slug"
+	rows, err := db.Query(q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("db: list wiki pages by status: %w", err)
+	}
+	defer rows.Close()
+	var out []WikiPage
+	for rows.Next() {
+		var p WikiPage
+		if err := scanPageFields(rows, &p); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// CountWikiPagesByStatus feeds the review badge and the compile report's
+// "what is waiting" line.
+func CountWikiPagesByStatus(db *sql.DB) (map[string]int, error) {
+	rows, err := db.Query("SELECT status, COUNT(*) FROM wiki_pages GROUP BY status")
+	if err != nil {
+		return nil, fmt.Errorf("db: count wiki pages: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var (
+			status string
+			n      int
+		)
+		if err := rows.Scan(&status, &n); err != nil {
+			return nil, err
+		}
+		out[status] = n
+	}
+	return out, rows.Err()
+}
+
+// SetWikiPageStatus is the review transition. It is deliberately dumb — approve
+// and reject are the caller's policy, and the CHECK constraint already bounds the
+// states. Note the compiler has no business calling this with "approved": landing
+// a page in search is a human act (ADR-0015 决策 3).
+func SetWikiPageStatus(db *sql.DB, id int64, status string) error {
+	if status != WikiStatusPending && status != WikiStatusApproved && status != WikiStatusRejected {
+		return fmt.Errorf("db: invalid wiki status %q", status)
+	}
+	if _, err := db.Exec(
+		"UPDATE wiki_pages SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", status, id); err != nil {
+		return fmt.Errorf("db: set wiki page status: %w", err)
+	}
+	return nil
 }
 
 // PageEdge is one directed link; Direction says which end the query came from.
@@ -198,11 +340,31 @@ func NormalizeWikiSlug(s string) string {
 	return strings.TrimRight(b.String(), "-")
 }
 
-// CreateWikiPage inserts a page. A duplicate slug returns sql.ErrNoRows-free but
-// a distinguishable error so the caller can choose update-vs-conflict semantics.
+// CreateWikiPage inserts an approved, human-authored page — the historical
+// semantics, kept for callers that predate ADR-0015.
 func CreateWikiPage(db *sql.DB, kind, slug, title string, projectID int64, content string) (*WikiPage, error) {
+	return CreateWikiPageAs(db, kind, slug, title, projectID, content, WikiStatusApproved, "manual")
+}
+
+// CreateWikiPageAs is the full form. Status and source are explicit arguments
+// because who may set them is the safety model, not a detail:
+//
+//   - anything the compiler writes arrives as pending / source="wiki-compile";
+//   - a human filing an answer (W2) is approved at birth with source="ai",
+//     because a person clicked the button;
+//   - there is no path here that lets a caller "update" an approved page —
+//     revisions take the pending route (ADR-0015 决策 3).
+func CreateWikiPageAs(db *sql.DB, kind, slug, title string, projectID int64, content, status, source string) (*WikiPage, error) {
 	if !ValidWikiKind(kind) {
 		return nil, fmt.Errorf("db: invalid wiki kind %q", kind)
+	}
+	switch status {
+	case WikiStatusPending, WikiStatusApproved, WikiStatusRejected:
+	default:
+		return nil, fmt.Errorf("db: invalid wiki status %q", status)
+	}
+	if strings.TrimSpace(source) == "" {
+		return nil, fmt.Errorf("db: wiki source is required")
 	}
 	if strings.TrimSpace(slug) == "" {
 		return nil, fmt.Errorf("db: wiki slug is required")
@@ -212,8 +374,8 @@ func CreateWikiPage(db *sql.DB, kind, slug, title string, projectID int64, conte
 		pid = projectID
 	}
 	res, err := db.Exec(
-		`INSERT INTO wiki_pages(slug, title, kind, project_id, content) VALUES (?,?,?,?,?)`,
-		slug, title, kind, pid, content)
+		`INSERT INTO wiki_pages(slug, title, kind, project_id, content, status, source) VALUES (?,?,?,?,?,?,?)`,
+		slug, title, kind, pid, content, status, source)
 	if err != nil {
 		if isUniqueSlugErr(err) {
 			return nil, fmt.Errorf("db: wiki slug %q already exists: %w", slug, ErrWikiSlugTaken)
@@ -240,20 +402,17 @@ func isUniqueSlugErr(err error) bool {
 
 // GetWikiPageByID loads one page. Returns sql.ErrNoRows when absent.
 func GetWikiPageByID(db *sql.DB, id int64) (*WikiPage, error) {
-	return scanPage(db.QueryRow(
-		`SELECT id, slug, title, kind, COALESCE(project_id, 0), content, COALESCE(updated_at, '') FROM wiki_pages WHERE id = ?`, id))
+	return scanPage(db.QueryRow("SELECT "+pageColumns+" FROM wiki_pages WHERE id = ?", id))
 }
 
 // GetWikiPageBySlug loads one page by its canonical slug.
 func GetWikiPageBySlug(db *sql.DB, slug string) (*WikiPage, error) {
-	return scanPage(db.QueryRow(
-		`SELECT id, slug, title, kind, COALESCE(project_id, 0), content, COALESCE(updated_at, '') FROM wiki_pages WHERE slug = ?`, slug))
+	return scanPage(db.QueryRow("SELECT "+pageColumns+" FROM wiki_pages WHERE slug = ?", slug))
 }
 
 func scanPage(row *sql.Row) (*WikiPage, error) {
 	var p WikiPage
-	err := row.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content, &p.UpdatedAt)
-	if err != nil {
+	if err := scanPageFields(row, &p); err != nil {
 		return nil, err
 	}
 	return &p, nil
@@ -261,7 +420,11 @@ func scanPage(row *sql.Row) (*WikiPage, error) {
 
 // ListWikiPages returns pages ordered by kind then slug; kind empty lists all.
 func ListWikiPages(db *sql.DB, kind string, projectID int64) ([]WikiPage, error) {
-	q := `SELECT id, slug, title, kind, COALESCE(project_id, 0), content, COALESCE(updated_at, '') FROM wiki_pages`
+	// Inventory by default: every status is returned, because the export bypass
+	// must show pending pages for review and lint must check them. Retrieval has
+	// its own approved-only path (SearchWikiPages), so "what exists" and "what may
+	// answer a question" stay separate questions.
+	q := "SELECT " + pageColumns + " FROM wiki_pages"
 	var (
 		wh []string
 		qa []any
@@ -286,7 +449,7 @@ func ListWikiPages(db *sql.DB, kind string, projectID int64) ([]WikiPage, error)
 	var out []WikiPage
 	for rows.Next() {
 		var p WikiPage
-		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content, &p.UpdatedAt); err != nil {
+		if err := scanPageFields(rows, &p); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
@@ -411,9 +574,8 @@ func DetachNoteFromPage(db *sql.DB, noteID, pageID int64) error {
 // affects these pages").
 func PagesForNote(db *sql.DB, noteID int64) ([]WikiPage, error) {
 	return pagesQuery(db,
-		`SELECT p.id, p.slug, p.title, p.kind, COALESCE(p.project_id, 0), p.content, COALESCE(p.updated_at, '')
-		   FROM wiki_pages p JOIN note_pages np ON np.page_id = p.id
-		  WHERE np.note_id = ? ORDER BY p.kind, p.slug`, noteID)
+		"SELECT "+pageColumnsP+"\n\t\t   FROM wiki_pages p JOIN note_pages np ON np.page_id = p.id"+
+			"\n\t\t  WHERE np.note_id = ? ORDER BY p.kind, p.slug", noteID)
 }
 
 // NotesForPage lists the source notes behind a page.
@@ -491,7 +653,7 @@ func pagesQuery(db *sql.DB, q string, arg int64) ([]WikiPage, error) {
 	var out []WikiPage
 	for rows.Next() {
 		var p WikiPage
-		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content, &p.UpdatedAt); err != nil {
+		if err := scanPageFields(rows, &p); err != nil {
 			return nil, err
 		}
 		out = append(out, p)

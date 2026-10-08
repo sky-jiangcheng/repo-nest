@@ -79,7 +79,13 @@ func RebuildWikiFTS(db *sql.DB) error {
 	return nil
 }
 
-// SearchWikiPages ranks pages by bm25 over title+content. Empty query returns
+// SearchWikiPages ranks APPROVED pages by bm25 over title+content — the status
+// filter is ADR-0015's whole point: a page a human has not reviewed must never
+// answer a question, appear in an evidence block, or surface in the knowledge
+// search. The inventory paths (ListWikiPages, the export bypass, lint) still see
+// every status, because pending rows are exactly what review and lint must look at.
+//
+// Empty query returns
 // nothing rather than everything: callers use it as a retrieval stage, and an
 // "everything" result would silently flood the evidence budget.
 func SearchWikiPages(db *sql.DB, query string, limit int) ([]WikiPage, error) {
@@ -99,11 +105,10 @@ func SearchWikiPages(db *sql.DB, query string, limit int) ([]WikiPage, error) {
 	phrase := escapeFTS(query)
 
 	rows, err := db.Query(
-		`SELECT p.id, p.slug, p.title, p.kind, COALESCE(p.project_id, 0), p.content,
-		        bm25(wiki_pages_fts, 3.0, 1.0) AS rank
-		   FROM wiki_pages_fts
+		"SELECT "+pageColumnsP+", bm25(wiki_pages_fts, 3.0, 1.0) AS rank\n"+
+			`   FROM wiki_pages_fts
 		   JOIN wiki_pages p ON p.id = wiki_pages_fts.rowid
-		  WHERE wiki_pages_fts MATCH ?
+		  WHERE wiki_pages_fts MATCH ? AND p.status = 'approved'
 		  ORDER BY rank
 		  LIMIT ?`, phrase, limit)
 	if err != nil {
@@ -118,7 +123,7 @@ func SearchWikiPages(db *sql.DB, query string, limit int) ([]WikiPage, error) {
 			p    WikiPage
 			rank float64
 		)
-		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content, &rank); err != nil {
+		if err := scanPageFieldsWithRank(rows, &p, &rank); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
@@ -147,11 +152,10 @@ func SearchWikiPagesMatch(db *sql.DB, match string, limit int) ([]WikiPage, erro
 		limit = 10
 	}
 	rows, err := db.Query(
-		`SELECT p.id, p.slug, p.title, p.kind, COALESCE(p.project_id, 0), p.content,
-		        bm25(wiki_pages_fts, 3.0, 1.0) AS rank
-		   FROM wiki_pages_fts
+		"SELECT "+pageColumnsP+", bm25(wiki_pages_fts, 3.0, 1.0) AS rank\n"+
+			`   FROM wiki_pages_fts
 		   JOIN wiki_pages p ON p.id = wiki_pages_fts.rowid
-		  WHERE wiki_pages_fts MATCH ?
+		  WHERE wiki_pages_fts MATCH ? AND p.status = 'approved'
 		  ORDER BY rank
 		  LIMIT ?`, match, limit)
 	if err != nil {
@@ -164,7 +168,7 @@ func SearchWikiPagesMatch(db *sql.DB, match string, limit int) ([]WikiPage, erro
 			p    WikiPage
 			rank float64
 		)
-		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Kind, &p.ProjectID, &p.Content, &rank); err != nil {
+		if err := scanPageFieldsWithRank(rows, &p, &rank); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
