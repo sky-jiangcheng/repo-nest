@@ -360,7 +360,6 @@
     "tab_todos": "Todos",
     "openEditor": "Open in VS Code",
     "copyPath": "Copy path",
-    "copied": "Copied",
     "copyFailed": "Copy failed",
     "openForge": "Open on the Git platform",
     "noCommits": "No commits",
@@ -612,6 +611,15 @@
     "replyReceived": "Reply received — edit freely, then save",
     "sendFailed": "AI request failed",
     "notConfigured": "AI chat is not configured yet.",
-    "goSettings": "Configure it in Settings → AI"
+    "goSettings": "Configure it in Settings → AI",
+    "evidenceTitle": "Based on",
+    "evidenceCount": "{{n}} item(s)",
+    "evidenceNone": "Nothing retrieved — this answer used the plain project context only",
+    "evidenceDropped": "{{n}} more excluded by budget",
+    "saveAsPage": "File as page",
+    "saveAsPageHint": "Store the Q&A as a query page linked to what the answer cited",
+    "pageSaved": "Filed as page",
+    "pageSavedDetail": "page #{{id}}, linked to {{refs}} citation(s)",
+    "pageSaveFailed": "Could not file the page"
   }
 }

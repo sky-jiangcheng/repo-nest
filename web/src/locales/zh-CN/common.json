@@ -359,7 +359,6 @@
     "tab_todos": "待办",
     "openEditor": "在 VS Code 中打开",
     "copyPath": "复制路径",
-    "copied": "已复制",
     "copyFailed": "复制失败",
     "openForge": "在 Git 平台打开",
     "noCommits": "没有提交记录",
@@ -611,6 +610,15 @@
     "replyReceived": "已收到回答——可自由编辑后保存",
     "sendFailed": "AI 请求失败",
     "notConfigured": "尚未配置 AI 对话端点。",
-    "goSettings": "去 设置 → AI 配置"
+    "goSettings": "去 设置 → AI 配置",
+    "evidenceTitle": "本次依据",
+    "evidenceCount": "{{n}} 条",
+    "evidenceNone": "未检索到相关页面或笔记，本次仅用项目上下文作答",
+    "evidenceDropped": "预算外另有 {{n}} 条未纳入",
+    "saveAsPage": "存为页面",
+    "saveAsPageHint": "把问答存成 query 页面，并链到答案引用的依据",
+    "pageSaved": "已存为页面",
+    "pageSavedDetail": "页面 #{{id}}，链到 {{refs}} 条引用",
+    "pageSaveFailed": "存页失败"
   }
 }

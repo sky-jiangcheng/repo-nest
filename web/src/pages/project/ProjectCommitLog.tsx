@@ -28,16 +28,16 @@ const shortPath = (p: string) => p.split('/').slice(-2).join('/')
 export default function ProjectCommitLog({ projectId, repos }: Props) {
   const { t } = useTranslation()
   const toast = useToast()
-  // 'all' = merged cross-repo timeline; number = one repo's log.
-  const [selected, setSelected] = useState<number | 'all'>('all')
-  const [commits, setCommits] = useState<RepoCommit[] | null>(null)
-  const [error, setError] = useState('')
+  // 'all' = merged cross-repo timeline; number = one repo's log. Tagged with the
+  // project it was picked under: /project/:id reuses this instance across
+  // projects, and a repo id selected in one project must not filter another's
+  // log. Tagging beats the previous "reset in an effect", which also trips the
+  // repo's react-hooks rule about synchronous setState inside an effect.
+  const [picked, setPicked] = useState<{ projectId: number; repo: number | 'all' }>({ projectId: 0, repo: 'all' })
+  const selected: number | 'all' = picked.projectId === projectId ? picked.repo : 'all'
+  const choose = (repo: number | 'all') => setPicked({ projectId, repo })
   const [copiedHash, setCopiedHash] = useState<string | null>(null)
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
-
-  // /project/:id reuses this instance across projects; without the reset the
-  // previous project's selected repo id would filter the new project's log.
-  useEffect(() => { setSelected('all') }, [projectId])
 
   // A single-repo project has nothing to filter; show that repo's log and bar
   // directly rather than a one-chip filter row.
@@ -47,22 +47,29 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
     ? repos[0].id
     : typeof selected === 'number' ? selected : null
 
+  // Result is stored per request key, so a response can never paint a view that
+  // is no longer asking for it, and no reset is needed when the key changes —
+  // that is what lets the effect below do nothing but fetch.
+  const requestKey = `${projectId}|${fetchRepoId ?? 'all'}`
+  const [result, setResult] = useState<{ key: string; commits: RepoCommit[]; error: string } | null>(null)
+  const shown = result && result.key === requestKey ? result : null
+  const commits = shown ? shown.commits : null
+  const error = shown ? shown.error : ''
+
   useEffect(() => {
     let cancelled = false
-    setCommits(null)
-    setError('')
+    const key = requestKey
     const req = fetchRepoId === null
       ? getProjectCommits(projectId, LIMIT)
       : getRepoCommits(fetchRepoId, LIMIT)
     req
-      .then(list => { if (!cancelled) setCommits(list) })
+      .then(list => { if (!cancelled) setResult({ key, commits: list, error: '' }) })
       .catch((e: unknown) => {
         if (cancelled) return
-        setError(e instanceof Error ? e.message : t('common.failed'))
-        setCommits([])
+        setResult({ key, commits: [], error: e instanceof Error ? e.message : t('common.failed') })
       })
     return () => { cancelled = true }
-  }, [fetchRepoId, projectId, t])
+  }, [requestKey, fetchRepoId, projectId, t])
 
   const activeRepo = fetchRepoId === null ? null : repos.find(r => r.id === fetchRepoId) ?? null
   const repoTotals = activeRepo
@@ -104,7 +111,7 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
             type="button"
             className={`commit-chip ${selected === 'all' ? 'commit-chip-active' : ''}`}
             aria-pressed={selected === 'all'}
-            onClick={() => setSelected('all')}
+            onClick={() => choose('all')}
           >
             {t('project.filterAll')}
           </button>
@@ -115,7 +122,7 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
               className={`commit-chip ${selected === repo.id ? 'commit-chip-active' : ''}`}
               aria-pressed={selected === repo.id}
               title={repo.path}
-              onClick={() => setSelected(repo.id)}
+              onClick={() => choose(repo.id)}
             >
               {shortPath(repo.path)}
             </button>
@@ -193,7 +200,7 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
                         <button
                           className="commit-repo commit-repo-btn"
                           title={`${c.repo} · ${t('project.filterRepoHint')}`}
-                          onClick={() => setSelected(repo.id)}
+                          onClick={() => choose(repo.id)}
                         >
                           {shortPath(c.repo)}
                         </button>

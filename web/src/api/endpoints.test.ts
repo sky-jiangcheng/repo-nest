@@ -4,7 +4,17 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 const callMock = vi.fn()
 vi.mock('./transport', () => ({ call: (...args: unknown[]) => callMock(...args) }))
 
-import { searchAll, searchNotes, getProjects, toggleStar, getProjectDetail, captureClaudeHandoff } from './endpoints'
+import {
+  askAIWithEvidence,
+  captureClaudeHandoff,
+  fileAnswerAsPage,
+  getProjectDetail,
+  getProjects,
+  searchAll,
+  searchNotes,
+  toggleStar,
+} from './endpoints'
+import type { Evidence } from './types'
 
 beforeEach(() => {
   callMock.mockReset()
@@ -72,5 +82,40 @@ describe('endpoint routing contract', () => {
       init: { method: 'POST' },
     })
     expect(got).toBe(result)
+  })
+})
+
+const evidenceFixture: Evidence = {
+  items: [{ ref: 'P1', type: 'page', id: 7, title: 'Payment Gateway retry policy', kind: 'entity', snippet: '...', rank: 1 }],
+  dropped: 0,
+  elapsed_ms: 3,
+  truncated: false,
+}
+
+describe('evidence endpoints (ADR-0014 M6-W2)', () => {
+  it('askAIWithEvidence routes to the AskAIWithEvidence binding', async () => {
+    callMock.mockResolvedValue({ reply: 'because', evidence: evidenceFixture })
+    const res = await askAIWithEvidence(12, 'why retries')
+    expect(callMock).toHaveBeenCalledWith({ method: 'AskAIWithEvidence', args: [12, 'why retries'] })
+    expect(res.reply).toBe('because')
+    expect(res.evidence.items[0].ref).toBe('P1')
+  })
+
+  it('askAIWithEvidence degrades to an empty evidence set rather than null', async () => {
+    // The panel dereferences evidence.items to decide what to show and what may be
+    // filed; a null there is a blank tab and a dead button with no explanation.
+    callMock.mockResolvedValue(null)
+    const res = await askAIWithEvidence(12, 'why retries')
+    expect(res.evidence.items).toEqual([])
+  })
+
+  it('fileAnswerAsPage forwards the retrieval the answer came from, plus its refs', async () => {
+    callMock.mockResolvedValue(31)
+    const id = await fileAnswerAsPage(12, 'why retries', 'Because [P1].', evidenceFixture, ['P1'])
+    expect(callMock).toHaveBeenCalledWith({
+      method: 'FileAnswerAsPage',
+      args: [12, 'why retries', 'Because [P1].', evidenceFixture, ['P1']],
+    })
+    expect(id).toBe(31)
   })
 })

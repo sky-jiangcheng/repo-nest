@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Icon from './Icon'
 import {
-  askAI,
+  askAIWithEvidence,
   createNoteWithMeta,
+  fileAnswerAsPage,
   getConfig,
   getProjectDetail,
   getProjectOverview,
+  type Evidence,
 } from '../api/client'
+import s from './AIAskPanel.module.css'
 
 interface Props {
   projectId: number
@@ -22,23 +25,31 @@ interface Props {
  * two entry points for the same "write something about this project" intent
  * in two different places and made the AI one unreachable off a project page).
  *
- * The loop is unchanged, and still does not call a model from the app itself
- * unless the user configured an endpoint in Settings → AI:
- *   1. ask a question — either sent straight to the configured endpoint, or
- *      copied as a full prompt pack for any other AI chat;
+ * Since ADR-0014 M6-W2 the direct mode runs on retrieved evidence: the reply
+ * comes back with the pages and notes that were put in front of the model, the
+ * panel shows them, and filing an answer can link to exactly what it cited.
+ * The loop itself is unchanged:
+ *   1. ask — answered by the configured endpoint with a ranked, budgeted evidence
+ *      block, or copied as a full prompt pack for any other AI chat;
  *   2. paste/edit the answer;
- *   3. file the Q&A as a knowledge note.
+ *   3. file it as a knowledge note, or as a `query` page that links its citations.
  *
- * The prompt pack is assembled here from the project's own detail + overview,
- * so the panel works for any project the user picks in the dropdown rather
- * than only the one whose page they happen to be on.
+ * The prompt pack is still assembled here from the project's own detail +
+ * overview, so the tab works for any project picked in the dropdown rather than
+ * only the one whose page they happen to be on.
  */
 export default function AIAskPanel({ projectId, projectName, onToast, onGoToSettings }: Props) {
   const { t } = useTranslation()
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
+  // Evidence carries the project it was retrieved for. Refs are positional labels
+  // of one retrieval, so an "P1" from another project would resolve onto whatever
+  // page happens to hold that label here — tagging beats clearing-in-an-effect,
+  // which the repo's react-hooks lint rule (rightly) forbids.
+  const [evidence, setEvidence] = useState<{ projectId: number; data: Evidence } | null>(null)
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [filing, setFiling] = useState(false)
   const [configured, setConfigured] = useState<boolean | null>(null)
   const [asking, setAsking] = useState(false)
   const [contextLines, setContextLines] = useState<string[] | null>(null)
@@ -98,13 +109,56 @@ export default function AIAskPanel({ projectId, projectName, onToast, onGoToSett
     if (!question.trim() || asking) return
     setAsking(true)
     try {
-      const reply = await askAI(projectId, question.trim())
-      setAnswer(reply)
-      onToast({ kind: 'success', title: t('ai.replyReceived') })
+      const res = await askAIWithEvidence(projectId, question.trim())
+      setAnswer(res.reply)
+      setEvidence({ projectId, data: res.evidence })
+      const n = res.evidence?.items?.length ?? 0
+      onToast(n > 0
+        ? { kind: 'success', title: t('ai.replyReceived'), message: t('ai.evidenceCount', { n }) }
+        : { kind: 'success', title: t('ai.replyReceived'), message: t('ai.evidenceNone') })
     } catch (e) {
       onToast({ kind: 'error', title: t('ai.sendFailed'), message: e instanceof Error ? e.message : undefined })
     } finally {
       setAsking(false)
+    }
+  }
+
+  // null when the stored evidence belongs to another project: nothing may be filed
+  // from it and nothing is shown for it.
+  const liveEvidence = evidence && evidence.projectId === projectId ? evidence.data : null
+  const items = liveEvidence?.items ?? []
+
+  // Refs are positional labels of the retrieval that produced this answer, so the
+  // answer's own citations are what filing may link to. Falling back to the whole
+  // evidence set when the model cited nothing keeps provenance honest in the
+  // common case (a cited answer files its citations) without turning an uncited
+  // answer into an unfileable one: it records "answered from this batch" instead.
+  const citedRefs = useMemo(() => {
+    const all = (evidence && evidence.projectId === projectId ? evidence.data.items : []).map(i => i.ref)
+    const found = Array.from(new Set(
+      (answer.match(/\[[PN]\d+\]/g) ?? []).map(x => x.slice(1, -1).toUpperCase()),
+    ))
+    if (found.length === 0) return all
+    // Keep only labels this retrieval actually issued; a hallucinated [P9] must not
+    // resolve, and the backend drops it too — filtering here keeps the count right.
+    return found.filter(r => all.includes(r))
+  }, [answer, evidence, projectId])
+
+  const fileAsPage = async () => {
+    if (!question.trim() || !answer.trim() || !liveEvidence || filing) return
+    setFiling(true)
+    try {
+      const pageId = await fileAnswerAsPage(
+        projectId, question.trim(), answer.trim(), liveEvidence, citedRefs)
+      onToast({
+        kind: 'success',
+        title: t('ai.pageSaved'),
+        message: t('ai.pageSavedDetail', { id: pageId, refs: citedRefs.length }),
+      })
+    } catch (e) {
+      onToast({ kind: 'error', title: t('ai.pageSaveFailed'), message: e instanceof Error ? e.message : undefined })
+    } finally {
+      setFiling(false)
     }
   }
 
@@ -142,6 +196,7 @@ export default function AIAskPanel({ projectId, projectName, onToast, onGoToSett
 
   const canCopy = question.trim() !== ''
   const canSave = question.trim() !== '' && answer.trim() !== '' && !saving
+  const canFile = canSave && items.length > 0
 
   return (
     <div className="ai-ask-body">
@@ -180,6 +235,36 @@ export default function AIAskPanel({ projectId, projectName, onToast, onGoToSett
         </button>
       </div>
 
+      {liveEvidence && (
+        <div className={s.evidence}>
+          <div className={s.evidenceHead}>
+            <span>{t('ai.evidenceTitle')}</span>
+            {items.length === 0 && <span className={s.evidenceNone}>{t('ai.evidenceNone')}</span>}
+            {items.length > 0 && (
+              <span className={s.evidenceMeta}>
+                {t('ai.evidenceCount', { n: items.length })}
+                {liveEvidence.truncated && liveEvidence.dropped > 0 && (
+                  <span className={s.evidenceDropped}>{t('ai.evidenceDropped', { n: liveEvidence.dropped })}</span>
+                )}
+              </span>
+            )}
+          </div>
+          {items.length > 0 && (
+            <ul className={s.evidenceList}>
+              {items.map(it => (
+                <li key={`${it.ref}-${it.id}`} className={s.evidenceRow}>
+                  <span className={s.evidenceRef}>{`[${it.ref}]`}</span>
+                  <span className={s.evidenceKind}>{it.type === 'page' ? it.kind : 'note'}</span>
+                  <span className={s.evidenceTitle} title={it.slug ? `${it.title} · ${it.slug}` : it.title}>
+                    {it.title}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       <textarea
         className="fab-content form-input ai-answer"
         rows={8}
@@ -193,6 +278,17 @@ export default function AIAskPanel({ projectId, projectName, onToast, onGoToSett
         <button className="btn btn-primary btn-sm" onClick={saveAsNote} disabled={!canSave}>
           {saving ? t('fab.saving') : t('ai.saveAsNote')}
         </button>
+        {liveEvidence && items.length > 0 && (
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={fileAsPage}
+            disabled={!canFile}
+            title={t('ai.saveAsPageHint')}
+          >
+            {filing ? t('fab.saving') : t('ai.saveAsPage')}
+            {citedRefs.length > 0 && <span className={s.fileCount}>{citedRefs.length}</span>}
+          </button>
+        )}
       </div>
     </div>
   )

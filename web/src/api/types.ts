@@ -258,3 +258,28 @@ export interface ImportCompletedEvent {
   skipped: number
   error?: string
 }
+
+// Evidence layer (ADR-0014 M6-W2): the retrieved, citable context an AI answer
+// was built from, plus the budget accounting that shaped it.
+export interface EvidenceItem {
+  ref: string // "P1" / "N2" — positional label from this retrieval only
+  type: 'page' | 'note'
+  id: number
+  title: string
+  slug?: string
+  kind: string
+  snippet: string
+  rank: number
+}
+
+export interface Evidence {
+  items: EvidenceItem[]
+  dropped: number
+  elapsed_ms: number
+  truncated: boolean
+}
+
+export interface EvidenceAnswer {
+  reply: string
+  evidence: Evidence
+}

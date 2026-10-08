@@ -6,6 +6,8 @@ import { call } from './transport'
 import type {
   AppConfig,
   DailyStat,
+  Evidence,
+  EvidenceAnswer,
   HeatmapResponse,
   ImportResult,
   ImportRun,
@@ -275,6 +277,33 @@ export function askAI(projectId: number, question: string): Promise<string> {
   return call<string>({
     method: 'AskAI',
     args: [projectId, question],
+  })
+}
+
+// askAIWithEvidence answers through the W2 retrieval path and returns the
+// evidence alongside the reply, so the panel can show what was cited and file the
+// answer back with those same refs. AskAI stays as the plain call.
+export function askAIWithEvidence(projectId: number, question: string): Promise<EvidenceAnswer> {
+  return call<EvidenceAnswer>({
+    method: 'AskAIWithEvidence',
+    args: [projectId, question],
+  }).then(d => d ?? { reply: '', evidence: { items: [], dropped: 0, elapsed_ms: 0, truncated: false } })
+}
+
+// fileAnswerAsPage closes the query loop: the answer becomes a `query` wiki page
+// linked to the pages it cited. evidence must be the exact set the reply was
+// generated from — refs are positional labels of that one retrieval, and the
+// backend resolves them only against it (an invented ref links to nothing).
+export function fileAnswerAsPage(
+  projectId: number,
+  question: string,
+  answer: string,
+  evidence: Evidence,
+  citedRefs: string[],
+): Promise<number> {
+  return call<number>({
+    method: 'FileAnswerAsPage',
+    args: [projectId, question, answer, evidence, citedRefs],
   })
 }
 
