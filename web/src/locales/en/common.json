@@ -668,6 +668,8 @@
     "reload": "Refresh",
     "loadError": "Failed to load the review queue",
     "actionError": "Action failed",
-    "noProjects": "No projects yet. Scan your local repositories from the dashboard first."
+    "noProjects": "No projects yet. Scan your local repositories from the dashboard first.",
+    "pagesUpdated": "updated {{n}} pages",
+    "linksCreated": "created {{n}} links"
   }
 }

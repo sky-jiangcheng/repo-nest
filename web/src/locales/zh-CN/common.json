@@ -667,6 +667,8 @@
     "reload": "刷新",
     "loadError": "加载审核队列失败",
     "actionError": "操作失败",
-    "noProjects": "尚未发现任何项目。请先在仪表盘扫描本地仓库。"
+    "noProjects": "尚未发现任何项目。请先在仪表盘扫描本地仓库。",
+    "pagesUpdated": "更新 {{n}} 页",
+    "linksCreated": "新建 {{n}} 条链接"
   }
 }

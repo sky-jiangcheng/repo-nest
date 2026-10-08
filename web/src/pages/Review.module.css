@@ -128,7 +128,14 @@
 
 .slug {
   font-family: var(--font-mono);
-  color: var(--text-secondary);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.pageTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .proj {
@@ -137,14 +144,29 @@
 
 .body {
   margin: 0;
-  font-family: inherit;
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-primary);
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 220px;
+  /* Rendered markdown (same pipeline as the knowledge base), not raw text —
+     so the scroll cap and word-wrap still apply, but the inner spacing is the
+     markdown-body's. */
+  max-height: 260px;
   overflow-y: auto;
+  word-break: break-word;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+}
+
+/* Inside the padded frame the markdown-body needs no extra top margin, or the
+   first heading floats below the frame edge. */
+.body :global(.markdown-body > :first-child) {
+  margin-top: 0;
+}
+
+.body :global(.markdown-body > :last-child) {
+  margin-bottom: 0;
 }
 
 .errLine {

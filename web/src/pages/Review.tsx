@@ -9,6 +9,7 @@ import type { CompileJob, Project, WikiPendingPage } from '../api/client'
 import ErrorBanner from '../components/ErrorBanner'
 import Icon from '../components/Icon'
 import { useToast } from '../hooks/useToast'
+import { renderMarkdown } from '../utils/markdown'
 import s from './Review.module.css'
 
 // Poll cadence for a running compile job. Deliberately slow: a note takes minutes,
@@ -16,6 +17,21 @@ import s from './Review.module.css'
 // only scheduling the page does — the work itself is a backend job.
 const jobPollMs = 5000
 const maxNotesPerRun = 10
+
+// Job rows render {done} / {total} with total = notes_total || requested_notes.
+// A queued job legitimately has both at 0 only when the worker has not claimed
+// it yet AND nothing was requested — which cannot happen (StartCompileJob
+// always requests ≥1 note). The other 0/0 shape is real data: the worker was
+// killed before it could snapshot the note list. Rendering "0 / 0" there reads
+// like a bug report, so those rows show only the status badge until real
+// numbers exist.
+function jobProgressText(j: CompileJob, t: (k: string, v?: Record<string, unknown>) => string): string {
+  const total = j.notes_total || j.requested_notes
+  if (total <= 0) return ''
+  return j.kind === 'lint'
+    ? t('review.lintProgress', { done: j.notes_done, total })
+    : t('review.progress', { done: j.notes_done, total })
+}
 
 function statusKey(status: string): string {
   // status_* keys exist for every job state; unknown states render verbatim so a
@@ -162,12 +178,12 @@ function ReviewPage() {
                       and "notes" is not what a lint row counts. */}
                   <span className={s.badge}>{kindLabel(j, t)}</span>
                   <span className={s.jobMeta}>
+                    {jobProgressText(j, t)}
                     {j.kind === 'lint'
-                      ? t('review.lintProgress', { done: j.notes_done, total: j.notes_total || j.requested_notes })
-                      : t('review.progress', { done: j.notes_done, total: j.notes_total || j.requested_notes })}
-                    {' · '}{j.kind === 'lint'
-                      ? t('review.findingsCount', { n: j.findings })
-                      : t('review.pagesCreated', { n: j.pages_created })}
+                      ? (j.findings > 0 || j.notes_done > 0) && <> · {t('review.findingsCount', { n: j.findings })}</>
+                      : (j.pages_created > 0 || j.notes_done > 0) && <> · {t('review.pagesCreated', { n: j.pages_created })}</>}
+                    {j.kind !== 'lint' && j.pages_updated > 0 && <> · {t('review.pagesUpdated', { n: j.pages_updated })}</>}
+                    {j.kind !== 'lint' && j.links_created > 0 && <> · {t('review.linksCreated', { n: j.links_created })}</>}
                     {j.kind !== 'lint' && j.rejected_ops > 0 && <> · {t('review.rejectedOps', { n: j.rejected_ops })}</>}
                     {j.kind !== 'lint' && j.revision_todos > 0 && <> · {t('review.revisionTodos', { n: j.revision_todos })}</>}
                   </span>
@@ -230,14 +246,27 @@ function ReviewCard({
     <li className={`${s.card} ${rejected ? s.cardRejected : ''}`}>
       <div className={s.cardHead}>
         <span className={s.kind}>{p.kind}</span>
+        {/* Title first — the slug is the machine key, the title is what a
+            reviewer compares against the sources. A missing title renders the
+            slug instead so a row never opens nameless. */}
+        <span className={s.pageTitle}>{p.title || p.slug}</span>
         <span className={s.slug}>{p.slug}</span>
         <span className={s.proj}>{projectLabel(p.project_id)}</span>
       </div>
+      {/* Render the body as markdown (the same pipeline the knowledge base
+          uses): compiler output IS markdown — headings, lists, [[wikilinks]] —
+          and a raw <pre> made every pending page read like a dump. The
+          rejected branch stays plain text on purpose: its content is an error
+          placeholder, not a document. renderMarkdown strips frontmatter and
+          sanitizes (DOMPurify), matching NoteSection. */}
       {rejected
         ? <p className={s.errLine}><Icon name="warning" size={14} /> {p.content}</p>
-        : <pre className={s.body}>{p.content}</pre>}
+        : <div className={`${s.body} markdown-body`} dangerouslySetInnerHTML={{ __html: renderMarkdown(p.content) }} />}
       {item.source_note_ids?.length > 0 && (
         <p className={s.meta}>{t('review.sourceNotes')}: {item.source_note_ids.join(', ')}</p>
+      )}
+      {item.in_links?.length > 0 && (
+        <p className={s.meta}>{t('review.inLinks')}: {item.in_links.map(l => l.slug).join(', ')}</p>
       )}
       {item.out_links?.length > 0 && (
         <p className={s.meta}>{t('review.outLinks')}: {item.out_links.map(l => l.slug).join(', ')}</p>
