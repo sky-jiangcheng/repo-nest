@@ -3,6 +3,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from './Icon'
 import type { Project } from '../api/client'
+// Scoped styles for everything ProjectCard owns; .card-star / .card-refresh-btn
+// (shared with ProjectSearchDropdown), the .green/.red/.muted-num semantic ink
+// and the .badge set (shared with NoteSection) stay global — see the header of
+// ProjectCard.module.css. The base .project-card surface stays global too:
+// Dashboard's loading skeleton renders the same shape without this component.
+import s from './ProjectCard.module.css'
 
 interface Props {
   project: Project
@@ -44,7 +50,7 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
 
   if (!project.is_starred) {
     return (
-      <div className="project-card project-card-minimal">
+      <div className={`project-card ${s.minimal}`}>
         <button
           className="card-star"
           onClick={handleStarClick}
@@ -66,7 +72,7 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
   // my +/-, repo count, badges — instead of the old tall hero card. One
   // starred repo used to render a full-width slab that read like a dropdown.
   return (
-    <div className="project-card-shell project-card-shell-flat">
+    <div className={`project-card-shell ${s.shell}`}>
       <button
         className="card-star starred"
         onClick={handleStarClick}
@@ -76,26 +82,26 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
         <Icon name="star" size={16} filled />
       </button>
       <Link to={to} className={`project-card project-card-flat ${reachedGoal ? 'card-goal-reached' : ''}`}>
-        <span className="card-flat-name">{project.name}</span>
-        <span className="card-flat-stats">
-          <span className="flat-pair">
-            <span className="flat-label">{t('project.todayAdded')}</span>
-            <span className={`flat-num ${myAdded > 0 ? 'green' : 'muted-num'}`}>{myAdded > 0 ? `+${myAdded}` : '0'}</span>
+        <span className={s.flatName}>{project.name}</span>
+        <span className={s.flatStats}>
+          <span className={s.pair}>
+            <span className={s.label}>{t('project.todayAdded')}</span>
+            <span className={`${s.num} ${myAdded > 0 ? s.numSuccess : s.numMuted}`}>{myAdded > 0 ? `+${myAdded}` : '0'}</span>
           </span>
-          <span className="flat-pair">
-            <span className="flat-label">{t('project.added')}</span>
-            <span className={`flat-num ${myAdded > 0 ? 'green' : 'muted-num'}`}>{myAdded > 0 ? `+${myAdded}` : '0'}</span>
+          <span className={s.pair}>
+            <span className={s.label}>{t('project.added')}</span>
+            <span className={`${s.num} ${myAdded > 0 ? s.numSuccess : s.numMuted}`}>{myAdded > 0 ? `+${myAdded}` : '0'}</span>
           </span>
-          <span className="flat-pair">
-            <span className="flat-label">{t('project.deleted')}</span>
-            <span className={`flat-num ${myDeleted > 0 ? 'red' : 'muted-num'}`}>{myDeleted > 0 ? `-${myDeleted}` : '0'}</span>
+          <span className={s.pair}>
+            <span className={s.label}>{t('project.deleted')}</span>
+            <span className={`${s.num} ${myDeleted > 0 ? s.numDanger : s.numMuted}`}>{myDeleted > 0 ? `-${myDeleted}` : '0'}</span>
           </span>
-          <span className="flat-pair">
-            <span className="flat-label">{t('project.repo')}</span>
-            <span className="flat-num">{project.repo_count || 0}</span>
+          <span className={s.pair}>
+            <span className={s.label}>{t('project.repo')}</span>
+            <span className={s.num}>{project.repo_count || 0}</span>
           </span>
         </span>
-        <span className="card-badges">
+        <span className={s.badges}>
           {reachedGoal && <span className="badge badge-goal" title={t('project.goalReached', { defaultValue: '已达成今日目标' })}>{t('project.goalBadge')}</span>}
           {noteCount !== undefined && noteCount > 0 && (
             <span className="badge badge-note" title={t('project.noteBadgeTitle')}>{noteCount}</span>

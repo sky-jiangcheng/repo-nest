@@ -21,9 +21,16 @@ import { describe, it, expect } from 'vitest'
 // Number classes that declare their own `color`, paired with the semantic
 // classes they render alongside. Keep in sync with the assertions below —
 // adding a new number class means adding it here too.
+//
+// .flat-num is NOT in this list anymore: ProjectCard was migrated to
+// ProjectCard.module.css (Sprint 14, TODO P35), where the number class (.num)
+// and its ink (.numSuccess/.numDanger/.numMuted) are module-scoped — a CSS
+// module hash-scopes both, so the global-cascade ordering hazard this file
+// guards against cannot occur between them. If a component ever renders
+// global .flat-num again, re-add it here AND restore the base rule in
+// dashboard.css.
 const pairs: Array<[string, string[]]> = [
   ['summary-value', ['green', 'red', 'zero']],
-  ['flat-num', ['green', 'red', 'muted-num']],
   ['head-stat-value', ['green', 'red']],
 ]
 

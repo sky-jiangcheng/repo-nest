@@ -1,0 +1,138 @@
+/* ============================================
+   ProjectCard — scoped module styles
+   Migrated from global dashboard.css (Sprint 14, TODO P35).
+   Only classes exclusively used in ProjectCard.tsx live here.
+   Shared classes stay global on purpose:
+   - .card-star / .card-refresh-btn  → also used by ProjectSearchDropdown
+   - .green / .red / .muted-num      → semantic ink shared with Dashboard
+   - .badge / .badge-goal / …        → design-system badge set (cards.css),
+     also used by NoteSection
+   - .spin + @keyframes spin         → kept next to the icon set for reuse
+   ============================================ */
+
+/* Base card surface. Dashboard's loading skeleton reuses the global
+   .project-card shape, so the base block stays global; the variants the real
+   card adds beyond the skeleton are scoped here. */
+
+/* Minimal (unstarred) variant: name + star button on one line. */
+.minimal {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.minimal:hover {
+  background: var(--bg-tertiary);
+  transform: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Goal reached: darken the border and ring it so the day's success reads at
+   a glance without relying on color alone. */
+.goalReached {
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--accent-soft), var(--shadow-sm);
+}
+
+/* --- Flat starred rows --- */
+/* One starred repo used to render as a full-width tall card that read like a
+   dropdown; starred projects are now single-line rows. */
+
+.shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.shell :global(.card-star) {
+  position: static;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.shell :global(.card-refresh-btn) {
+  position: static;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.flat {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.flat:hover {
+  transform: none;
+}
+
+.flatName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 80px;
+}
+
+.flatStats {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.num {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+/* Paired with the shared semantic classes at (0,2,0) so the ink wins over
+   .num's own color regardless of import order — the same specificity rule the
+   global file documents for .flat-num.green. */
+.numSuccess {
+  color: var(--success);
+}
+
+.numDanger {
+  color: var(--danger);
+}
+
+.numMuted {
+  color: var(--text-muted);
+}
+
+.badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}

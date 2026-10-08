@@ -98,16 +98,18 @@
 .red { color: var(--danger); }
 
 /* Paired with the number class, so the semantic ink wins regardless of the
-   order the two rules appear in this file. */
-.summary-value.green,
-.flat-num.green { color: var(--success); }
+   order the two rules appear in this file. SummaryBar consumes this pair with
+   .summary-value; ProjectCard now pairs .num with its own module-scoped ink
+   (ProjectCard.module.css .numSuccess/.numDanger/.numMuted), so .flat-num
+   here is kept only as the legacy alias — no component renders it anymore,
+   remove it when SummaryBar-style pairing covers all consumers. */
+.summary-value.green { color: var(--success); }
 
-.summary-value.red,
-.flat-num.red { color: var(--danger); }
+.summary-value.red { color: var(--danger); }
 
-/* A number with nothing to report recedes instead of shouting a signed zero. */
+/* A number with nothing to report recedes instead of shouting a signed zero.
+   Used by Dashboard and ProjectCommitLog. */
 .muted-num { color: var(--text-muted); }
-.flat-num.muted-num { color: var(--text-muted); }
 
 /* --- Project grid --- */
 .project-grid {
@@ -172,19 +174,6 @@
 .project-card.card-goal-reached {
   border-color: var(--text-primary);
   box-shadow: 0 0 0 1px var(--accent-soft), var(--shadow-sm);
-}
-
-.project-card-minimal {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-}
-
-.project-card-minimal:hover {
-  background: var(--bg-tertiary);
-  transform: none;
-  box-shadow: var(--shadow-sm);
 }
 
 .card-name {
@@ -449,76 +438,13 @@
 
 /* --- Flat starred rows --- */
 /* One starred repo used to render as a full-width tall card that read like a
-   dropdown; starred projects are now single-line rows. */
+   dropdown; starred projects are now single-line rows. The shell / row /
+   stats classes themselves moved into ProjectCard.module.css (Sprint 14,
+   TODO P35); the layout container and the shared button positioning
+   overrides stay global because ProjectSearchDropdown also renders
+   .card-star. */
 .project-list-flat {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.project-card-shell-flat {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.project-card-shell-flat .card-star {
-  position: static;
-  flex-shrink: 0;
-  margin-right: 2px;
-}
-
-.project-card-shell-flat .card-refresh-btn {
-  position: static;
-  flex-shrink: 0;
-  margin-left: 2px;
-}
-
-.project-card-flat {
-  flex-direction: row;
-  align-items: center;
-  gap: 14px;
-  padding: 8px 14px;
-  flex: 1;
-  min-width: 0;
-}
-
-.project-card-flat:hover {
-  transform: none;
-}
-
-.card-flat-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-shrink: 1;
-  min-width: 80px;
-}
-
-.card-flat-stats {
-  display: flex;
-  gap: 16px;
-  align-items: baseline;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-.flat-pair {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-}
-
-.flat-label {
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-.flat-num {
-  font-size: 12px;
-  font-family: var(--font-mono);
-  color: var(--text-primary);
 }
