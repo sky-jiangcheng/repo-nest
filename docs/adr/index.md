@@ -20,10 +20,11 @@ order: 21
 | [0011](0011-multi-agent-memory-importers.md) | 多 agent 记忆源导入——可复用 importer 框架与各源可行性（M2） | Proposed |
 | [0012](0012-semantic-search.md) | 语义检索评估——向量召回补 FTS5 盲区，守住零 CGO（M3） | Proposed |
 | [0013](0013-vector-database-selection.md) | 本地向量存储选型（sqlite-vec，纯 Go）与安装引导（vector-init） | Accepted |
-| [0014](0014-llm-wiki-knowledge-compiler.md) | LLM Wiki 知识编译层——摄入时编译、消费时取证（M6） | Proposed |
+| [0014](0014-llm-wiki-knowledge-compiler.md) | LLM Wiki 知识编译层——摄入时编译、消费时取证（M6） | Proposed（W1/W1b/W4 已落地、W2 核心与前端已落地；其晋升条件仍需真实标注 query 集，W3 见 0015） |
+| [0015](0015-w3-minimal-compile-loop.md) | W3 最小编译闭环——LLM 只写 pending 页，人批准才进检索 | Proposed |
 
 ## 约定
 
 - 每个重大不可逆决策一篇：背景 → 决策 → 后果
 - 被 superseded 的 ADR 保留原文与横幅，不删除
-- 新 ADR 从 `0014` 递增编号，文件名 `NNNN-kebab-title.md`
+- 新 ADR 从 `0015` 递增编号，文件名 `NNNN-kebab-title.md`
