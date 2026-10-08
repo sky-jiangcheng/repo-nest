@@ -22,9 +22,10 @@ order: 21
 | [0013](0013-vector-database-selection.md) | Vector store selection (sqlite-vec) and onboarding guide | Accepted |
 | [0014](0014-llm-wiki-knowledge-compiler.md) | LLM Wiki knowledge compiler — compile at ingest, gather evidence at query time (M6) | Proposed (W1/W1b/W4 landed, W2 core + UI landed; its promotion still needs a real labelled query set — see 0015 for W3) |
 | [0015](0015-w3-minimal-compile-loop.md) | W3 minimal compile loop — the LLM writes pending pages only, humans gate what enters search | Proposed |
+| [0016](0016-async-batch-jobs.md) | Async long-running batch jobs — submit returns, progress is queryable, results survive | Proposed |
 
 ## Conventions
 
 - One ADR per major irreversible decision: Background → Decision → Consequences
 - Superseded ADRs keep their original text and banner; they are never deleted
-- New ADRs increment from `0015`, file name `NNNN-kebab-title.md`
+- New ADRs increment from `0016`, file name `NNNN-kebab-title.md`

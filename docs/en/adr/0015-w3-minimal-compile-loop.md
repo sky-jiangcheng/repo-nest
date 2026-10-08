@@ -1,6 +1,6 @@
 # ADR-0015: W3 minimal compile loop — the LLM writes pending pages only, and humans decide what enters search
 
-- Status: Proposed (schema v18 and the compiler are implemented and contract-tested; promotion to Accepted still needs one real-library run reviewed by a human — see the end of this document)
+- Status: Proposed (schema v18 and the compiler are implemented and contract-tested, **and one real compile run completed against a copy of the live library using a local model**: 4 projects / 14 repositories / 5 notes, v13→v18 in a single upgrade, 4 pending pages produced with provenance attached to 4/4, so the safety invariants held under real conditions. Two things still stand between this and Accepted: **a human review of that output and its quality**, and async dispatch for long jobs (see [ADR-0016](0016-async-batch-jobs.md)) — see the end of this document)
 - Date: 2026-10-08
 - Relates to: [ADR-0014](0014-llm-wiki-knowledge-compiler.md) (this realizes its Decisions 4 and 5a), [ADR-0012](0012-semantic-search.md), [ADR-0011](0011-multi-agent-memory-importers.md), [ADR-0007](0007-session-memory-protocol.md), TODO **M6-W3**; prerequisites W1 (schema v16), W1b (v17 page index) and W4 (lint) have landed. (Chinese original: `docs/adr/0015-*.md`.)
 
