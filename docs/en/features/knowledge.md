@@ -103,6 +103,53 @@ Three rules that are easy to trip over:
 
 Imported notes carry `kind` = `knowledge` (memory files) or `log` (session records) and are findable by full-text search as soon as they are written; with semantic search enabled they are also picked up by vector recall without another rebuild (see above). Full paths, matching rules and limitations per source are in [Knowledge source plugins](../plugins/overview.md).
 
+## Knowledge pages and the review queue
+
+Notes are the **raw record**; pages are the **compiled artifact**. The same fact can live in a note (who did what, when, how) and still grow concept and entity pages linked to each other in a graph — the shape `project_notes` cannot express on its own, since a note hangs off a project and references nothing else.
+
+| Page kind | Holds |
+|-----------|-------|
+| `entity` | A concrete thing (module, service, repository, person) |
+| `concept` | An idea (idempotency key, session timeout, scan-depth semantics) |
+| `source` | A summary page for one source document |
+| `synthesis` | Cross-source synthesis and conclusions |
+| `query` | A filed answer from Q&A (see "File as page" in [AI Integration](ai-integration.md)) |
+
+The page layer is a **derived cache**: notes remain the source of truth, the whole layer can be dropped and rebuilt (`DropWikiSchema`), and if it is dropped it grows back on the next open.
+
+### Pending and approved (the one most often mistaken for a bug)
+
+Pages have a status, and status decides whether a page may answer anything:
+
+- `approved`: searchable, listed in the export index, usable as Q&A evidence.
+- `pending`: **visible but not searchable**. Lists, the export bypass, the review queue and lint all see it; retrieval and Q&A deliberately do not.
+
+So "I generated a page but search cannot find it" is not a defect: anything a model wrote is pending until a human approves it. Pages created manually in the app, and answers you file via File as page, are `approved` at birth — those are human actions. Only compiler output lands as `pending`. Rejecting a pending page deletes that row and cascades its links and source attachments; rejecting is explicitly refused for approved pages.
+
+### Who writes pages
+
+1. **Humans**: filing an answer as a `query` page, and future manual page creation.
+2. **The compiler** (once `wiki_compile` is on): it reads one note and proposes which pages to create, which links to add, which sources to declare — all landing as `pending`. It **can only create; it can never edit an approved page** — a revision request becomes a todo for a human instead. Every page it produces is automatically attached to the note it read.
+3. **Lint** (read-only): it inspects graph health and never edits a page.
+
+### lint: five checks and what they emit
+
+`RunWikiLint` performs five checks. Three are decidable in SQL — orphan pages, missing cross-references, and data gaps (thin pages, pages without a source note, body links pointing at nonexistent pages, leaf pages with no synthesis). The other two, contradictions and stale claims, ask a model and require `wiki_lint_llm` to be explicitly enabled. Every finding becomes a project todo prefixed `[lint]`; re-running does not pile up duplicates (dedupe matches open todos with the same title; a finding that reappears after you ticked it off is new information). One rule is structural rather than advisory: lint produces suggestions, and no code path lets it rewrite a page.
+
+### Export to Obsidian (a read-only bypass)
+
+```
+go build -o reponest-wiki-export ./cmd/wiki-export
+./reponest-wiki-export -out ./vault            # refused if the target holds foreign files
+```
+
+It renders `vault/wiki/<entities|concepts|sources|synthesis|queries>/<slug>.md` with YAML frontmatter (including `status` and `source`), `[[wikilink]]` outgoing and back links, a `wiki/index.md` catalogue and `EXPORT-MANIFEST.json`. Its purpose is **to look at the graph**: Obsidian's graph view answers whether this taxonomy is actually the shape of your knowledge. Two deliberate properties:
+
+- **One-way**: edits made in Obsidian never flow back. That is a decision, not a missing feature — two writers would mean a second implementation of versioning, de-duplication and link consistency (see [ADR-0014](../adr/0014-llm-wiki-knowledge-compiler.md) Decision 2).
+- **Nothing is deleted**: files left behind by deleted pages are reported as stale and are yours to clean. The export never claims ownership of that tree.
+
+`index.md` lists approved pages only, so an unreviewed page cannot be routed into; pending pages are still exported, tagged `status: pending`, which is exactly where review happens.
+
 ## Export
 
 - **Export .md** on the note card copies the Markdown — with YAML frontmatter (title / tags / project / type / updated time) — to the clipboard. For bulk AI consumption, see llms.txt in [AI integration](ai-integration.md).

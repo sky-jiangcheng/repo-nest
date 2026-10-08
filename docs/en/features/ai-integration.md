@@ -35,6 +35,8 @@ The whitelist in `internal/service/config.go` splits into two groups. **Core con
 | `semantic_search` + `embedding_base_url` / `embedding_model` / `embedding_api_key` / `embedding_dim` | off / empty | Vector recall covering FTS5's blind spots ([ADR-0012](../adr/0012-semantic-search.md)) | **Note text** → your embedding endpoint |
 | `vector_store` + `vector_store_url` / `vector_store_api_key` / `vector_store_collection` | `local` | Where vectors live: local sqlite-vec, or remote Qdrant / Weaviate ([ADR-0013](../adr/0013-vector-database-selection.md)) | Vectors (not raw text) → your remote store |
 | `ai_chat_base_url` / `ai_chat_model` / `ai_chat_api_key` | empty | AI Q&A on the project detail page | Your question + the packaged project context → your chat endpoint |
+| `wiki_lint_llm` | off | Gates **only** the contradiction and stale-claim checks in lint; the other three are SQL and need no permission | Page excerpts → your chat endpoint (read-only analysis, writes nothing back) |
+| `wiki_compile` | off | Ingest-time compilation: the **only switch that lets a model write into the knowledge base** | Note text → your chat endpoint; returned content is persisted locally, always as pending pages |
 
 The three key-holding settings (`embedding_api_key`, `vector_store_api_key`, `ai_chat_api_key`) come back masked when configuration is read and are never sent to the UI — the backend holds the real value, the interface shows `********`.
 
@@ -46,14 +48,22 @@ Lexical search cannot answer "the same fact phrased differently"; vector recall 
 - **The first run needs one full rebuild** (one text upload per note). After that, no more rebuilds: note creation, title/body edits and deletions are queued by database triggers and drained in the background every 5 seconds; vectors of deleted notes are removed from the index. When the dimension is unknown or the index does not exist yet, the drainer skips without consuming the queue (guessing a dimension risks dropping the whole index), and when the endpoint is unreachable the queue is kept and retried on the next tick. Details in [Knowledge Base and Notes](knowledge.md).
 - **Measure before shipping the switch**: `go run ./cmd/abeval` runs "lexical vs lexical+vector" against a live database, reporting Recall@k / NDCG@k with a threshold gate. Until a real labelled query set passes that gate, the settings page deliberately offers no switch — an unproven feature is worse than a missing one.
 
-## AI Q&A: what it actually is today
+## AI Q&A: how it gathers evidence now
 
-The floating-ball panel on the project detail page has an AI Q&A tab (since v1.15.1 it moved out of the page header into the panel, sharing the shell and the project selector with the logging tab). Describing the current implementation honestly, rather than letting you read it as RAG:
+The floating-ball panel on the project detail page has an AI Q&A tab (since v1.15.1 it lives in the panel rather than the page header, sharing the shell and project selector with the logging tab).
 
-- The context is **statically packaged**: the project's repositories (up to 15) + the first repository's mined cache (tech stack / languages / README excerpt) + **10 notes, each truncated to 500 bytes**, assembled into the system prompt. Those ten are the **oldest**, not the newest (`ListNotes` orders by `pinned DESC, sort_order ASC, created_at ASC, id ASC` and the first 10 are taken), so the more notes a project has, the less likely anything recent reaches the prompt.
-- One POST to an OpenAI-compatible `/chat/completions` (LM Studio, an Ollama shim, or a cloud provider), **non-streaming, no tool calls, no retrieval ranking, no citations**.
-- In other words it *stuffs context* rather than *gathering evidence*: it does not guarantee relevant notes are read, nor that what was read reaches the answer. Turning it into real evidence-gathering (read the index → rank pages with FTS + vectors → answer with citations → file good answers back as new pages, plus an item / character / timeout budget and streaming) is M6-W2 in [ADR-0014](../adr/0014-llm-wiki-knowledge-compiler.md), gated on the `abeval` threshold above.
-- If nothing must leave the machine, use **Copy AI context** on the detail page: it puts the packaged prompt on the clipboard and you decide where it goes; no endpoint is called.
+Since M6-W2, direct mode **retrieves evidence** instead of pasting the head of the store:
+
+- Two recall paths — **approved knowledge pages** (FTS5; see "Pending and approved" in [Knowledge Base and Notes](knowledge.md)) and **notes** (the existing search path, which includes vector recall once semantic search is enabled) — interleaved by rank position.
+- Rendered as a numbered `[P#]` / `[N#]` evidence block under a triple budget of item count, character quota and timeout. The panel lists what it used, how much the budget dropped, and says so explicitly when nothing was retrieved at all.
+- Below the answer, **File as page** keeps a good answer in the store: the links it creates come only from refs the answer actually cites (an invented ref resolves to nothing), which is also the query loop ADR-0014 promises.
+- When retrieval finds nothing, it **falls back to the previous static pack** (project base plus those ten notes), so the answer never gets less context than before. Note those ten are the **oldest** by `created_at`, not the newest.
+
+Limits that still hold, so do not read this as finished: **non-streaming, no tool calls**; pages have no vector index of their own (fusion is notes-only, see ADR-0012/0013), so page recall is lexical and title-weighted; and the evidence quality was measured only on a constructed corpus (Recall@8 / NDCG@8 clearly beat static packing) — **the gain on real libraries is still unmeasured**, which needs a labelled query set.
+
+If nothing must leave the machine, use **Copy AI context**: it puts the packaged prompt on the clipboard and you decide where it goes; no endpoint is called.
+
+A model writing into the knowledge base at all (compilation) requires two further conditions together: `wiki_compile=1` and a configured AI endpoint. Its output is always pending, and unapproved pages never reach retrieval — see [Knowledge Base and Notes](knowledge.md).
 
 ## Headless HTTP service and the executable inventory
 
@@ -66,7 +76,7 @@ go build -o reponest-server ./cmd/server
 
 - `POST /api/rpc` reflects every desktop binding (JSON body naming method + args) and runs the **same implementation** as Wails; `Startup` / `Shutdown` / `Service` itself are excluded. Write operations obey the same protocol protections as MCP (for example handoff notes refuse to be overwritten by update).
 - For browser development use `bash scripts/dev.sh`: it starts the headless API (default 18731) *and* Vite. Running `npx vite` alone yields a page that loads but 502s every request — that is a missing backend, not a broken app.
-- **Release assets contain only**: the desktop installers (4 platforms), `reponest-mcp-<platform>`, and the VS Code VSIX. `reponest-server`, `cmd/vector-init`, `cmd/abeval` and `cmd/reponest-capture` must be built yourself (`go build` / `go run`); they are not distributed with releases.
+- **Release assets contain only**: the desktop installers (4 platforms), `reponest-mcp-<platform>`, and the VS Code VSIX. `reponest-server`, `cmd/vector-init`, `cmd/abeval`, `cmd/reponest-capture` and `cmd/wiki-export` (the read-only wiki export) must be built yourself (`go build` / `go run`); they are not distributed with releases.
 
 MCP is the only AI execution interface (the `reponest` CLI is not shipped with releases). stdio protocol, the database is opened once per process, 13 tools (including 4 write operations: scan + note create/update + session handoff):
 

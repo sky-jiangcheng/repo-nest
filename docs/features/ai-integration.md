@@ -35,6 +35,8 @@ RepoNest 面向 AI 代理提供读取通道与自检工具，全部复用同一 
 | `semantic_search` + `embedding_base_url` / `embedding_model` / `embedding_api_key` / `embedding_dim` | 关 / 空 | 向量召回补 FTS5 盲区（[ADR-0012](../adr/0012-semantic-search.md)） | **笔记文本** → 你的 embedding 端点 |
 | `vector_store` + `vector_store_url` / `vector_store_api_key` / `vector_store_collection` | `local` | 向量存哪：本地 sqlite-vec 或远程 Qdrant / Weaviate（[ADR-0013](../adr/0013-vector-database-selection.md)） | 向量（非原文）→ 你的远程库 |
 | `ai_chat_base_url` / `ai_chat_model` / `ai_chat_api_key` | 空 | 项目详情页的 AI 问答 | 提问 + 打包的项目上下文 → 你的 chat 端点 |
+| `wiki_lint_llm` | 关 | lint 五查中**只有矛盾与过时声明**两项走模型，其余三查纯 SQL、无需授权 | 若干页面摘要 → 你的 chat 端点（只读分析，不回写） |
+| `wiki_compile` | 关 | 摄入时编译：**唯一让模型往知识库写东西**的开关 | 笔记正文 → 你的 chat 端点；回写内容持久化在本机，且一律以待审核状态落库 |
 
 两个密钥键（`embedding_api_key` / `vector_store_api_key`，以及 `ai_chat_api_key`）在读取配置时以掩码返回、不回传界面——后端持真值，界面只显示 `********`。
 
@@ -46,14 +48,22 @@ RepoNest 面向 AI 代理提供读取通道与自检工具，全部复用同一 
 - **首次要跑一次全量重建**（O(全部笔记) 次文本送端点）。之后不需要再重建：笔记的新建、标题/正文修改、删除由数据库触发器排队，后台每 5 秒批量排空；已删除的笔记会从向量索引里移除。维度未知或索引尚未建立时排空器直接跳过且不消费队列（猜维度意味着可能 drop 整个索引），端点不可达时任务原地保留、下一轮重试。细节见[知识库与笔记](knowledge.md) 的「语义检索」。
 - **效果先量化再放开关**：`go run ./cmd/abeval` 对活库跑「词法 vs 词法+向量」的 Recall@k / NDCG@k 与差值门判定。在真实标注 query 集与门槛通过之前，设置页刻意不放这个开关——宁缺毋滥。
 
-## AI 问答：今天是什么样
+## AI 问答：现在怎么取证
 
-项目详情页的悬浮球面板里有 AI 问答 tab（v1.15.1 起从详情页头部并入面板，与「记录」共享外壳与项目选择器）。诚实描述当前实现，别把它读成 RAG：
+项目详情页的悬浮球面板里有 AI 问答 tab（v1.15.1 起从详情页头部并入面板，与「记录」共享外壳与项目选择器）。
 
-- 上下文是**静态打包**：项目下仓库列表（≤15）+ 第一个仓库的挖掘缓存（技术栈 / 语言 / README 摘要）+ **10 条笔记，每条截断到 500 字节**，拼进 system prompt。注意那 10 条是**最早**写的而非最近写的（`ListNotes` 按 `pinned DESC, sort_order ASC, created_at ASC, id ASC` 排序，取前 10），所以项目笔记越多，新沉淀越进不了 prompt。
-- 一次 POST 到 OpenAI 兼容 `/chat/completions`（LM Studio、Ollama shim 或云端皆可），**非流式、无工具调用、无检索排序、无引用**。
-- 也就是说它「塞上下文」而不是「取证」——不保证相关的笔记被读到，不保证读到的都进答案。把它改造成真正的检索取证（读 index → FTS+向量选页 → 带引用作答 → 好答案可回档成新页 + 条数/字符/超时三重预算封顶 + 流式）是 [ADR-0014](../adr/0014-llm-wiki-knowledge-compiler.md) 的 M6-W2，门槛是过上面那个 `abeval` 评测门。
-- 不想让任何内容离开这台机器的话，用详情页的**复制 AI 上下文**：它把打包好的 prompt 交给剪贴板，由你决定贴给谁，不经过任何端点。
+从 M6-W2 起，直问模式**走检索取证**，不再是按时间塞头部：
+
+- 两路召回——**已批准的知识页面**（FTS5，见[知识库与笔记](knowledge.md) 的"待审核与已批准"）与**笔记**（既有检索路径，开启语义检索后含向量召回），按位置交织。
+- 在「条数 / 字符 / 超时」三重预算下渲染成带 `[P#]` / `[N#]` 编号的证据块；面板会把本次依据列出来，挤掉多少条、以及"什么都没检索到"都显式说明。
+- 答案下方可**存为页面**：链接只取答案正文里真正引用过的编号（模型编一个不存在的编号不会入库），把好答案留在库里供下次使用。
+- 什么都没检索到时，**退回旧的静态打包**（项目底座 + 那 10 条笔记），保证不比以前拿到的上下文更少；旧路径那 10 条是 `created_at` 升序的**最早**十条，不是最近十条。
+
+仍然成立的限制，别读成已完成：**非流式、无工具调用**；页面还没有自己的向量索引（融合只在笔记侧，见 ADR-0012/0013），所以页面的召回目前是词法 + 标题权重；取证质量只在构造语料上验证过（`Recall@8` 与 `NDCG@8` 显著优于静态打包），**在真实库上的收益仍未测**——那需要一个真实标注的 query 集。
+
+不想让任何内容离开这台机器的话，用**复制 AI 上下文**：它把打包好的 prompt 交给剪贴板，由你决定贴给谁，不经过任何端点。
+
+模型往知识库里写东西（编译）需要另外两件事同时成立：`wiki_compile=1` 且已配置 AI 端点；产物一律是待审核页面，不批准就不进检索。详见[知识库与笔记](knowledge.md)。
 
 ## 无头 HTTP 服务与可执行清单
 
@@ -66,7 +76,7 @@ go build -o reponest-server ./cmd/server
 
 - `POST /api/rpc` 用反射覆盖桌面端绑定的全部方法（JSON body 指定 method + args），与 Wails 走的是**同一份实现**；`Startup` / `Shutdown` / `Service` 本身被屏蔽。写操作与 MCP 遵守同一套协议保护（例如交接笔记拒绝被 update 覆盖）。
 - 浏览器开发模式用 `bash scripts/dev.sh`：它同时起无头 API（默认 18731）与 Vite。只跑 `npx vite` 会得到一个「页面能开、每个请求都 502」的假象——那是缺后端，不是应用坏了。
-- **发布资产里只有**：桌面安装包（4 平台）、`reponest-mcp-<平台>`、VS Code 扩展 VSIX。`reponest-server`、`cmd/vector-init`、`cmd/abeval`、`cmd/reponest-capture` 都需自行 `go build`（或 `go run`），未随版本分发。
+- **发布资产里只有**：桌面安装包（4 平台）、`reponest-mcp-<平台>`、VS Code 扩展 VSIX。`reponest-server`、`cmd/vector-init`、`cmd/abeval`、`cmd/reponest-capture`、`cmd/wiki-export`（wiki 只读导出）都需自行 `go build`（或 `go run`），未随版本分发。
 
 ## MCP Server（`reponest-mcp`）
 
