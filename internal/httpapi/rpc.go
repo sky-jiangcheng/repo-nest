@@ -36,6 +36,11 @@ var rpcBlockedMethods = map[string]bool{
 	"Startup":  true,
 	"Shutdown": true,
 	"Service":  true,
+	// StartAskStream is desktop-tailored: it replies over Wails runtime events,
+	// which an HTTP caller has no way to observe. The browser/standalone
+	// runtime uses the dedicated SSE endpoint (/api/ai/ask-stream) instead —
+	// exposing the binding over RPC would hand out a stream id nobody can read.
+	"StartAskStream": true,
 }
 
 // maxRPCBodyBytes caps the request body. Args decode fully into memory, and

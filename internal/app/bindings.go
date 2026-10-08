@@ -3,12 +3,15 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
 	pluginruntime "repo-nest/internal/core/plugin/runtime"
 	"repo-nest/internal/db"
 	"repo-nest/internal/domain"
 	"repo-nest/internal/service"
 	"repo-nest/internal/stats"
+
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // --- Wails binding ↔ MCP tool audit (P32, 2026-10-02) -----------------------
@@ -27,8 +30,9 @@ import (
 // Desktop-only (no MCP equivalent by design — GUI state, admin, or file UX):
 //   Projects: UpdateProjectLevel, ToggleStar, RefreshProjectHistory,
 //             GetRepoCommits, GetProjectCommits
-//   AI: AskAIWithEvidence, FileAnswerAsPage (evidence-gated Q&A and its query-loop
-//       filing; the desktop UI is their consumer, so no MCP twin by design)
+//   AI: AskAIWithEvidence, FileAnswerAsPage, StartAskStream (evidence-gated Q&A,
+//       its query-loop filing, and the streaming variant; desktop UI consumers by
+//       design — StartAskStream rides Wails events, so no MCP/HTTP twin)
 //   Wiki: RunWikiLint (ADR-0014 W4 lint; read-only over pages, writes todos only)
 //   Memory layers (ADR-0014 W5): LayeredProjectContext (orientation-first,
 //             budget-bounded L3/L2/L1/L0 assembly; read-only)
@@ -314,6 +318,56 @@ func (a *App) AskAI(projectID int64, question string) (string, error) {
 // as the plain path (and as the no-evidence fallback inside this one).
 func (a *App) AskAIWithEvidence(projectID int64, question string) (*service.EvidenceAnswer, error) {
 	return a.svc.AskAIWithEvidence(projectID, question, service.DefaultEvidenceBudget)
+}
+
+// AskStreamResult is the immediate acknowledgement of StartAskStream: the
+// stream id the frontend uses to correlate the async events that follow.
+type AskStreamResult struct {
+	StreamID string `json:"stream_id"`
+}
+
+// StartAskStream launches the streaming evidence-backed ask and returns at
+// once with a stream id; the answer then arrives progressively as Wails events
+// named "ai.ask.stream", each payload tagged with that id:
+//
+//	{"stream_id": "...", "delta": "…"}                   ← content fragments
+//	{"stream_id": "...", "done": true, "reply": "…",
+//	 "evidence": {...}, "truncated": bool}               ← terminal success
+//	{"stream_id": "...", "error": "…"}                   ← terminal failure
+//
+// Desktop-only transport: the browser/standalone runtime has no Wails event
+// channel and uses the HTTP SSE endpoint (/api/ai/ask-stream) instead, so this
+// binding is deliberately absent from the /api/rpc bridge (rpcBlockedMethods).
+func (a *App) StartAskStream(projectID int64, question string) (*AskStreamResult, error) {
+	streamID := fmt.Sprintf("ask-%d", time.Now().UnixNano())
+	go func() {
+		ans, err := a.svc.AskAIWithEvidenceStream(projectID, question, service.DefaultEvidenceBudget, func(delta string) {
+			if a.ctx != nil {
+				wailsruntime.EventsEmit(a.ctx, "ai.ask.stream", map[string]any{
+					"stream_id": streamID,
+					"delta":     delta,
+				})
+			}
+		})
+		if a.ctx == nil {
+			return
+		}
+		if err != nil {
+			wailsruntime.EventsEmit(a.ctx, "ai.ask.stream", map[string]any{
+				"stream_id": streamID,
+				"error":     err.Error(),
+			})
+			return
+		}
+		wailsruntime.EventsEmit(a.ctx, "ai.ask.stream", map[string]any{
+			"stream_id": streamID,
+			"done":      true,
+			"reply":     ans.Reply,
+			"evidence":  ans.Evidence,
+			"truncated": ans.Truncated,
+		})
+	}()
+	return &AskStreamResult{StreamID: streamID}, nil
 }
 
 // FileAnswerAsPage closes ADR-0014's query loop: a good answer becomes a `query`
