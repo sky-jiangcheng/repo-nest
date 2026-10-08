@@ -59,7 +59,7 @@ Since M6-W2, direct mode **retrieves evidence** instead of pasting the head of t
 - Below the answer, **File as page** keeps a good answer in the store: the links it creates come only from refs the answer actually cites (an invented ref resolves to nothing), which is also the query loop ADR-0014 promises.
 - When retrieval finds nothing, it **falls back to the previous static pack** (project base plus those ten notes), so the answer never gets less context than before. Note those ten are the **oldest** by `created_at`, not the newest.
 
-Limits that still hold, so do not read this as finished: **non-streaming, no tool calls**; pages have no vector index of their own (fusion is notes-only, see ADR-0012/0013), so page recall is lexical and title-weighted; and the evidence quality was measured only on a constructed corpus (Recall@8 / NDCG@8 clearly beat static packing) — **the gain on real libraries is still unmeasured**, which needs a labelled query set.
+Answers are now **streamed** (since M6-W3 the desktop path uses `StartAskStream` + Wails events, the browser mode uses SSE on `/api/ai/ask-stream`, rendered token by token with cancellation). Limits that still hold, so do not read this as finished: **no tool calls**; pages have no vector index of their own (fusion is notes-only, see ADR-0012/0013), so page recall is lexical and title-weighted; and the evidence quality was measured only on a constructed corpus (Recall@8 / NDCG@8 clearly beat static packing) — **the gain on real libraries is still unmeasured**, which needs a labelled query set.
 
 If nothing must leave the machine, use **Copy AI context**: it puts the packaged prompt on the clipboard and you decide where it goes; no endpoint is called.
 
