@@ -119,6 +119,9 @@ func TestKindsAndUnknownFallsBack(t *testing.T) {
 	}
 	found := false
 	for _, k := range ks {
+		// chromem is a registered backend too (pure-Go embedded store, ADR-0013
+		// candidate matrix); the registry list only grows, so assert by
+		// membership rather than position.
 		if k == "qdrant" {
 			found = true
 		}

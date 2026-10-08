@@ -44,6 +44,18 @@ var registry = map[string]factory{
 		}
 		return w, nil
 	},
+	// chromem is an embedded pure-Go store, not a server: the "url" config
+	// field carries its persistence DIRECTORY. It never fails a reachability
+	// probe (there is nothing to reach), so a configured chromem always
+	// opens — but an empty url means in-memory, which would silently drop
+	// every embedding on restart. Refuse that configuration rather than
+	// pretend it works.
+	"chromem": func(_ *sql.DB, rc remoteConfig) (Store, error) {
+		if strings.TrimSpace(rc.url) == "" {
+			return nil, fmt.Errorf("chromem requires a persistence directory in vector_store_url (e.g. the app data dir); refusing an in-memory store that would lose every embedding on restart")
+		}
+		return NewChromem(rc.url, rc.collection)
+	},
 }
 
 // Register adds a named store backend to the selectable set (used by
@@ -51,14 +63,20 @@ var registry = map[string]factory{
 func Register(kind string, f factory) { registry[strings.ToLower(kind)] = f }
 
 // Kinds lists selectable vector-store backends (for help / validation / UI).
+// "local" is always first: it is the default, not a registry entry, and the
+// sort below is scoped to the registry keys only. (Sorting the whole list
+// would let a backend whose name sorts before "local" — chromem does —
+// silently displace the default from the head of the list, and UI copy that
+// reads Kinds()[0] would stop naming the default.)
 func Kinds() []string {
 	out := make([]string, 0, len(registry)+1)
 	out = append(out, "local")
+	rest := make([]string, 0, len(registry))
 	for k := range registry {
-		out = append(out, k)
+		rest = append(rest, k)
 	}
-	sort.Strings(out)
-	return out
+	sort.Strings(rest)
+	return append(out, rest...)
 }
 
 // Open resolves the configured store. local is the default; an empty/"local",

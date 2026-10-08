@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/mark3labs/mcp-go v1.1.1
+	github.com/philippgille/chromem-go v0.7.0
 	github.com/traefik/yaegi v0.16.1
 	github.com/wailsapp/wails/v2 v2.16.0
 	modernc.org/sqlite v1.60.0
