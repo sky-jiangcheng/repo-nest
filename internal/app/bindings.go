@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 
 	pluginruntime "repo-nest/internal/core/plugin/runtime"
 	"repo-nest/internal/domain"
@@ -28,6 +29,8 @@ import (
 //   AI: AskAIWithEvidence, FileAnswerAsPage (evidence-gated Q&A and its query-loop
 //       filing; the desktop UI is their consumer, so no MCP twin by design)
 //   Wiki: RunWikiLint (ADR-0014 W4 lint; read-only over pages, writes todos only)
+//   Memory layers (ADR-0014 W5): LayeredProjectContext (orientation-first,
+//             budget-bounded L3/L2/L1/L0 assembly; read-only)
 //   Wiki compile & review (ADR-0015): CompileNote, CompileProjectNotes,
 //             ListPendingWikiPages, ApproveWikiPage, RejectWikiPage. Deliberately
 //             no MCP twin: an agent able to write pending knowledge would bypass
@@ -349,6 +352,18 @@ func (a *App) ApproveWikiPage(pageID int64) error { return a.svc.ApproveWikiPage
 
 // RejectWikiPage discards a pending page and its edges; it refuses approved pages.
 func (a *App) RejectWikiPage(pageID int64) error { return a.svc.RejectWikiPage(pageID) }
+
+// LayeredProjectContext assembles project memory from most stable to least
+// (L3 cross-project profile, L2 project scenario, L1 curated notes, L0 raw
+// transcripts) under per-layer budgets. An empty query means orientation only, so
+// no note retrieval happens at all; raw transcripts are included only when a
+// caller explicitly asks (ADR-0014 决策 6). Read-only.
+func (a *App) LayeredProjectContext(projectID int64, query string, includeTranscripts bool) (*service.LayeredMemory, error) {
+	if projectID < 0 {
+		return nil, fmt.Errorf("project id must be >= 0 (0 = global profile only)")
+	}
+	return a.svc.BuildLayeredMemory(projectID, query, service.DefaultLayerBudget, includeTranscripts), nil
+}
 
 // ListAIModels probes the endpoint's /models (with path candidates and the
 // localhost fallback) using the form's current values — no save required.

@@ -132,6 +132,19 @@ So "I generated a page but search cannot find it" is not a defect: anything a mo
 2. **The compiler** (once `wiki_compile` is on): it reads one note and proposes which pages to create, which links to add, which sources to declare — all landing as `pending`. It **can only create; it can never edit an approved page** — a revision request becomes a todo for a human instead. Every page it produces is automatically attached to the note it read.
 3. **Lint** (read-only): it inspects graph health and never edits a page.
 
+### Memory layers (L3 → L0)
+
+"What this project is" and "a raw session transcript" should not carry equal weight in one context. `LayeredProjectContext` assembles memory by stability, and Q&A uses the same two top layers:
+
+| Layer | Contents | When fetched |
+|-------|----------|--------------|
+| L3 global profile | **Approved** pages owned by no project (cross-project conventions, preferences) | always, first |
+| L2 project scenario | repository list + mined tech stack: what the project is | always, second |
+| L1 notes | curated knowledge (hand-written, Claude/OpenClaw/Hermes memory files, filed answers) | **only when a specific question is asked** |
+| L0 transcripts | session records (codex / opencode / cursor imports, and kind=log) | only on explicit request |
+
+Three points: the classification is a **provenance heuristic** — it says where a note came from, not how true it is; budgets are **per layer**, so a verbose L0 cannot crowd out the L3/L2 that give the model its bearings; and L3 reads approved pages only, so unreviewed compiler output never steers an answer.
+
 ### lint: five checks and what they emit
 
 `RunWikiLint` performs five checks. Three are decidable in SQL — orphan pages, missing cross-references, and data gaps (thin pages, pages without a source note, body links pointing at nonexistent pages, leaf pages with no synthesis). The other two, contradictions and stale claims, ask a model and require `wiki_lint_llm` to be explicitly enabled. Every finding becomes a project todo prefixed `[lint]`; re-running does not pile up duplicates (dedupe matches open todos with the same title; a finding that reappears after you ticked it off is new information). One rule is structural rather than advisory: lint produces suggestions, and no code path lets it rewrite a page.

@@ -341,10 +341,16 @@ func (s *Service) AskAIWithEvidence(projectID int64, question string, budget Evi
 
 	messages := []chatMessage{}
 	if projectID > 0 {
-		// Base project context without the note block; evidence replaces it. When
-		// retrieval found nothing, the previous behaviour is kept rather than
-		// silently answering with less context than before.
-		base := s.aiProjectBaseContext(projectID)
+		// L3 (cross-project profile) + L2 (project scenario) as orientation, then
+		// the retrieved specifics. Built via the layered assembly so this path and
+		// the standalone one cannot drift into two different notions of "project
+		// context". When retrieval found nothing, the previous behaviour is kept
+		// rather than silently answering with less context than before.
+		lay := s.BuildLayeredMemory(projectID, "", LayerBudget{}, false)
+		base := lay.Render()
+		if base == "" {
+			base = s.aiProjectBaseContext(projectID)
+		}
 		block := ev.Render()
 		switch {
 		case base != "" && block != "":
