@@ -18,6 +18,29 @@
   padding-bottom: 16px;
   margin-bottom: 20px;
   border-bottom: 1px solid var(--border-subtle);
+
+  /* Frozen header: the toolbar stays pinned while the note list scrolls, so
+     search/filtering is always one glance away no matter how far down the
+     list the user has read. Same mechanics as .settings-tabs (see the essay
+     there): sticky measures `top` from the scrollport edge, but the toolbar's
+     normal-flow position starts below .main-content's 32px padding-top, so a
+     plain `top: 0` would park it 32px down with content visibly scrolling
+     through the band. `top: -32px` pins it flush; the matching negative
+     margin-top pulls the unpinned position back up, and the padding-top
+     restores the space the negative margin removed, so the resting layout is
+     unchanged. Full-bleed margins make the hairline span the gutter; the
+     opaque background is load-bearing — a translucent bar lets scrolled
+     content read through it. */
+  position: sticky;
+  top: -32px;
+  margin-top: -32px;
+  padding-top: 32px;
+  margin-left: -32px;
+  margin-right: -32px;
+  padding-left: 32px;
+  padding-right: 32px;
+  background: var(--bg-primary);
+  z-index: 5;
 }
 
 .knowledge-search {
@@ -61,9 +84,26 @@
   padding-left: 8px;
 }
 
-@media (max-width: 640px) {
+/* Note: this breakpoint intentionally tracks layouts/main.css's 768px (where
+   the gutter drops to 20px), not the 640px used elsewhere in this file — the
+   sticky offsets must follow the padding change, not the toolbar's own wrap
+   point. (settings-tabs has the same 640/768 mismatch; left alone there.) */
+@media (max-width: 768px) {
   .knowledge-toolbar {
     gap: 10px;
+  }
+
+  /* The layout gutter drops to 20px at this breakpoint (layouts/main.css),
+     so the sticky offsets must track it or the pinned bar parks off-edge —
+     same arithmetic as .settings-tabs. */
+  .knowledge-toolbar {
+    top: -20px;
+    margin-top: -20px;
+    padding-top: 20px;
+    margin-left: -20px;
+    margin-right: -20px;
+    padding-left: 20px;
+    padding-right: 20px;
   }
 
   /* Actions take the full width on a phone: two 13px labels plus a search
