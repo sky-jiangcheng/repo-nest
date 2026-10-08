@@ -7,6 +7,7 @@ import (
 	pluginruntime "repo-nest/internal/core/plugin/runtime"
 	"repo-nest/internal/importers/claude"
 	"repo-nest/internal/importers/codex"
+	"repo-nest/internal/importers/cursor"
 	"repo-nest/internal/importers/hermes"
 	"repo-nest/internal/importers/openclaw"
 	"repo-nest/internal/importers/opencode"
@@ -108,6 +109,11 @@ func (s *Service) ReloadPlugins() []pluginruntime.PluginStatus {
 //     `openclaw_project` config-named project (unset -> skipped).
 //   - hermes:   MANUAL — agent-GLOBAL ~/.hermes/memories/*.md (Nous Research,
 //     a product separate from OpenClaw), allowlisted to memories/; `hermes_project`.
+//   - cursor:   MANUAL — Cursor session transcripts from its globalStorage SQLite
+//     state DB, read-only. BEST EFFORT by design (undocumented, versioned format):
+//     an unrecognized layout fails the source loudly instead of importing zero
+//     notes quietly. Sessions are attributed through workspaceStorage folder
+//     lookup, so an unmatched workspace skips rather than guessing.
 //
 // Manual sources still appear in GetKnowledgeSources, so each stays one-click
 // triggerable. ADR-0011 决策 4.
@@ -117,6 +123,7 @@ func (s *Service) registerBuiltinImporters() {
 	s.rt.RegisterSourceManual(opencode.SourceName, opencode.New(s.db))
 	s.rt.RegisterSourceManual(openclaw.SourceName, openclaw.New(s.db))
 	s.rt.RegisterSourceManual(hermes.SourceName, hermes.New(s.db))
+	s.rt.RegisterSourceManual(cursor.SourceName, cursor.New(s.db))
 }
 
 // ImportResult summarizes a Claude memory import run.

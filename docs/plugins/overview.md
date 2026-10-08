@@ -38,12 +38,13 @@ flowchart TB
 | `opencode` | 手动 | `$XDG_DATA_HOME`/`~/.local/share/opencode/storage/session/**/*.json` | 会话标题 + 摘要 |
 | `openclaw` | 手动 | `~/.openclaw-autoclaw/workspace/*.md` | 仅单层，不递归；**需配置目标项目** |
 | `hermes` | 手动 | `$HERMES_HOME`/`~/.hermes/memories/{MEMORY,USER}.md` | **需配置目标项目** |
+| `cursor` | 手动 | `<config>/Cursor/User/globalStorage/state.vscdb`（`CURSOR_STATE_DB` 可覆盖） | 只读；取首条提问 + 末条回复；格式不认识则**整源报错** |
 
 「自动」指应用启动时随 `auto_import` 一起跑（**默认关**，需在 **设置 → 插件** 显式开启）；「手动」指只在 **设置 → 插件** 点该源时才导入 —— 这类源多为原始会话转录，量大且噪音高，不适合每次启动全量重扫。
 
 ### 项目归属
 
-`claude` / `codex` / `opencode` 三个源自带项目线索（Claude 的 `-Users-x-Work-Foo` 目录名、会话的 `cwd`、OpenCode 的 `directory`），取**路径最后一段**后按三级规则匹配：项目名精确匹配 → 仓库路径以该段结尾 → 项目名包含该段。匹配不上则该文档归属为空、计入 `skipped`，**不会**落到某个「未分类」项目。
+`claude` / `codex` / `opencode` / `cursor` 四个源自带项目线索（Claude 的 `-Users-x-Work-Foo` 目录名、会话的 `cwd`、OpenCode 的 `directory`、Cursor 的 `workspaceId → workspaceStorage/<id>/workspace.json` 里的 folder 路径），取**路径最后一段**后按三级规则匹配：项目名精确匹配 → 仓库路径以该段结尾 → 项目名包含该段。匹配不上则该文档归属为空、计入 `skipped`，**不会**落到某个「未分类」项目。
 
 `openclaw` 与 `hermes` 的文件本身不含项目线索，因此目标项目由配置键指定：
 

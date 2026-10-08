@@ -34,7 +34,7 @@ order: 5
 - **自动导入开关**：启动时是否自动运行所有**可自动导入**的知识源——只有"整理型"源（Claude 记忆）会进这一趟，其余四源始终是手动。**默认关**，且只有显式设为开才会跑（关掉不影响你在本页单点某个源立即导入）。注意这是一次**行为变更**：升级时旧库若处于"开"，会被一次性归零——因为旧版本无法区分「用户主动开启」与「程序种下的默认值」，宁可让所有人重新点一次，也不替你做那个隐私决定。
 - **Claude 会话自动捕捉（M1，默认关）**：开关（`claude_session_capture`）+「按项目 ID 捕捉最近会话」——把某项目最新的 Claude Code 会话逐字稿按需捕捉为一条交接笔记。**默认关**，开启前不读任何会话文件；B 端另有 `reponest-capture` hook 做会话结束自动捕捉（见 [ADR-0010](../adr/0010-session-auto-capture.md)）。
 - **全局记忆源目标项目**：OpenClaw / Hermes 的记忆是**跨项目全局**的，导入前需在此指定挂到哪个 RepoNest 项目（项目名或 ID，`openclaw_project`/`hermes_project`）；不设则该源跳过，绝不乱挂。
-- **知识导入源**：内置 + 插件注册的导入器，各自可**单独立即导入**。当前内置五源——**claude**（启动自动）、**codex / opencode / openclaw / hermes**（**opt-in 手动**：逐字稿/全局记忆敏感，不进启动自动导入，仅在此点击或经通用配置触发）。远程向量库（Qdrant/Weaviate）与 embedding provider 的配置见 [ADR-0012](../adr/0012-semantic-search.md)/[ADR-0013](../adr/0013-vector-database-selection.md)，属进阶项。
+- **知识导入源**：内置 + 插件注册的导入器，各自可**单独立即导入**。当前内置六源——**claude**（可进启动自动导入，但需上面那个开关显式打开）、**codex / opencode / openclaw / hermes / cursor**（**opt-in 手动**：逐字稿/全局记忆敏感，不进启动自动导入，仅在此点击或经通用配置触发）。`cursor` 是 best-effort 源：未公开格式，只取首条提问与末条回复，结构不认识时整源报错而非静默导 0 条。远程向量库（Qdrant/Weaviate）与 embedding provider 的配置见 [ADR-0012](../adr/0012-semantic-search.md)/[ADR-0013](../adr/0013-vector-database-selection.md)，属进阶项。
 - **已加载插件**：各插件目录加载状态与错误，**重新加载** 热重载。
 
 > 隐私取向：读会话逐字稿 / 全局记忆的敏感源**默认关 + 显式开 + 目录 allowlist**（绝不遍历含密钥/私钥的父目录）；语义检索默认关、须先过 A/B 门。

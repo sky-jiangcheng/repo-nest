@@ -80,7 +80,7 @@ A snapshot is created automatically on every save (the latest 50 are kept). The 
 
 ## Import knowledge from agent memory
 
-Five built-in sources idempotently import the memory and session transcripts you already left in other agent tools as knowledge notes (re-importing updates existing notes instead of duplicating them):
+Six built-in sources idempotently import the memory and session transcripts you already left in other agent tools as knowledge notes (re-importing updates existing notes instead of duplicating them):
 
 | Source | Trigger | Reads |
 |--------|---------|-------|
@@ -89,6 +89,7 @@ Five built-in sources idempotently import the memory and session transcripts you
 | `opencode` | manual | session titles and summaries |
 | `openclaw` | manual | `~/.openclaw-autoclaw/workspace/*.md` |
 | `hermes` | manual | `~/.hermes/memories/{MEMORY,USER}.md` |
+| `cursor` | manual | Cursor sessions inside `globalStorage/state.vscdb` (best effort, see below) |
 
 **Settings → Plugins** lists every source, lets you trigger each one manually, and shows the per-source `{created, updated, skipped}` counters.
 
@@ -97,6 +98,8 @@ Three rules that are easy to trip over:
 1. **Imports land on a project, they do not pile onto the knowledge home page.** Documents are matched to a specific project by project name / repository path; whatever does not match is counted as `skipped` and not stored. So scan the projects first — hit rate depends on that order.
 2. **`openclaw` and `hermes` need their target project configured first** (`openclaw_project` / `hermes_project`); otherwise the entire source is silently skipped.
 3. **A repeat import is not a failure.** `created=0` plus `updated=N` means idempotency worked and the content was refreshed.
+
+**`cursor` is the only best-effort source**: Cursor's on-disk format is undocumented and versioned, so it takes only the **first prompt and last reply** of each session (never a full transcript), resolves ownership through `workspaceStorage/<id>/workspace.json` and skips what it cannot match rather than guessing — and when the database shape is not one it recognizes, **the whole source fails loudly instead of quietly importing zero notes** (because "nothing imported" must stay distinguishable from "you have no sessions"). Every read opens that file `mode=ro`; another application's data is never written.
 
 Imported notes carry `kind` = `knowledge` (memory files) or `log` (session records) and are findable by full-text search as soon as they are written; with semantic search enabled they are also picked up by vector recall without another rebuild (see above). Full paths, matching rules and limitations per source are in [Knowledge source plugins](../plugins/overview.md).
 
