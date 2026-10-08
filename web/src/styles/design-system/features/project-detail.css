@@ -24,101 +24,6 @@
   margin-bottom: 12px;
 }
 
-.detail-header-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  padding: 18px 22px;
-  margin-bottom: 16px;
-}
-
-.detail-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.detail-title-row h1 {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
-}
-
-.detail-path {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
-  margin-top: 2px;
-  word-break: break-all;
-}
-
-.detail-actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.detail-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-  gap: 12px;
-  padding: 12px 0;
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.detail-stat {
-  display: flex;
-  flex-direction: column;
-}
-
-.detail-stat .stat-label {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-weight: 500;
-}
-
-.detail-stat .stat-value {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
-  margin-top: 1px;
-  /* Line counts are statistics, and statistics must not jitter as they
-     update: without tabular figures a 3-digit value is a different width from
-     a 4-digit one and the row visibly reflows on every scan. */
-  font-variant-numeric: tabular-nums;
-}
-
-/* Same declarations as .detail-stat .stat-value, declared at equal specificity
-   so the semantic ink wins. Previously `.detail-stat .stat-value` (0,2,0)
-   outranked a bare `.green`/`.red` (0,1,0) and the added/deleted numbers
-   rendered in neutral ink — the one place the colour was carrying meaning. */
-.detail-stat .stat-value.green { color: var(--success); }
-.detail-stat .stat-value.red { color: var(--danger); }
-
-.detail-stat .stat-value.zero {
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.detail-stat .stat-value.minor {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.detail-meta-row {
-  display: flex;
-  gap: 6px;
-  margin-top: 10px;
-  flex-wrap: wrap;
-}
-
 .detail-section {
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
@@ -143,46 +48,12 @@
   font-size: 13px;
 }
 
-.project-layout {
-  display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 20px;
-  align-items: start;
-}
-
-.project-main {
-  min-width: 0;
-}
-
-.side-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .repo-totals {
   display: flex;
   gap: 10px;
   font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono);
-}
-
-@media (max-width: 900px) {
-  .project-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .project-layout {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .side-panel {
-    position: static;
-  }
 }
 
 /* --- Project overview section --- */
@@ -391,26 +262,6 @@
   height: 320px;
 }
 
-/* --- Project summary row (B2/B3) --- */
-.detail-summary-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.summary-chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 4px 10px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  color: var(--text-primary);
-}
-
 .summary-label {
   color: var(--text-tertiary);
   font-size: 11px;
@@ -442,15 +293,6 @@
    here set `padding: 2px 9px; font-size: 15px`, which made these two buttons a
    different size from every other icon button in the app — the exact "same
    control, slightly different" read the shared class exists to prevent. */
-.btn-block {
-  width: 100%;
-  justify-content: center;
-}
-
-.side-quick-note {
-  margin-bottom: 4px;
-}
-
 /* --- Heatmap empty state (A6) --- */
 .heatmap-empty-state {
   display: flex;

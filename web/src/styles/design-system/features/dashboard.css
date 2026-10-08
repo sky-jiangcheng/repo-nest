@@ -88,24 +88,26 @@
    exact numbers a user scans for were the hardest to read. Routing them
    through the tokens keeps both themes above 4.5:1.
 
-   The doubled class (`.x.green`, specificity 0,2,0) is deliberate: several
-   components set a neutral colour on a compound selector like
-   `.card-stat .stat-value` (also 0,2,0), and a bare `.green` (0,1,0) lost to
-   it — so the added/deleted numbers rendered grey on every project card.
-   Matching the specificity makes the semantic colour survive. */
+   A bare `.green` (0,1,0) is NOT enough on its own: every number class here
+   (.summary-value, .flat-num) also sets `color` at (0,1,0) and simply being
+   written later in this file would win, which is how the flat project card
+   ended up rendering every +/- number in neutral ink. So each consumer pairs
+   its own class with the semantic one at (0,2,0) — see the two blocks below.
+   Do not "simplify" these back to a single bare utility. */
 .green { color: var(--success); }
 .red { color: var(--danger); }
 
-.card-stat .stat-value.green,
-.progress-value.green,
-.card-hero-value.green { color: var(--success); }
+/* Paired with the number class, so the semantic ink wins regardless of the
+   order the two rules appear in this file. */
+.summary-value.green,
+.flat-num.green { color: var(--success); }
 
-.card-stat .stat-value.red,
-.progress-value.red,
-.card-hero-value.red { color: var(--danger); }
+.summary-value.red,
+.flat-num.red { color: var(--danger); }
 
 /* A number with nothing to report recedes instead of shouting a signed zero. */
 .muted-num { color: var(--text-muted); }
+.flat-num.muted-num { color: var(--text-muted); }
 
 /* --- Project grid --- */
 .project-grid {
@@ -185,13 +187,6 @@
   box-shadow: var(--shadow-sm);
 }
 
-.card-name-link {
-  flex: 1;
-  text-decoration: none;
-  color: inherit;
-  min-width: 0;
-}
-
 .card-name {
   font-size: 13px;
   font-weight: 500;
@@ -235,69 +230,6 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-}
-
-.card-stat .stat-label {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-weight: 500;
-}
-
-.card-stat .stat-value {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  letter-spacing: -0.01em;
-  margin-top: 1px;
-}
-
-.card-progress {
-  margin-bottom: 8px;
-}
-
-.progress-bar {
-  display: flex;
-  height: 4px;
-  background: var(--bg-tertiary);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 6px;
-}
-
-.progress-fill {
-  flex-shrink: 0;
-  background: var(--text-primary);
-  border-radius: 2px 0 0 2px;
-  transition: width var(--transition-base);
-}
-
-.progress-fill.deleted {
-  background: var(--text-muted);
-  border-radius: 0 2px 2px 0;
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.progress-label {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-weight: 500;
-}
-
-.progress-value {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.card-footer {
-  margin-top: auto;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-subtle);
 }
 
 .card-star {
@@ -460,55 +392,6 @@
   margin-top: 5px;
   text-align: center;
   max-width: 100px;
-}
-
-.card-hero-num {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.card-hero-label {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-weight: 500;
-}
-
-.card-hero-value {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
-}
-
-.card-goal-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.card-goal-track {
-  flex: 1;
-  height: 5px;
-  background: var(--bg-tertiary);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.card-goal-fill {
-  height: 100%;
-  background: var(--text-primary);
-  border-radius: 3px;
-  transition: width var(--transition-base);
-}
-
-.card-goal-pct {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-weight: 500;
-  white-space: nowrap;
 }
 
 @media (max-width: 768px) {
