@@ -66,3 +66,6 @@ assets/releases/
 
 # 本地 GUI 扫描测试产物（截图 + 报告，纯本地复查用）
 .tmp-ui-test/
+
+# 本地 W3 编译演练产物（真库副本 + 演练工作区）
+.w3-rehearsal/
