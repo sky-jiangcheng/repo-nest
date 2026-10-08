@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -45,6 +46,7 @@ func New(svc *service.Service, bound any) http.Handler {
 
 	mux.HandleFunc("/health", h.health)
 	mux.HandleFunc("/api/ai_context", h.aiContext)
+	mux.HandleFunc("/api/ai/ask-stream", h.aiAskStream)
 	mux.HandleFunc("/api/search", h.search)
 	mux.HandleFunc("/api/project/", h.project)
 	mux.HandleFunc("/api/rpc", h.rpc)
@@ -86,6 +88,76 @@ func (h *handler) aiContext(w http.ResponseWriter, r *http.Request) {
 	}
 	markdown := h.svc.GenerateLLMsTxt()
 	writeJSON(w, http.StatusOK, map[string]string{"markdown": markdown})
+}
+
+// aiAskStream serves POST /api/ai/ask-stream — the streaming form of the
+// evidence-backed ask (AskAIWithEvidenceStream): the reply is pushed as
+// Server-Sent Events instead of one JSON blob at the end, so a browser-mode
+// frontend can render it as it forms instead of staring at a spinner for
+// minutes. The desktop Wails app takes the event-channel path instead; this
+// endpoint exists for the standalone/browser runtime and scripts.
+//
+// Wire format (one event = one data: line, blank-line terminated):
+//
+//	data: {"delta":"…"}         ← content, many
+//	data: {"done":true,"reply":"…","evidence":{…},"truncated":bool}   ← last
+//	data: {"error":"…"}         ← instead of done, on failure
+//
+// Mirrors askAIWithEvidence's JSON shape for done, so one client-side reader
+// handles both askAIWithEvidence and this stream.
+func (h *handler) aiAskStream(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	var req struct {
+		ProjectID int64  `json:"project_id"`
+		Question  string `json:"question"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+		return
+	}
+	if strings.TrimSpace(req.Question) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "question is required"})
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "streaming not supported by this response writer"})
+		return
+	}
+
+	writeEvent := func(v any) error {
+		data, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
+			return err
+		}
+		flusher.Flush()
+		return nil
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+
+	ans, err := h.svc.AskAIWithEvidenceStream(req.ProjectID, req.Question, service.DefaultEvidenceBudget, func(delta string) {
+		_ = writeEvent(map[string]any{"delta": delta})
+	})
+	if err != nil {
+		_ = writeEvent(map[string]any{"error": err.Error()})
+		return
+	}
+	_ = writeEvent(map[string]any{
+		"done":      true,
+		"reply":     ans.Reply,
+		"evidence":  ans.Evidence,
+		"truncated": ans.Truncated,
+	})
 }
 
 // maxSearchQueryLen caps the ?q= parameter, mirroring the MCP layer's query
