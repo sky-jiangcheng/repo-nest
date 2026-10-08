@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { updateScanRoots, type AppConfig, type ScanRootRejection } from '../../api/client'
+import s from './ScanRootsTab.module.css'
 
 interface Props {
   data: AppConfig | null
@@ -114,17 +115,17 @@ export default function ScanRootsTab({ data, onChange, showMessage }: Props) {
           </button>
         </div>
       </div>
-      <ul className="root-list">
+      <ul className={s.rootList}>
         {roots.map((root, i) => (
-          <li key={rootKey(root, i)} className="root-item">
-            <span className="root-path">{root}</span>
+          <li key={rootKey(root, i)} className={s.rootItem}>
+            <span className={s.rootPath}>{root}</span>
             <button className="btn btn-danger btn-sm" onClick={() => handleRemoveRoot(root)} disabled={saving}>
               {t('settings.remove')}
             </button>
           </li>
         ))}
         {roots.length === 0 && (
-          <li className="root-item empty">{t('settings.noRoots')}</li>
+          <li className={`${s.rootItem} ${s.rootItemEmpty}`}>{t('settings.noRoots')}</li>
         )}
       </ul>
     </div>

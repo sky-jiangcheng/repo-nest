@@ -1,0 +1,56 @@
+/* PluginsTab styles (P35: component-owned CSS).
+   NOTE: the TSX imports this as `css`, not the usual `s`, because this file maps
+   sources.map((s) => ...) and `s` would be shadowed inside that callback. */
+
+/* --- Plugins --- */
+.pluginList {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-width: 720px;
+}
+
+.pluginItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.pluginItem + .pluginItem {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.pluginItem:hover {
+  background: var(--bg-hover);
+}
+
+.pluginImportBtn {
+  flex-shrink: 0;
+}
+
+.pluginInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pluginName {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pluginPath {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  overflow-wrap: anywhere;
+}

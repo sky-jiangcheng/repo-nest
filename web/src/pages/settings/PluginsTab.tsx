@@ -5,6 +5,10 @@ import {
   updateConfig, type SourceStatus,
 } from '../../api/client'
 
+// Imported as `css`, not the usual `s`: this file maps sources.map((s) => ...), which
+// would shadow the module object inside the callback.
+import css from './PluginsTab.module.css'
+
 // B-end / global-memory sources that need an explicit target project (their
 // memory is agent-global, not per-project). Value = project name or numeric id.
 const TARGET_PROJECT_KEYS = ['openclaw_project', 'hermes_project'] as const
@@ -115,18 +119,18 @@ export default function PluginsTab({ initialAutoImport, initialClaudeCapture, in
         {sources.length === 0 ? (
           <div className="empty-hint">{t('settings.noSources')}</div>
         ) : (
-          <ul className="plugin-list">
+          <ul className={css.pluginList}>
             {sources.map((s) => (
-              <li key={s.name} className="plugin-item plugin-ok">
-                <div className="plugin-info">
-                  <span className="plugin-name">{s.name}</span>
-                  <span className="plugin-path">{t('settings.fromPlugin', { name: s.plugin || 'builtin' })}</span>
+              <li key={s.name} className={css.pluginItem}>
+                <div className={css.pluginInfo}>
+                  <span className={css.pluginName}>{s.name}</span>
+                  <span className={css.pluginPath}>{t('settings.fromPlugin', { name: s.plugin || 'builtin' })}</span>
                 </div>
                 {/* Secondary, not primary: five identical filled-blue CTAs in a
                     row read as one giant primary action and none of them wins.
                     The row's hover state carries the emphasis instead. */}
                 <button
-                  className="btn btn-sm plugin-import-btn"
+                  className={`btn btn-sm ${css.pluginImportBtn}`}
                   onClick={() => handleImportSource(s.name)}
                   disabled={importingSource !== '' || !s.enabled}
                 >

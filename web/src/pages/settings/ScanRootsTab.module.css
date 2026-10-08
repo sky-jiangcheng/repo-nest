@@ -1,0 +1,63 @@
+/* ScanRootsTab styles (P35: component-owned CSS). Shared form/base classes stay global.
+   `empty` used to be a bare global modifier here; only this tab applies it to a row, so it
+   is now rootItemEmpty and the module needs no :global() reference. */
+
+/* ============================================
+   Settings page
+   ============================================ */
+.rootList {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-width: 720px;
+}
+
+.rootItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  font-size: 13px;
+}
+
+/* Hairline separators instead of stacked cards: a list of paths reads as one
+   block, and per-row rounding made long lists look like loose chips. */
+.rootItem + .rootItem {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.rootItem:hover:not(.rootItemEmpty) {
+  background: var(--bg-hover);
+}
+
+.rootPath {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+/* Empty state: centred, with breathing room and a dashed affordance so it
+   reads as "nothing here yet" rather than as a broken row. */
+.rootItem.rootItemEmpty {
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-family: inherit;
+  background: transparent;
+  padding: 24px 14px;
+  /* Dashed + borderless: the empty row must not read as another input, and it
+     sits inside an already-bordered card, so a solid box would nest frames. */
+  border-top: none;
+}
+
+.rootList:has(.rootItem.rootItemEmpty) {
+  border-style: dashed;
+  border-color: var(--border-default);
+  background: transparent;
+}
