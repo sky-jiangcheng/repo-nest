@@ -79,8 +79,15 @@ function ReviewPage() {
       setRejected(rej)
       setJobs(jb)
       setLoadError('')
-    }).catch(() => {
-      if (!cancelled) setLoadError(t('review.loadError'))
+    }).catch((e) => {
+      // Surface the underlying message next to the generic banner. A bare
+      // "加载审核队列失败" once hid the real cause ("unknown method:
+      // ListPendingWikiPages" — a stale reponest-server binary predating the
+      // review bindings) for two days; the RPC layer rejects with either an
+      // Error or a plain string (Wails mode), so handle both shapes.
+      if (cancelled) return
+      const detail = e instanceof Error ? e.message : String(e)
+      setLoadError(detail ? `${t('review.loadError')}: ${detail}` : t('review.loadError'))
     })
     return () => { cancelled = true }
   }, [projectFilter, reloadToken, t])
