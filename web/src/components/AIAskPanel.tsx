@@ -213,15 +213,15 @@ export default function AIAskPanel({ projectId, projectName, onToast, onGoToSett
   const canFile = canSave && items.length > 0
 
   return (
-    <div className="ai-ask-body">
-      <p className="ai-hint">
+    <div className={s.aiAskBody}>
+      <p className={s.aiHint}>
         {t('ai.hint')}
-        {projectName && <span className="ai-hint-project"> · {projectName}</span>}
+        {projectName && <span className={s.aiHintProject}> · {projectName}</span>}
       </p>
       {configured === false && (
-        <p className="ai-hint ai-hint-config">
+        <p className={`${s.aiHint} ${s.aiHintConfig}`}>
           {t('ai.notConfigured')}{' '}
-          <button className="link-btn" onClick={onGoToSettings}>
+          <button className={s.linkBtn} onClick={onGoToSettings}>
             {t('ai.goSettings')}
           </button>
         </p>
@@ -237,7 +237,7 @@ export default function AIAskPanel({ projectId, projectName, onToast, onGoToSett
         aria-label={t('ai.question')}
       />
 
-      <div className="ai-actions">
+      <div className={s.aiActions}>
         {configured && (
           <button className="btn btn-primary btn-sm" onClick={sendDirect} disabled={!canCopy || asking}>
             {asking ? t('ai.asking') : t('ai.send')}
@@ -280,7 +280,7 @@ export default function AIAskPanel({ projectId, projectName, onToast, onGoToSett
       )}
 
       <textarea
-        className="fab-content form-input ai-answer"
+        className={`fab-content form-input ${s.aiAnswer}`}
         rows={8}
         value={answer}
         onChange={e => setAnswer(e.target.value)}
@@ -288,7 +288,7 @@ export default function AIAskPanel({ projectId, projectName, onToast, onGoToSett
         aria-label={t('ai.answer')}
       />
 
-      <div className="ai-actions">
+      <div className={s.aiActions}>
         <button className="btn btn-primary btn-sm" onClick={saveAsNote} disabled={!canSave}>
           {saving ? t('fab.saving') : t('ai.saveAsNote')}
         </button>

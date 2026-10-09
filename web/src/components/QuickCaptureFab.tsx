@@ -5,6 +5,7 @@ import Icon from './Icon'
 import { createNoteWithMeta, createTodo, getProjects, type NoteKind, type Project } from '../api/client'
 import AIAskPanel from './AIAskPanel'
 import type { PushToast } from '../hooks/useToast'
+import s from './QuickCaptureFab.module.css'
 
 type Tab = 'capture' | 'ask'
 
@@ -97,7 +98,7 @@ export default function QuickCaptureFab({ onToast }: Props) {
   if (!open) {
     return (
       <button
-        className="fab-ball"
+        className={s.fabBall}
         onClick={() => setOpen(true)}
         aria-label={t('fab.open')}
         title={t('fab.open')}
@@ -112,20 +113,20 @@ export default function QuickCaptureFab({ onToast }: Props) {
 
   return (
     <>
-      <div className="fab-backdrop" onClick={close} />
-      <div className="fab-panel" role="dialog" aria-label={t('fab.open')}>
-        <div className="fab-panel-head">
-          <span className="fab-title">{t('fab.title')}</span>
-          <button className="fab-close" onClick={close} aria-label={t('common.close', { defaultValue: 'Close' })}>
+      <div className={s.fabBackdrop} onClick={close} />
+      <div className={s.fabPanel} role="dialog" aria-label={t('fab.open')}>
+        <div className={s.fabPanelHead}>
+          <span className={s.fabTitle}>{t('fab.title')}</span>
+          <button className={s.fabClose} onClick={close} aria-label={t('common.close', { defaultValue: 'Close' })}>
             <Icon name="close" size={14} />
           </button>
         </div>
 
-        <div className="fab-tabs" role="tablist" aria-label={t('fab.title')}>
+        <div className={s.fabTabs} role="tablist" aria-label={t('fab.title')}>
           <button
             role="tab"
             aria-selected={tab === 'capture'}
-            className={`fab-tab ${tab === 'capture' ? 'active' : ''}`}
+            className={`${s.fabTab} ${tab === 'capture' ? 'active' : ''}`}
             onClick={() => setTab('capture')}
           >
             <Icon name="plus" size={12} />
@@ -134,7 +135,7 @@ export default function QuickCaptureFab({ onToast }: Props) {
           <button
             role="tab"
             aria-selected={tab === 'ask'}
-            className={`fab-tab ${tab === 'ask' ? 'active' : ''}`}
+            className={`${s.fabTab} ${tab === 'ask' ? 'active' : ''}`}
             onClick={() => setTab('ask')}
           >
             <Icon name="help" size={12} />
@@ -143,11 +144,11 @@ export default function QuickCaptureFab({ onToast }: Props) {
         </div>
 
         {projects.length === 0 ? (
-          <p className="fab-empty">{t('fab.noProjects')}</p>
+          <p className={s.fabEmpty}>{t('fab.noProjects')}</p>
         ) : tab === 'capture' ? (
           <>
             <select
-              className="fab-project form-input"
+              className={`${s.fabProject} form-input`}
               value={projectId ?? ''}
               onChange={e => setProjectId(Number(e.target.value))}
               aria-label={t('fab.project')}
@@ -166,7 +167,7 @@ export default function QuickCaptureFab({ onToast }: Props) {
               placeholder={t('fab.placeholder')}
             />
 
-            <div className="fab-kinds" role="radiogroup" aria-label={t('fab.kind')}>
+            <div className={s.fabKinds} role="radiogroup" aria-label={t('fab.kind')}>
               {(['knowledge', 'log', 'idea', 'other'] as NoteKind[]).map(k => (
                 <button
                   key={k}
@@ -180,7 +181,7 @@ export default function QuickCaptureFab({ onToast }: Props) {
               ))}
             </div>
 
-            <div className="fab-actions">
+            <div className={s.fabActions}>
               <button className="btn btn-secondary btn-sm" onClick={saveTodo} disabled={!canTodo}>
                 {saving === 'todo' ? t('fab.saving') : t('fab.saveTodo')}
               </button>

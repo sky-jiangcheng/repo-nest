@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { triggerScan, importClaudeMemory } from '../../api/client'
+import s from './ActionsTab.module.css'
 
 interface Props {
   showMessage: (msg: string) => void
@@ -43,7 +44,7 @@ export default function ActionsTab({ showMessage }: Props) {
       <section className="settings-group">
         <h2 className="settings-group-title">{t('settings.groupRescan')}</h2>
         <p className="section-desc">{t('settings.actionsDesc')}</p>
-        <div className="action-row">
+        <div className={s.actionRow}>
           <button className="btn btn-primary" onClick={handleRescan} disabled={saving}>
             {saving ? t('common.scanning') : t('settings.rescanAll')}
           </button>
@@ -53,7 +54,7 @@ export default function ActionsTab({ showMessage }: Props) {
       <section className="settings-group">
         <h2 className="settings-group-title">{t('settings.importClaudeTitle')}</h2>
         <p className="section-desc" dangerouslySetInnerHTML={{ __html: t('settings.importClaudeDesc') }} />
-        <div className="action-row">
+        <div className={s.actionRow}>
           <button className="btn btn-primary" onClick={handleImport} disabled={importing}>
             {importing ? t('settings.importing') : t('settings.importClaudeAction')}
           </button>

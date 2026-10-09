@@ -1,8 +1,12 @@
-/* ============================================
-   Block editor (gitbook-gap #19)
-   ============================================ */
+/* BlockEditor styles (P35: component-owned CSS).
 
-.block-editor {
+   Boundary: every rule in the former features/block-editor.css belonged to this
+   component and nothing else in web/src referenced these classes, so the whole
+   file moved in. Two cross-component classes are wrapped in :global() because
+   they stay global: `.active` (the palette's selected row, a bare utility used
+   by 17 files) and `.form-input` (an inputs.css primitive, applied in the TSX). */
+
+.blockEditor {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -10,7 +14,7 @@
   min-width: 0;
 }
 
-.block-item {
+.blockItem {
   position: relative;
   display: flex;
   gap: 8px;
@@ -20,17 +24,17 @@
   padding: 4px;
 }
 
-.block-item:hover {
+.blockItem:hover {
   border-color: var(--border-default);
   background: var(--bg-tertiary);
 }
 
-.block-item-dragging {
+.blockItemDragging {
   opacity: 0.5;
   border-color: var(--accent, #4c8dff);
 }
 
-.block-gutter {
+.blockGutter {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -40,7 +44,7 @@
   flex-shrink: 0;
 }
 
-.block-drag-handle {
+.blockDragHandle {
   cursor: grab;
   color: var(--text-muted);
   font-size: 16px;
@@ -49,15 +53,15 @@
   padding: 2px 4px;
 }
 
-.block-drag-handle:hover {
+.blockDragHandle:hover {
   color: var(--text-primary);
 }
 
-.block-drag-handle:active {
+.blockDragHandle:active {
   cursor: grabbing;
 }
 
-.block-type {
+.blockType {
   font-size: 11px;
   color: var(--text-muted);
   background: var(--bg-secondary);
@@ -67,12 +71,12 @@
   white-space: nowrap;
 }
 
-.block-actions {
+.blockActions {
   display: flex;
   gap: 2px;
 }
 
-.block-btn {
+.blockBtn {
   background: none;
   border: none;
   color: var(--text-muted);
@@ -86,21 +90,21 @@
   justify-content: center;
 }
 
-.block-btn:hover {
+.blockBtn:hover {
   color: var(--text-primary);
   background: var(--bg-secondary);
 }
 
-.block-btn:disabled {
+.blockBtn:disabled {
   opacity: 0.35;
   cursor: default;
 }
 
-.block-btn-danger:hover {
+.blockBtnDanger:hover {
   color: var(--danger);
 }
 
-.block-input {
+.blockInput {
   flex: 1;
   min-width: 0;
   resize: vertical;
@@ -109,7 +113,7 @@
   line-height: 1.6;
 }
 
-.block-add {
+.blockAdd {
   background: none;
   border: 1px dashed var(--border-default);
   border-radius: var(--radius-md);
@@ -124,17 +128,17 @@
   gap: 6px;
 }
 
-.block-add:hover {
+.blockAdd:hover {
   border-color: var(--accent, #4c8dff);
   color: var(--text-primary);
 }
 
-.block-editor-empty {
+.blockEditorEmpty {
   min-height: 96px;
 }
 
 /* "/" block palette */
-.block-palette {
+.blockPalette {
   position: absolute;
   top: calc(100% - 4px);
   left: 84px;
@@ -149,13 +153,13 @@
   padding: 4px;
 }
 
-.block-palette-head {
+.blockPaletteHead {
   font-size: 11px;
   color: var(--text-muted);
   padding: 4px 8px;
 }
 
-.block-palette-item {
+.blockPaletteItem {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -169,17 +173,17 @@
   text-align: left;
 }
 
-.block-palette-item:hover,
-.block-palette-item.active {
+.blockPaletteItem:hover,
+.blockPaletteItem:global(.active) {
   background: var(--bg-tertiary);
 }
 
-.block-palette-label {
+.blockPaletteLabel {
   font-size: 13px;
   color: var(--text-primary);
 }
 
-.block-palette-desc {
+.blockPaletteDesc {
   font-size: 11px;
   color: var(--text-muted);
 }

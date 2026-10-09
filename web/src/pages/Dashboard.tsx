@@ -70,7 +70,7 @@ function Dashboard() {
               <button className={`filter-btn ${!showStarredOnly ? 'active' : ''}`} onClick={() => setShowStarredOnly(false)}>{t('dashboard.all', { defaultValue: 'All' })}</button>
               <button className={`filter-btn ${showStarredOnly ? 'active' : ''}`} onClick={() => setShowStarredOnly(true)}>{t('dashboard.starred', { defaultValue: 'Starred' })}</button>
             </div>
-            <div className="sort-control">
+            <div className={s.sortControl}>
               <label htmlFor="dashboard-sort">{t('dashboard.sortBy')}</label>
               <select id="dashboard-sort" value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} className="form-input sort-select">
                 {sortOptions.map(opt => <option key={opt.key} value={opt.key}>{opt.label}</option>)}

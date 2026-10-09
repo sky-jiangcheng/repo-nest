@@ -1,0 +1,16 @@
+/* DatePicker styles (P35: component-owned CSS).
+
+   Boundary: `.date-picker` is this component's own wrapper. `.date-input` is a
+   shared input primitive - it is grouped with `.form-input` and friends in
+   components/inputs.css - so the class stays global in the markup and only the
+   150px sizing is owned here. */
+
+.datePicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dateInput {
+  width: 150px;
+}

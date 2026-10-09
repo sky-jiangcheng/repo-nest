@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from './Icon'
+import s from './BlockEditor.module.css'
 
 // EDITOR-FROZEN: do not add new block types per ADR-0006 (scope freeze).
 // Current block types: paragraph, heading, code, blockquote, callout, list, table, math, hr, other.
@@ -275,7 +276,7 @@ export default function BlockEditor({ value, onChange, placeholder }: BlockEdito
 
   if (blocks.length === 0) {
     return (
-      <div className="block-editor block-editor-empty">
+      <div className={`${s.blockEditor} ${s.blockEditorEmpty}`}>
         <textarea
           value=""
           onChange={(e) => {
@@ -291,7 +292,7 @@ export default function BlockEditor({ value, onChange, placeholder }: BlockEdito
             }
           }}
           placeholder={placeholder ?? t('project.contentBlockPlaceholder', { defaultValue: 'Type content or / for blocks' })}
-          className="form-input block-input"
+          className={`form-input ${s.blockInput}`}
           rows={3}
         />
       </div>
@@ -299,16 +300,16 @@ export default function BlockEditor({ value, onChange, placeholder }: BlockEdito
   }
 
   return (
-    <div className="block-editor">
+    <div className={s.blockEditor}>
       {blocks.map((block, index) => (
         <div
           key={block.id}
-          className={`block-item ${draggingIndex === index ? 'block-item-dragging' : ''}`}
+          className={`${s.blockItem} ${draggingIndex === index ? s.blockItemDragging : ''}`}
           draggable={false}
         >
-          <div className="block-gutter">
+          <div className={s.blockGutter}>
             <span
-              className="block-drag-handle"
+              className={s.blockDragHandle}
               draggable
               title={t('blockEditor.dragSort')}
               onDragStart={() => handleDragStart(index)}
@@ -318,12 +319,12 @@ export default function BlockEditor({ value, onChange, placeholder }: BlockEdito
             >
               <Icon name="grip" size={14} />
             </span>
-            <span className="block-type">{typeLabel(t, block.type)}</span>
-            <div className="block-actions">
-              <button type="button" className="block-btn" title={t('blockEditor.moveUp')} aria-label={t('blockEditor.moveUp')} onClick={() => moveBlock(index, -1)} disabled={index === 0}><Icon name="arrow-up" size={14} /></button>
-              <button type="button" className="block-btn" title={t('blockEditor.moveDown')} aria-label={t('blockEditor.moveDown')} onClick={() => moveBlock(index, 1)} disabled={index === blocks.length - 1}><Icon name="arrow-down" size={14} /></button>
-              <button type="button" className="block-btn" title={t('blockEditor.insertAfter')} aria-label={t('blockEditor.insertAfter')} onClick={() => addBlockAfter(index)}><Icon name="plus" size={14} /></button>
-              <button type="button" className="block-btn block-btn-danger" title={t('blockEditor.deleteBlock')} aria-label={t('blockEditor.deleteBlock')} onClick={() => deleteBlock(index)}><Icon name="close" size={14} /></button>
+            <span className={s.blockType}>{typeLabel(t, block.type)}</span>
+            <div className={s.blockActions}>
+              <button type="button" className={s.blockBtn} title={t('blockEditor.moveUp')} aria-label={t('blockEditor.moveUp')} onClick={() => moveBlock(index, -1)} disabled={index === 0}><Icon name="arrow-up" size={14} /></button>
+              <button type="button" className={s.blockBtn} title={t('blockEditor.moveDown')} aria-label={t('blockEditor.moveDown')} onClick={() => moveBlock(index, 1)} disabled={index === blocks.length - 1}><Icon name="arrow-down" size={14} /></button>
+              <button type="button" className={s.blockBtn} title={t('blockEditor.insertAfter')} aria-label={t('blockEditor.insertAfter')} onClick={() => addBlockAfter(index)}><Icon name="plus" size={14} /></button>
+              <button type="button" className={`${s.blockBtn} ${s.blockBtnDanger}`} title={t('blockEditor.deleteBlock')} aria-label={t('blockEditor.deleteBlock')} onClick={() => deleteBlock(index)}><Icon name="close" size={14} /></button>
             </div>
           </div>
           <textarea
@@ -332,31 +333,31 @@ export default function BlockEditor({ value, onChange, placeholder }: BlockEdito
             onChange={(e) => handleTextareaChange(e, block.id)}
             onKeyDown={(e) => handleTextareaKeyDown(e, block.id)}
             rows={Math.max(1, block.text.split('\n').length)}
-            className="form-input block-input"
+            className={`form-input ${s.blockInput}`}
             placeholder={placeholder ?? t('project.contentBlockPlaceholder', { defaultValue: 'Type content or / for blocks' })}
           />
           {palette && palette.blockId === block.id && (
-            <div className="block-palette" role="listbox" aria-label={t('blockEditor.insert')}>
-              <div className="block-palette-head">{t('blockEditor.insert')}</div>
+            <div className={s.blockPalette} role="listbox" aria-label={t('blockEditor.insert')}>
+              <div className={s.blockPaletteHead}>{t('blockEditor.insert')}</div>
               {paletteItems.map((item, i) => (
                 <button
                   key={item.label}
                   type="button"
                   role="option"
                   aria-selected={palette.active === i}
-                  className={`block-palette-item ${palette.active === i ? 'active' : ''}`}
+                  className={`${s.blockPaletteItem} ${palette.active === i ? 'active' : ''}`}
                   onMouseEnter={() => setPalette(p => p ? { ...p, active: i } : p)}
                   onClick={() => insertTemplate(item)}
                 >
-                  <span className="block-palette-label">{item.label}</span>
-                  <span className="block-palette-desc">{item.desc}</span>
+                  <span className={s.blockPaletteLabel}>{item.label}</span>
+                  <span className={s.blockPaletteDesc}>{item.desc}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
       ))}
-      <button type="button" className="block-add" onClick={() => addBlockAfter(blocks.length - 1)}><Icon name="plus" size={14} /> {t('blockEditor.addBlock')}</button>
+      <button type="button" className={s.blockAdd} onClick={() => addBlockAfter(blocks.length - 1)}><Icon name="plus" size={14} /> {t('blockEditor.addBlock')}</button>
     </div>
   )
 }

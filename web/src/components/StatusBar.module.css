@@ -1,8 +1,12 @@
-/* ============================================
-   Status bar
-   ============================================ */
+/* StatusBar styles (P35: component-owned CSS).
 
-.status-bar {
+   Boundary: the status-* classes were only ever used by this component, so the
+   former features/status-bar.css moved in, together with `.status-dot-error`
+   which used to live in styles/index.css. `.muted` stays global (SummaryBar
+   renders it too), so it is wrapped in :global() here to keep the original
+   `.status-item.muted` selector working. */
+
+.statusBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -18,31 +22,31 @@
   box-shadow: var(--shadow-sm);
 }
 
-.status-left,
-.status-right {
+.statusLeft,
+.statusRight {
   display: flex;
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
 }
 
-.status-item {
+.statusItem {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-weight: 500;
 }
 
-.status-item strong {
+.statusItem strong {
   color: var(--text-primary);
   font-weight: 600;
 }
 
-.status-item.muted {
+.statusItem:global(.muted) {
   color: var(--text-muted);
 }
 
-.status-dot {
+.statusDot {
   width: 7px;
   height: 7px;
   background: var(--text-primary);
@@ -51,19 +55,24 @@
   animation: pulse 2.5s infinite;
 }
 
+.statusDotError {
+  background: var(--danger) !important;
+  animation: none !important;
+}
+
 @keyframes pulse {
   0% { opacity: 1; }
   50% { opacity: 0.4; }
   100% { opacity: 1; }
 }
 
-.status-separator {
+.statusSeparator {
   color: var(--border-default);
   user-select: none;
 }
 
 @media (max-width: 768px) {
-  .status-bar {
+  .statusBar {
     flex-direction: column;
     align-items: flex-start;
   }

@@ -4,6 +4,16 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [1.16.1] - 2026-10-09
+
+### 变更
+
+- **P35 第六块：`main.css` 残留的组件独占规则清理**：`layouts/main.css` 里三条只被单个组件引用的规则迁出（149 → 116 行）——`.action-row`（含 `.action-row code`）→ 新建 `settings/ActionsTab.module.css`；`.sort-control` → 已有的 `Dashboard.module.css`（上一轮 Dashboard 迁移漏下的，因为它定义在 layouts 文件里而不是 feature 文件里）；`.date-picker` 与 `.date-input` 的 150px 尺寸 → 新建 `components/DatePicker.module.css`。`.date-input` 属 `inputs.css` 共享输入族（与 `.form-input` 等列在同一个选择器组），所以 markup 里 `form-input date-input` 一字未动，只把尺寸收进组件 module，避免用 module 类替换掉它与基元的关联。留全局的判据逐类核过：`.settings-section`/`.section-desc` 被 5-7 个设置页 tab 共用、`.settings-group*` 是 ActionsTab 与 PluginsTab 共用、`.empty-actions` 被 5 个组件共用、`.form-*`/`.btn*` 是基础样式。
+- **P35 第七块：BlockEditor 与 StatusBar 迁入 CSS Modules**：`features/block-editor.css` 整文件（16 类）迁入新建的 `BlockEditor.module.css`，`features/status-bar.css`（6 类）迁入新建的 `StatusBar.module.css`，两个文件删除；原先住在 `styles/index.css` 的 `.status-dot-error`（只有 StatusBar 用）一并收进 module。两处跨组件类按既有判据用 `:global()` 包裹：`.block-palette-item.active` → `.blockPaletteItem:global(.active)`（`.active` 是裸工具类，全站 17 个文件在用），`.status-item.muted` → `.statusItem:global(.muted)`（`SummaryBar` 也在用）。`semanticInk.test.ts` 的文件清单同步删掉这两条——该清单必须与 `index.css` 的 `@import` 顺序一致，否则测试读到的级联顺序与真实顺序不符。
+- **P35 第八块：`fab.css` 拆分（QuickCaptureFab + AIAskPanel）**：22 类拆成三份——12 个 `fab-*` 类迁入新建的 `QuickCaptureFab.module.css`，7 个 `ai-*` 类与 `.link-btn` 追加进已有的 `AIAskPanel.module.css`，`.fab-content` 留全局（两个组件都用它给各自的文本域：捕获框与 AI 问答框）。`.fab-tab.active` 写 `:global(.active)`、`.ai-actions .btn` 写 `.aiActions :global(.btn)`，保留对全局 `.btn` 基元的引用。`fab.css` 22 → 1 类。
+- **顺带做了全站 CSS 归属审计**（脚本化：`web/src/styles/**` 下 24 个 CSS 文件定义的每个类 × 80 个 `.ts`/`.tsx` 的引用文件数）：**170 个类全站只有 1 个组件引用、32 个类零引用（死代码）**，后续轮次按这份清单推进。累计全局 CSS 2,994 → **2,562 行**（22 文件），module CSS 2,479 → **2,997 行**（22 文件）。审计同时暴露 4 个空壳类（markup 在用、全站无任何 CSS 定义）：`knowledge`、`knowledge-section`、`ai-url-row`、`status-warn`，按 `plugin-ok` 先例待单独定性后清理。
+- 校验：`npm run build`（tsc + vite）、`eslint src` 与 vitest 15 文件 108 用例全过；每个新 module 的 `s.*` 引用与 module 内类名逐一比对（无缺失定义、无定义未引用——CSS module 的类型不会因拼错报错，这步必须手工核）；`web/src/styles` 下已无被迁走的类定义。**视觉面仍需人工实机复核**：ActionsTab 两个按钮行、Dashboard 排序控件与日期选择器、笔记编辑器块区与 `/` 块面板、底部状态栏、悬浮球与面板。
+
 ## [1.16.0] - 2026-10-09
 
 ### 新增

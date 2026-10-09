@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { getStatusBar, type StatusBarData } from '../api/client'
 import { getConnectionKind, subscribeConnection } from '../api/client'
+import s from './StatusBar.module.css'
 
 export default function StatusBar() {
   const { t } = useTranslation()
@@ -45,31 +46,31 @@ export default function StatusBar() {
       : null
 
   return (
-    <div className="status-bar" aria-live="polite">
-      <div className="status-left">
-        <span className="status-item">
-          <span className={`status-dot ${connKind !== 'ok' ? 'status-dot-error' : ''}`} />
+    <div className={s.statusBar} aria-live="polite">
+      <div className={s.statusLeft}>
+        <span className={s.statusItem}>
+          <span className={`${s.statusDot} ${connKind !== 'ok' ? s.statusDotError : ''}`} />
           {statusText && <span className="status-warn">{statusText}</span>}
           {t('status.time')}{currentTime}
         </span>
       </div>
-      <div className="status-right">
+      <div className={s.statusRight}>
         {data?.last_commit_time ? (
           <>
-            <span className="status-item" title={data.last_commit_msg}>
+            <span className={s.statusItem} title={data.last_commit_msg}>
               {t('status.lastCommit')}<strong>{data.last_commit_time}</strong>
             </span>
-            <span className="status-separator">|</span>
-            <span className="status-item">
+            <span className={s.statusSeparator}>|</span>
+            <span className={s.statusItem}>
               {t('status.project')}<strong>{data.last_commit_repo}</strong>
             </span>
-            <span className="status-separator">|</span>
-            <span className="status-item">
+            <span className={s.statusSeparator}>|</span>
+            <span className={s.statusItem}>
               {t('status.branch')}<strong>{data.last_commit_branch || 'unknown'}</strong>
             </span>
           </>
         ) : (
-          <span className="status-item muted">{t('status.noCommits')}</span>
+          <span className={`${s.statusItem} muted`}>{t('status.noCommits')}</span>
         )}
       </div>
     </div>

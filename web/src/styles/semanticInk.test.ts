@@ -54,8 +54,6 @@ const files = [
   'features/markdown.css',
   'features/todos.css',
   'features/settings.css',
-  'features/block-editor.css',
-  'features/status-bar.css',
   'features/fab.css',
 ]
 

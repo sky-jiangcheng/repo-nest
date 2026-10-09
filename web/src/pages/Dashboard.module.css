@@ -1,6 +1,8 @@
 /* Dashboard — page-scoped styles migrated from dashboard.css.
-   Filter chips, sort inputs and confirm actions stay in the global design
-   system because Knowledge and shared components consume them. */
+   Filter chips and confirm actions stay in the global design system because
+   Knowledge and shared components consume them. The sort wrapper is owned here
+   (P35 follow-up): `.sort-control` was only ever used by this page, while the
+   select it wraps (`.sort-select`) is a shared input primitive and stays global. */
 .page {
   display: flex;
   flex-direction: column;
@@ -188,4 +190,12 @@
   .heroCard {
     gap: 16px;
   }
+}
+
+.sortControl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
