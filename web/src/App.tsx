@@ -12,6 +12,7 @@ import Icon from './components/Icon'
 import QuickCaptureFab from './components/QuickCaptureFab'
 import BrandMark from './components/BrandMark'
 import { ToastContext } from './hooks/useToast'
+import s from './App.module.css'
 
 // Lazy-loaded pages. The initial route (Knowledge) is still eagerly loaded by
 // the browser, but subsequent navigations only fetch the chunks that are needed.
@@ -63,16 +64,16 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
 
   return (
     <header>
-      <nav className="navbar" aria-label={t('nav.main')}>
-        <div className="nav-left">
-          <Link to="/" className="nav-brand">
+      <nav className={`${s.navbar}`} aria-label={t('nav.main')}>
+        <div className={`${s.navLeft}`}>
+          <Link to="/" className={`${s.navBrand}`}>
             {/* The real brand mark, not a text glyph — see BrandMark. 26px:
                 the mark is a compact nest-and-card silhouette, and below
                 ~24px the bowl's inner arc closes up and it reads as a blob. */}
-            <BrandMark size={26} className="nav-brand-mark" />
-            <span className="nav-brand-name">RepoNest</span>
+            <BrandMark size={26} className={`${s.navBrandMark}`} />
+            <span className={`${s.NavBrandName}`}>RepoNest</span>
           </Link>
-          <div className="nav-links">
+          <div className={`${s.navLinks}`}>
             <Link to="/" className={navClass(pathname === '/' || pathname === '/knowledge')}>
               {t('nav.knowledge')}
             </Link>
@@ -87,24 +88,24 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
             </Link>
           </div>
         </div>
-        <div className="nav-right">
-          <div className="lang-switcher" ref={langRef}>
+        <div className={`${s.navRight}`}>
+          <div className={`${s.langSwitcher}`} ref={langRef}>
             <button
-              className="nav-lang-btn"
+              className={`${s.navLangBtn}`}
               onClick={() => setLangOpen(v => !v)}
               aria-label={t('nav.language')}
               aria-expanded={langOpen}
               title={t('nav.language')}
             >
               <Icon name="globe" size={14} />
-              <span className="lang-label">{currentLang === 'zh-CN' ? '中文' : 'EN'}</span>
+              <span className={`${s.langLabel}`}>{currentLang === 'zh-CN' ? '中文' : 'EN'}</span>
             </button>
             {langOpen && (
-              <div className="lang-dropdown">
+              <div className={`${s.langDropdown}`}>
                 {LANG_OPTIONS.map(opt => (
                   <button
                     key={opt.code}
-                    className={`lang-option ${opt.code === currentLang ? 'active' : ''}`}
+                    className={`${s.langOption} ${opt.code === currentLang ? 'active' : ''}`}
                     onClick={() => { setLanguage(opt.code); setLangOpen(false) }}
                   >
                     <span>{opt.label}</span>
@@ -115,7 +116,7 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
           </div>
           <div role="search">
             <button
-              className="nav-palette-btn"
+              className={`${s.navPaletteBtn}`}
               onClick={onOpenPalette}
               aria-label={t('nav.searchLabel', { defaultValue: 'Open search (⌘K)' })}
               title={t('nav.searchLabel', { defaultValue: 'Open search (⌘K)' })}
@@ -123,7 +124,7 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
             >
               <Icon name="search" size={14} />
               <span>{t('nav.search')}</span>
-              <kbd className="nav-kbd">⌘K</kbd>
+              <kbd className={`${s.navKbd}`}>⌘K</kbd>
             </button>
           </div>
         </div>
@@ -232,9 +233,9 @@ function App() {
           {connBanner && (
             <div className="conn-banner" role="alert" aria-live="polite">{connBanner}</div>
           )}
-          <a className="skip-link" href="#main-content" onClick={skipToContent}>{t('common.show', { defaultValue: 'Skip to main content' })}</a>
+          <a className={s.skipLink} href="#main-content" onClick={skipToContent}>{t('common.show', { defaultValue: 'Skip to main content' })}</a>
           <NavBar onOpenPalette={() => setPaletteOpen(true)} />
-          <main id="main-content" className="main-content" tabIndex={-1}>
+          <main id="main-content" className={s.mainContent} tabIndex={-1}>
             <RoutedApp />
           </main>
           <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />

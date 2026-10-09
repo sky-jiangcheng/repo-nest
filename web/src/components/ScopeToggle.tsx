@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import s from './ScopeToggle.module.css'
 
 export type Scope = 'week' | 'month' | 'all'
 
@@ -12,7 +13,7 @@ const OPTIONS: Scope[] = ['week', 'month', 'all']
 export default function ScopeToggle({ scope, onChange }: Props) {
   const { t } = useTranslation()
   return (
-    <div className="range-toggle" role="group" aria-label={t('project.scope')}>
+    <div className={`${s.rangeToggle}`} role="group" aria-label={t('project.scope')}>
       {OPTIONS.map((opt) => (
         <button
           key={opt}

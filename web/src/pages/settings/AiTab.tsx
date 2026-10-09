@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { listAIModels, rebuildEmbeddings, testAIChat, updateConfig } from '../../api/client'
 
+// 预留钩子类：`ai-url-row` —— 目前全站没有对应样式定义（P35 复核确认），
+// 保留在 markup 里作为将来挂样式的锚点，删留都不影响行为。
+
 interface Props {
   /** Flat key/value config record (data.config from GetConfig). */
   config: Record<string, string>

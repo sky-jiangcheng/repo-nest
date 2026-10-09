@@ -103,13 +103,13 @@ export default function PluginsTab({ initialAutoImport, initialClaudeCapture, in
           <label id="settings-auto-import-label">{t('settings.autoImportLabel')}</label>
           <div className="toggle-row">
             <button
-              className={`toggle ${autoImport ? 'toggle-on' : ''}`}
+              className={`${css.toggle} ${autoImport ? css.toggleOn : ''}`}
               onClick={() => handleAutoImportToggle(!autoImport)}
               disabled={saving}
               aria-pressed={autoImport}
               aria-labelledby="settings-auto-import-label"
             >
-              <span className="toggle-knob" />
+              <span className={css.toggleKnob} />
             </button>
             <span className="form-hint" style={{ marginTop: 0 }}>
               {autoImport ? t('settings.autoImportOnHint') : t('settings.autoImportOffHint')}
@@ -174,13 +174,13 @@ export default function PluginsTab({ initialAutoImport, initialClaudeCapture, in
           <label id="settings-claude-capture-label">{t('settings.claudeCapLabel')}</label>
           <div className="toggle-row">
             <button
-              className={`toggle ${claudeCapture ? 'toggle-on' : ''}`}
+              className={`${css.toggle} ${claudeCapture ? css.toggleOn : ''}`}
               onClick={() => handleClaudeCaptureToggle(!claudeCapture)}
               disabled={saving}
               aria-pressed={claudeCapture}
               aria-labelledby="settings-claude-capture-label"
             >
-              <span className="toggle-knob" />
+              <span className={css.toggleKnob} />
             </button>
             <span className="form-hint" style={{ marginTop: 0 }}>
               {claudeCapture ? t('settings.claudeCapOnHint') : t('settings.claudeCapOffHint')}

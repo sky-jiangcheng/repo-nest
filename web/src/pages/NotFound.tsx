@@ -5,18 +5,19 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Icon from '../components/Icon'
+import s from './NotFound.module.css'
 
 function NotFound() {
   const { t } = useTranslation()
   const { pathname } = useLocation()
 
   return (
-    <div className="notfound">
-      <div className="notfound-code" aria-hidden="true">404</div>
+    <div className={`${s.notfound}`}>
+      <div className={`${s.notfoundCode}`} aria-hidden="true">404</div>
       <h1>{t('notFound.title')}</h1>
-      <p className="notfound-desc">{t('notFound.desc')}</p>
-      <code className="notfound-path">{pathname}</code>
-      <div className="notfound-actions">
+      <p className={`${s.notfoundDesc}`}>{t('notFound.desc')}</p>
+      <code className={`${s.notfoundPath}`}>{pathname}</code>
+      <div className={`${s.notfoundActions}`}>
         <Link to="/" className="btn btn-primary">{t('notFound.backHome')}</Link>
         <Link to="/dashboard" className="btn btn-secondary">
           <Icon name="grid" size={14} />

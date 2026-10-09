@@ -5,6 +5,7 @@
 // Auto-dismiss timers are owned solely by the party that pushes a toast
 // (App's pushToast, keyed per toast id) — rendering here is pure.
 import { useTranslation } from 'react-i18next'
+import s from './Toast.module.css'
 
 export interface ToastItem {
   id: string
@@ -24,18 +25,23 @@ function ToastHost({
   onDismiss: (id: string) => void
 }) {
   const { t } = useTranslation()
+  const kindClass: Record<ToastItem['kind'], string> = {
+    success: s.toastSuccess,
+    error: s.toastError,
+    info: s.toastInfo,
+  }
 
   return (
-    <div className="toast-host" role="status" aria-live="polite">
+    <div className={s.toastHost} role="status" aria-live="polite">
       {toasts.map((toast) => (
-        <div key={toast.id} className={`toast toast-${toast.kind}`}>
-          <div className="toast-body">
-            <div className="toast-title">{toast.title}</div>
-            {toast.message && <div className="toast-message">{toast.message}</div>}
+        <div key={toast.id} className={`${s.toast} ${kindClass[toast.kind]}`}>
+          <div className={s.toastBody}>
+            <div className={s.toastTitle}>{toast.title}</div>
+            {toast.message && <div className={s.toastMessage}>{toast.message}</div>}
             {toast.actionLabel && (
               <button
                 type="button"
-                className="toast-action"
+                className={s.toastAction}
                 onClick={async () => {
                   try { await toast.onAction?.() } finally { onDismiss(toast.id) }
                 }}
@@ -44,7 +50,7 @@ function ToastHost({
               </button>
             )}
           </div>
-          <button className="toast-close" onClick={() => onDismiss(toast.id)} aria-label={t('common.close')}>
+          <button className={s.toastClose} onClick={() => onDismiss(toast.id)} aria-label={t('common.close')}>
             ×
           </button>
         </div>

@@ -1,0 +1,33 @@
+/* NoteFilterBar 独占样式（P35 第八轮，从 components/tabs.css 下沉）。
+   边界判据：这些类全站只被 NoteFilterBar.tsx 引用；跨组件的 .btn / .filter-btn 仍留全局，
+   因此这里用 :global() 引用它们。
+*/
+
+
+
+.noteFilters  {
+display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+
+
+.noteFilters :global(.filter-btn)  {
+padding: 3px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+
+
+.noteFilters :global(.filter-btn):global(.active)  {
+background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}

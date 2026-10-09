@@ -77,8 +77,8 @@ function Dashboard() {
               </select>
             </div>
             {confirmScan ? (
-              <div className="confirm-group">
-                <span className="confirm-text">{t('dashboard.confirmRescan')}</span>
+              <div className={`${s.confirmGroup}`}>
+                <span className={`${s.confirmText}`}>{t('dashboard.confirmRescan')}</span>
                 <button className="btn btn-primary btn-sm" onClick={handleScan} disabled={scanning}>{t('common.confirm')}</button>
                 <button className="btn btn-sm" onClick={() => setConfirmScan(false)}>{t('common.cancel')}</button>
               </div>
@@ -99,7 +99,7 @@ function Dashboard() {
         {loading ? (
           <div className={s.projectGrid}>
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className={`${s.skeletonCard} skeleton-card`}>
+              <div key={i} className={s.skeletonCard}>
                 <div className={s.skeletonHeader}>
                   <div className="skeleton skeleton-text" style={{ width: '60%', height: 20 }} />
                 </div>

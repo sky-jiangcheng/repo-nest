@@ -6,26 +6,16 @@
 @import './design-system/typography.css';
 
 /* Components */
-@import './design-system/components/buttons.css';
-@import './design-system/components/inputs.css';
-@import './design-system/components/cards.css';
-@import './design-system/components/toast.css';
-@import './design-system/components/messages.css';
-@import './design-system/components/command-palette.css';
-@import './design-system/components/tabs.css';
-@import './design-system/components/search.css';
+@import './design-system/shared.css';
 
 /* Layouts */
-@import './design-system/layouts/navbar.css';
 @import './design-system/layouts/main.css';
 
 /* Features / pages */
 @import './design-system/features/dashboard.css';
 @import './design-system/features/project-detail.css';
 @import './design-system/features/knowledge.css';
-@import './design-system/features/notes.css';
 @import './design-system/features/markdown.css';
-@import './design-system/features/todos.css';
 @import './design-system/features/settings.css';
 @import './design-system/features/fab.css';
 

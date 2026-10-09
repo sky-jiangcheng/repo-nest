@@ -54,3 +54,39 @@
   color: var(--text-tertiary);
   overflow-wrap: anywhere;
 }
+
+/* ---- 从 components/inputs.css 下沉（P35 第六轮）----
+   开关三件套只被本组件引用；`.toggle-row` 因为 main.css 里有
+   `.settings-group > .toggle-row` 这条跨文件后代规则，本轮暂留全局。 */
+.toggle {
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-tertiary);
+  position: relative;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.toggle .toggleKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+
+.toggle.toggleOn {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.toggle.toggleOn .toggleKnob {
+  transform: translateX(18px);
+  background: #fff;
+}

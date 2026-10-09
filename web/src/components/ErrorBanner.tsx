@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import s from './ErrorBanner.module.css'
 
 // ErrorBanner is the single rendering path for recoverable page-level errors.
 // Every page that catches a failed fetch shows the same banner (message + an
@@ -14,7 +15,7 @@ function ErrorBanner({
 }) {
   const { t } = useTranslation()
   return (
-    <div className="error-banner" role="alert">
+    <div className={`${s.errorBanner}`} role="alert">
       <span>{message}</span>
       {onRetry && (
         <button className="btn btn-sm" onClick={onRetry}>{t('common.retry')}</button>

@@ -1,0 +1,18 @@
+/* ScopeToggle 独占样式（P35 第八轮，从 components/tabs.css 下沉）。
+   边界判据：这些类全站只被 ScopeToggle.tsx 引用；跨组件的 .btn / .filter-btn 仍留全局，
+   因此这里用 :global() 引用它们。
+*/
+
+
+
+.rangeToggle  {
+display: flex;
+  gap: 4px;
+}
+
+
+
+.rangeToggle :global(.btn)  {
+padding: 5px 12px;
+  font-size: 12px;
+}

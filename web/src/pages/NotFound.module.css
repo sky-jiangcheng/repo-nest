@@ -1,0 +1,95 @@
+/* NotFound 独占样式（P35 第七轮，从 components/messages.css 下沉）。
+   边界判据：这些类全站只被 NotFound.tsx 引用；跨组件的 .btn / .message-banner 仍留全局。
+*/
+
+
+
+/* --- 404 (unmatched route) --- */
+.notfound  {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  /* Fill the viewport minus the navbar so the block sits optically centred
+     instead of hugging the top of a mostly empty page. */
+  min-height: calc(100vh - 60px - 64px);
+  padding: 32px 24px 64px;
+}
+
+
+
+/* Oversized numeral as a quiet watermark: it identifies the page without
+   shouting, and stays out of the way of the actionable content below. */
+.notfoundCode  {
+  font-family: var(--font-mono);
+  font-size: 76px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--text-muted);
+  opacity: 0.35;
+  margin-bottom: 4px;
+}
+
+
+
+.notfound h1  {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+
+
+.notfoundDesc  {
+  margin: 0;
+  max-width: 420px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+
+
+.notfoundPath  {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  /* Long URLs must wrap rather than push the layout wider than the viewport. */
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+
+
+.notfoundActions  {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+
+
+.notfoundActions :global(.btn) svg  {
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .notfound {
+  min-height: auto;
+    padding: 48px 20px;
+  }
+  .notfoundCode {
+  font-size: 56px;
+  }
+}

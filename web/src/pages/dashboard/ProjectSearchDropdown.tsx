@@ -5,6 +5,7 @@ import { searchAll, searchProjects, type Project, type SearchHit } from '../../a
 import { useDebouncedCallback } from '../../hooks/useDebouncedCallback'
 import DOMPurify from 'dompurify'
 import Icon from '../../components/Icon'
+import s from './ProjectSearchDropdown.module.css'
 
 interface Props {
   /** Toggles the star server-side and resolves to the new starred state. */
@@ -75,28 +76,28 @@ export default function ProjectSearchDropdown({ onToggleStar }: Props) {
   }
 
   return (
-    <div className="search-box" ref={boxRef} role="search" aria-label={t('dashboard.searchAria')}>
+    <div className={s.searchBox} ref={boxRef} role="search" aria-label={t('dashboard.searchAria')}>
       <input
         type="text"
         value={query}
         onChange={e => onChange(e.target.value)}
         placeholder={t('dashboard.searchPlaceholder')}
         aria-label={t('dashboard.searchAria')}
-        className="form-input search-input"
+        className={`form-input search-input ${s.searchInput}`}
       />
       {noteHits !== null && (
-        <div className="search-dropdown">
+        <div className={s.searchDropdown}>
           {searching ? (
-            <div className="search-loading">{t('dashboard.searching')}</div>
+            <div className={s.searchLoading}>{t('dashboard.searching')}</div>
           ) : noteHits.length === 0 && (!projectHits || projectHits.length === 0) ? (
-            <div className="search-empty">{t('dashboard.noMatches')}</div>
+            <div className={s.searchEmpty}>{t('dashboard.noMatches')}</div>
           ) : (
             <>
               {projectHits && projectHits.length > 0 && (
-                <div className="search-group">
-                  <div className="search-group-header">{t('dashboard.groupRepos')}</div>
+                <div className={s.searchGroup}>
+                  <div className={s.searchGroupHeader}>{t('dashboard.groupRepos')}</div>
                   {projectHits.map(p => (
-                    <div key={`project-${p.id}`} className="search-result-item search-result-project-item">
+                    <div key={`project-${p.id}`} className={`${s.searchResultItem} ${s.searchResultProjectItem}`}>
                       <button
                         className={`card-star ${p.is_starred ? 'starred' : ''}`}
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); void handleToggleStar(p.id) }}
@@ -104,7 +105,7 @@ export default function ProjectSearchDropdown({ onToggleStar }: Props) {
                       >
                         <Icon name="star" size={14} filled={p.is_starred} />
                       </button>
-                      <Link to={`/project/${p.id}`} className="search-project-name">
+                      <Link to={`/project/${p.id}`} className={s.searchProjectName}>
                         {p.name}
                       </Link>
                     </div>
@@ -112,16 +113,16 @@ export default function ProjectSearchDropdown({ onToggleStar }: Props) {
                 </div>
               )}
               {noteHits.length > 0 && (
-                <div className="search-group">
-                  <div className="search-group-header">{t('dashboard.groupNotesTodos')}</div>
+                <div className={s.searchGroup}>
+                  <div className={s.searchGroupHeader}>{t('dashboard.groupNotesTodos')}</div>
                   {noteHits.map(h => (
-                    <Link key={`${h.type}-${h.id}`} to={`/project/${h.project_id}`} className="search-result-item">
-                      <div className="search-result-header">
-                        <span className={`hit-type-mini hit-type-${h.type}`}>{h.type === 'note' ? t('dashboard.noteType') : t('summaryBar.todos')}</span>
-                        <span className="search-result-project">{h.project_name}</span>
+                    <Link key={`${h.type}-${h.id}`} to={`/project/${h.project_id}`} className={s.searchResultItem}>
+                      <div className={s.searchResultHeader}>
+                        <span className={`${s.hitTypeMini} hit-type-${h.type}`}>{h.type === 'note' ? t('dashboard.noteType') : t('summaryBar.todos')}</span>
+                        <span className={s.searchResultProject}>{h.project_name}</span>
                       </div>
-                      <div className="search-result-title">{h.title}</div>
-                      <div className="search-result-preview" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(h.snippet) }} />
+                      <div className={s.searchResultTitle}>{h.title}</div>
+                      <div className={s.searchResultPreview} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(h.snippet) }} />
                     </Link>
                   ))}
                 </div>

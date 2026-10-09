@@ -178,3 +178,12 @@
   letter-spacing: -0.01em;
   margin-top: 1px;
 }
+
+/* ---- 从 features/project-detail.css 下沉（P35 第六轮）---- */
+.heatmapEmptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 24px;
+}

@@ -11,6 +11,10 @@ import AppearanceTab from './settings/AppearanceTab'
 import PluginsTab from './settings/PluginsTab'
 import ActionsTab from './settings/ActionsTab'
 import ErrorBanner from '../components/ErrorBanner'
+import s from './Settings.module.css'
+
+// 预留钩子类：`settings` —— 目前全站没有对应样式定义（P35 复核确认），
+// 保留在 markup 里作为将来挂样式的锚点，删留都不影响行为。
 
 type TabKey = 'scan' | 'standards' | 'authors' | 'appearance' | 'plugins' | 'ai' | 'actions'
 const TAB_KEYS: TabKey[] = ['scan', 'standards', 'authors', 'appearance', 'plugins', 'ai', 'actions']
@@ -93,7 +97,7 @@ function Settings() {
 
       {/* Tabs are a real tablist: arrow-key roving focus + aria wiring, so the
           section switch is navigable without a pointer. */}
-      <div className="settings-tabs" role="tablist" aria-label={t('settings.title')}>
+      <div className={`${s.settingsTabs}`} role="tablist" aria-label={t('settings.title')}>
         {TAB_KEYS.map((key) => (
           <button
             key={key}

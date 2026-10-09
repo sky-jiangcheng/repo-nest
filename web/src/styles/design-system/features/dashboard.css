@@ -44,39 +44,3 @@
   color: var(--warning);
 }
 
-.card-refresh-btn {
-  position: absolute;
-  top: 10px;
-  right: 36px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  color: var(--text-muted);
-  transition: color var(--transition-fast), transform var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  z-index: 2;
-}
-
-.card-refresh-btn:hover:not(:disabled) {
-  color: var(--accent);
-  background: var(--accent-soft);
-  transform: scale(1.1);
-}
-
-.card-refresh-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}

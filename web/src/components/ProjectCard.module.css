@@ -3,7 +3,7 @@
    Migrated from global dashboard.css (Sprint 14, TODO P35).
    Only classes exclusively used in ProjectCard.tsx live here.
    Shared classes stay global on purpose:
-   - .card-star / .card-refresh-btn  → also used by ProjectSearchDropdown
+   - .card-star                      → also used by ProjectSearchDropdown（保留全局）
    - .green / .red / .muted-num      → semantic ink shared with Dashboard
    - .badge / .badge-goal / …        → design-system badge set (cards.css),
      also used by NoteSection
@@ -78,7 +78,7 @@
   margin-right: 2px;
 }
 
-.shell :global(.card-refresh-btn) {
+.shell .cardRefreshBtn {
   position: static;
   flex-shrink: 0;
   margin-left: 2px;
@@ -153,4 +153,55 @@
   gap: 6px;
   align-items: center;
   flex-shrink: 0;
+}
+
+/* ---- 从 components/cards.css、features/dashboard.css 下沉（P35 第六轮）----
+   badge 变体：`.badge` 基类与 NoteSection 共用、留在全局，所以这里用 doubled 选择器
+   盖过基类的 border-radius / padding / font-size（理由见第四轮说明第三节）。
+   `.badge-warning` 只声明 background/color，与基类无同属性冲突，故不需要 doubled。
+   `.card-refresh-btn` 原先 TSX 注释称它与 ProjectSearchDropdown 共用，实际全站只有本
+   组件引用（已核对），一并下沉；`@keyframes spin` 只被 `.spin` 引用，随之下沉。 */
+.badgeGoal.badgeGoal { background: var(--accent-soft); color: var(--text-primary); border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 600; }
+
+.badgeNote.badgeNote { background: var(--accent-soft); color: var(--accent); border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 600; }
+
+.badgeTodo.badgeTodo { background: var(--warning-soft); color: var(--warning); border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 600; }
+
+.badgeWarning { background: var(--warning-soft); color: var(--warning); }
+
+.cardRefreshBtn {
+  position: absolute;
+  top: 10px;
+  right: 36px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--text-muted);
+  transition: color var(--transition-fast), transform var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  z-index: 2;
+}
+
+.cardRefreshBtn:hover:not(:disabled) {
+  color: var(--accent);
+  background: var(--accent-soft);
+  transform: scale(1.1);
+}
+
+.cardRefreshBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

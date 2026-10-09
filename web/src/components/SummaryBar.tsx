@@ -11,7 +11,7 @@ function SkeletonItem() {
   return (
     <div className={s.item}>
       <div className="skeleton skeleton-text" style={{width: 48}} />
-      <div className="skeleton skeleton-value" style={{width: 36}} />
+      <div className={`skeleton ${s.skeletonValue}`} style={{width: 36}} />
     </div>
   )
 }

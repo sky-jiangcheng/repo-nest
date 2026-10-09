@@ -270,8 +270,8 @@ function NoteCard({
       <div className={s.titleRow}>
         <span className={s.titleText}>{note.title || note.content.split('\n')[0] || t('project.noteWord')}</span>
         <div className={s.titleBadges}>
-          {note.kind === 'knowledge' && <span className="badge-note-sm">{t('project.kinds.knowledge')}</span>}
-          {note.source === 'claude' && <span className="badge-note-sm badge-source">Claude</span>}
+          {note.kind === 'knowledge' && <span className={s.badgeNoteSm}>{t('project.kinds.knowledge')}</span>}
+          {note.source === 'claude' && <span className={`${s.badgeNoteSm} ${s.badgeSource}`}>Claude</span>}
           <button
             className={`pin-btn ${note.pinned ? 'pinned' : ''}`}
             onClick={() => onPin(note)}

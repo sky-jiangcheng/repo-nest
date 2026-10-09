@@ -91,3 +91,11 @@
   background: var(--bg-tertiary);
   color: var(--text-tertiary);
 }
+
+/* ---- 从 components/cards.css 下沉（P35 第六轮）----
+   顺序与 cards.css 保持一致：`.badge-note-sm` 在 `.badge-source` 之后，于是同一个
+   Claude 徽章上 badge-note-sm 的 background 仍然后定义者胜出 —— 这是迁移前的既有
+   行为，本轮原样保留（若想让它显示成 info 蓝，把两条顺序对调即可）。 */
+.badgeSource { background: var(--info-soft); color: var(--info); }
+
+.badgeNoteSm { background: var(--accent-soft); color: var(--accent); border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 500; }

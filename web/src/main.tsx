@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App'
 import './styles/index.css'
+import App from './App'
 import './i18n'
 
 // 全局错误边界 - 捕获所有渲染错误

@@ -142,3 +142,11 @@
     align-items: start;
   }
 }
+
+/* ---- 从 features/project-detail.css 下沉（P35 第六轮）---- */
+.emptySection {
+  padding: 24px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}

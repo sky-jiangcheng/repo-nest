@@ -151,7 +151,7 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onSc
       days.some(d => d.date >= mk(n) && d.date <= todayStr && (d.lines_added || 0) + (d.lines_deleted || 0) > 0)
     const canWiden = onScopeChange && scope !== 'all' && activeSince(364)
     return (
-      <div className={`${s.simple} heatmap-empty-state`}>
+      <div className={`${s.simple} ${s.heatmapEmptyState}`}>
         <div className={s.emptyBody}>
           <p className="empty-hint">{t('heatmap.noActivityInRange')}</p>
           {canWiden && (

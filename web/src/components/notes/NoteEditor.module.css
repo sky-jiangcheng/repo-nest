@@ -1,0 +1,105 @@
+/* NoteEditor styles (P35: component-owned CSS).
+
+   边界判据：
+   - `.note-title-input` / `.note-tags-input` / `.note-textarea` 与
+     components/inputs.css 的共享输入族同名（基础态 / :hover / :focus / ::placeholder 都在那边），
+     所以 markup 里保留全局类名，本文件只用 module 类叠加组件自有规则（尺寸、字体、resize、间距），
+     不动共享基元。
+   - `.note-kind-select` 只被本组件引用，完整下沉；`form-input` 基元仍来自全局。
+   - 预览区的 `.markdown-body` 是全局共享类，不在本文件内。
+   - 原 features/notes.css 的 `.note-editor` 全站零引用（含模板串拼接），删而不迁。 */
+
+.noteEditorBlock {
+  margin-bottom: 14px;
+}
+
+.noteMetaRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.noteTitleInput {
+  flex: 1;
+  min-width: 120px;
+  font-weight: 500;
+}
+
+.noteKindSelect {
+  width: auto;
+  max-width: 100px;
+}
+
+.noteTagsInput.noteTagsInput {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+/* doubled 选择器：产物里设计系统 CSS（index chunk）排在路由 chunk 之后，同特异性下共享族
+   基态反而赢——`.note-textarea` 的等宽字体与 12px 字号会被 inputs.css 吃掉（已用真实浏览器
+   量 computed style 确认）。连写两次把特异性提到 (0,2,0)，与加载顺序无关。
+   `.note-title-input`（flex/min-width/font-weight）与 `.note-kind-select`（width/max-width）
+   与基态没有同属性冲突，因此不需要 doubled。 */
+.noteTextarea.noteTextarea {
+  width: 100%;
+  max-width: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  resize: vertical;
+  margin-bottom: 8px;
+  min-height: 80px;
+}
+
+.noteEditorActions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.noteEditorSplit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 640px) {
+  .noteEditorSplit {
+    grid-template-columns: 1fr;
+  }
+}
+
+.noteEditorSplit .noteTextarea {
+  margin-bottom: 0;
+}
+
+.noteEditorSplit .notePreview {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.notePreview {
+  padding: 14px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.draftHint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.notePinToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}

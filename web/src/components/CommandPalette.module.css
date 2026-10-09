@@ -1,8 +1,17 @@
-/* ============================================
-   Command palette (Cmd/Ctrl+K)
-   ============================================ */
-
-.cmdk-overlay {
+/* Command palette (Cmd/Ctrl+K) — 组件独占样式。
+   边界判据：
+   - 16 个类只被 CommandPalette.tsx 引用；`cmdk-type-${h.type}` 动态拼接出来的
+     cmdk-type-note / cmdk-type-todo 会被静态审计误报成零引用，实为活类，本轮改成
+     按 h.type 取类，不再拼字符串。
+   - `.cmdk-input` 同时是 inputs.css 共享族成员：它只出现在族的基础组里（:hover /
+     :focus / ::placeholder 三组并没有它，所以这个输入框本来就没有共享强调环——已实测
+     确认）。markup 因此保留全局类名，基础组里 module 没重写的声明（transition、
+     max-width 等）继续生效；module 只叠加组件自有规则，并用 doubled 选择器保证在
+     产物级联顺序（设计系统 CSS 排在路由 chunk 之后）下仍然生效 —— 理由见 P35 第四轮
+     说明第三节。
+   - `visually-hidden` 是全局 a11y 工具类，未纳入。
+*/
+.cmdkOverlay {
   position: fixed;
   inset: 0;
   background: var(--overlay);
@@ -23,7 +32,7 @@
   overflow: hidden;
 }
 
-.cmdk-input {
+.cmdkInput.cmdkInput {
   width: 100%;
   border: none;
   border-bottom: 1px solid var(--border-subtle);
@@ -36,20 +45,20 @@
   outline: none;
 }
 
-.cmdk-results {
+.cmdkResults {
   max-height: 50vh;
   overflow-y: auto;
   padding: 6px 0;
 }
 
-.cmdk-empty {
+.cmdkEmpty {
   padding: 24px;
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
 }
 
-.cmdk-group {
+.cmdkGroup {
   padding: 8px 16px 4px;
   font-size: 11px;
   font-weight: 600;
@@ -58,7 +67,7 @@
   letter-spacing: 0.05em;
 }
 
-.cmdk-item {
+.cmdkItem {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -68,11 +77,11 @@
   transition: background var(--transition-fast);
 }
 
-.cmdk-item-active {
+.cmdkItemActive {
   background: var(--bg-tertiary);
 }
 
-.cmdk-type {
+.cmdkType {
   width: 22px;
   height: 22px;
   display: inline-flex;
@@ -86,16 +95,16 @@
   color: var(--text-secondary);
 }
 
-.cmdk-type-note { background: var(--accent-soft); color: var(--accent); }
-.cmdk-type-todo { background: var(--warning-soft); color: var(--warning); }
-.cmdk-type-project { background: var(--info-soft); color: var(--info); }
+.cmdkTypeNote { background: var(--accent-soft); color: var(--accent); }
+.cmdkTypeTodo { background: var(--warning-soft); color: var(--warning); }
+.cmdkTypeProject { background: var(--info-soft); color: var(--info); }
 
-.cmdk-item-body {
+.cmdkItemBody {
   min-width: 0;
   flex: 1;
 }
 
-.cmdk-item-title {
+.cmdkItemTitle {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
@@ -104,7 +113,7 @@
   text-overflow: ellipsis;
 }
 
-.cmdk-item-sub {
+.cmdkItemSub {
   font-size: 11px;
   color: var(--text-tertiary);
   white-space: nowrap;
@@ -112,7 +121,7 @@
   text-overflow: ellipsis;
 }
 
-.cmdk-foot {
+.cmdkFoot {
   display: flex;
   gap: 16px;
   padding: 8px 16px;

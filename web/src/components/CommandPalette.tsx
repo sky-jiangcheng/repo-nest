@@ -4,6 +4,7 @@ import { getProjects, searchAll, SearchHit } from '../api/client'
 import { useTranslation } from 'react-i18next'
 import DOMPurify from 'dompurify'
 import { useApiData } from '../hooks/useApiData'
+import s from './CommandPalette.module.css'
 
 interface Props {
   open: boolean
@@ -105,9 +106,9 @@ export default function CommandPalette({ open, onClose }: Props) {
   if (!open) return null
 
   return (
-    <div className="cmdk-overlay" onClick={onClose} tabIndex={-1}>
+    <div className={s.cmdkOverlay} onClick={onClose} tabIndex={-1}>
       <div
-        className="cmdk"
+        className={s.cmdk}
         role="dialog"
         aria-modal="true"
         aria-label={t('commandPalette.title')}
@@ -126,29 +127,29 @@ export default function CommandPalette({ open, onClose }: Props) {
           onChange={e => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t('commandPalette.placeholder')}
-          className="cmdk-input"
+          className={`cmdk-input ${s.cmdkInput}`}
         />
-        <div className="cmdk-results" id="cmdk-results" role="listbox" aria-label={t('commandPalette.groupNotes')}>
+        <div className={s.cmdkResults} id="cmdk-results" role="listbox" aria-label={t('commandPalette.groupNotes')}>
           {hits.length === 0 && filteredProjects.length === 0 && (
-            <div className="cmdk-empty">{query.trim() ? t('commandPalette.noResults', { defaultValue: 'No results' }) : t('commandPalette.startSearch', { defaultValue: 'Start searching' })}</div>
+            <div className={s.cmdkEmpty}>{query.trim() ? t('commandPalette.noResults', { defaultValue: 'No results' }) : t('commandPalette.startSearch', { defaultValue: 'Start searching' })}</div>
           )}
-          {hits.length > 0 && <div className="cmdk-group">{t('commandPalette.groupNotes')}</div>}
+          {hits.length > 0 && <div className={s.cmdkGroup}>{t('commandPalette.groupNotes')}</div>}
           {hits.map((h, i) => (
             <Link
               key={`${h.type}-${h.id}`}
               id={`cmdk-opt-${i}`}
               to={`/project/${h.project_id}`}
-              className={`cmdk-item ${activeIndex === i ? 'cmdk-item-active' : ''}`}
+              className={`${s.cmdkItem} ${activeIndex === i ? s.cmdkItemActive : ''}`}
               role="option"
               aria-selected={activeIndex === i}
               tabIndex={-1}
               onMouseEnter={() => setActiveIndex(i)}
               onClick={onClose}
             >
-              <span className={`cmdk-type cmdk-type-${h.type}`}>{h.type === 'note' ? t('commandPalette.noteMark') : t('commandPalette.todoMark')}</span>
-              <div className="cmdk-item-body">
-                <div className="cmdk-item-title">{h.title}</div>
-                <div className="cmdk-item-sub">{h.project_name} · <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(h.snippet.slice(0, 60)) }} /></div>
+              <span className={`${s.cmdkType} ${h.type === 'note' ? s.cmdkTypeNote : s.cmdkTypeTodo}`}>{h.type === 'note' ? t('commandPalette.noteMark') : t('commandPalette.todoMark')}</span>
+              <div className={s.cmdkItemBody}>
+                <div className={s.cmdkItemTitle}>{h.title}</div>
+                <div className={s.cmdkItemSub}>{h.project_name} · <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(h.snippet.slice(0, 60)) }} /></div>
               </div>
             </Link>
           ))}
@@ -159,23 +160,23 @@ export default function CommandPalette({ open, onClose }: Props) {
                 key={p.id}
                 id={`cmdk-opt-${idx}`}
                 to={`/project/${p.id}`}
-                className={`cmdk-item ${activeIndex === idx ? 'cmdk-item-active' : ''}`}
+                className={`${s.cmdkItem} ${activeIndex === idx ? s.cmdkItemActive : ''}`}
                 role="option"
                 aria-selected={activeIndex === idx}
                 tabIndex={-1}
                 onMouseEnter={() => setActiveIndex(idx)}
                 onClick={onClose}
               >
-                <span className="cmdk-type cmdk-type-project">{t('commandPalette.projectMark')}</span>
-                <div className="cmdk-item-body">
-                  <div className="cmdk-item-title">{p.name}</div>
-                  <div className="cmdk-item-sub">{t('commandPalette.reposCount', { count: p.repo_count })}</div>
+                <span className={`${s.cmdkType} ${s.cmdkTypeProject}`}>{t('commandPalette.projectMark')}</span>
+                <div className={s.cmdkItemBody}>
+                  <div className={s.cmdkItemTitle}>{p.name}</div>
+                  <div className={s.cmdkItemSub}>{t('commandPalette.reposCount', { count: p.repo_count })}</div>
                 </div>
               </Link>
             )
           })}
         </div>
-        <div className="cmdk-foot">
+        <div className={s.cmdkFoot}>
           <span>{t('commandPalette.footSelect')}</span><span>{t('commandPalette.footOpen')}</span><span>{t('commandPalette.footClose')}</span>
         </div>
         <div className="visually-hidden" role="status" aria-live="polite">

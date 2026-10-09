@@ -1,0 +1,22 @@
+/* ErrorBanner 独占样式（P35 第七轮，从 components/messages.css 下沉）。
+   边界判据：这些类全站只被 ErrorBanner.tsx 引用；跨组件的 .btn / .message-banner 仍留全局。
+*/
+
+/* ============================================
+   Banners, error/success/info messages
+   ============================================ */
+
+.errorBanner  {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 13px;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-weight: 500;
+}

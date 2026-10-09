@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { renderMarkdownAsync } from '../../utils/markdown'
 import BlockEditor from '../BlockEditor'
+import s from './NoteEditor.module.css'
 
 /** The editable fields of a note draft. */
 export interface NoteDraft {
@@ -57,24 +58,24 @@ export default function NoteEditor({
   }, [value.content, showPreview])
 
   return (
-    <div className="note-editor-block">
-      <div className="note-meta-row">
+    <div className={s.noteEditorBlock}>
+      <div className={s.noteMetaRow}>
         <input
           type="text"
           value={value.title}
           onChange={e => onChange({ ...value, title: e.target.value })}
           placeholder={t('project.titlePlaceholder')}
-          className="form-input note-title-input"
+          className={`form-input note-title-input ${s.noteTitleInput}`}
         />
         <select
           value={value.kind}
           onChange={e => onChange({ ...value, kind: e.target.value })}
-          className="form-input note-kind-select"
+          className={`form-input ${s.noteKindSelect}`}
         >
           {KINDS.map(k => <option key={k.value} value={k.value}>{t(k.key)}</option>)}
         </select>
         {showPinned && (
-          <label className="note-pin-toggle">
+          <label className={s.notePinToggle}>
             <input
               type="checkbox"
               checked={!!value.pinned}
@@ -87,7 +88,7 @@ export default function NoteEditor({
           <select
             value={currentProjectId}
             onChange={e => onMoveProject(Number(e.target.value))}
-            className="form-input note-kind-select"
+            className={`form-input ${s.noteKindSelect}`}
             title={t('project.linkedProject')}
           >
             {projects.map(p => (
@@ -103,9 +104,9 @@ export default function NoteEditor({
         value={value.tags}
         onChange={e => onChange({ ...value, tags: e.target.value })}
         placeholder={t('project.tagsPlaceholder')}
-        className="form-input note-tags-input"
+        className={`form-input note-tags-input ${s.noteTagsInput}`}
       />
-      <div className="note-editor-split">
+      <div className={s.noteEditorSplit}>
         {mode === 'block' ? (
           <BlockEditor value={value.content} onChange={v => onChange({ ...value, content: v })} />
         ) : (
@@ -113,21 +114,21 @@ export default function NoteEditor({
             value={value.content}
             onChange={e => onChange({ ...value, content: e.target.value })}
             placeholder={t('project.contentPlaceholder')}
-            className="form-input note-textarea"
+            className={`form-input note-textarea ${s.noteTextarea}`}
             rows={10}
           />
         )}
         {showPreview && (
-          <div className="note-preview markdown-body">
+          <div className={`${s.notePreview} markdown-body`}>
             {previewHtml
               ? <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
               : value.content
-                ? <span className="draft-hint">{t('project.rendering')}</span>
+                ? <span className={s.draftHint}>{t('project.rendering')}</span>
                 : null}
           </div>
         )}
       </div>
-      <div className="note-editor-actions">
+      <div className={s.noteEditorActions}>
         <button className="btn btn-primary btn-sm" onClick={onSave} disabled={saving || !value.content.trim()}>
           {t('project.save')}
         </button>
@@ -142,7 +143,7 @@ export default function NoteEditor({
           {mode === 'markdown' ? t('project.blockEdit') : t('project.mdEdit')}
         </button>
         <button className="btn btn-sm" onClick={onCancel}>{t('project.cancel')}</button>
-        {value.content && <span className="draft-hint">{t('project.draftSaved')}</span>}
+        {value.content && <span className={s.draftHint}>{t('project.draftSaved')}</span>}
       </div>
     </div>
   )

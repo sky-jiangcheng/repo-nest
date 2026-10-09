@@ -54,3 +54,11 @@
     padding: 20px;
   }
 }
+
+/* ---- 从 reset.css 下沉（P35 第六轮）----
+   元素上仍保留全局 `.skeleton`（骨架基类，跨组件共用），只把 skeleton-value 的尺寸
+   规则收进本组件。 */
+.skeletonValue {
+  height: 24px;
+  width: 40px;
+}

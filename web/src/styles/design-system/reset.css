@@ -31,27 +31,6 @@ body {
 }
 
 /* --- Skip link (a11y) --- */
-.skip-link {
-  position: absolute;
-  left: 8px;
-  top: -40px;
-  z-index: 3000;
-  padding: 8px 14px;
-  background: var(--text-primary);
-  color: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: top var(--transition-fast);
-}
-
-.skip-link:focus {
-  top: 8px;
-  outline: 2px solid var(--accent-light);
-  outline-offset: 2px;
-}
-
 #main-content:focus {
   outline: none;
 }
@@ -128,7 +107,3 @@ select:focus-visible {
   width: 100%;
 }
 
-.skeleton-value {
-  height: 24px;
-  width: 40px;
-}

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { NoteVersion } from '../../api/client'
+import s from './VersionHistoryPanel.module.css'
 
 interface Props {
   versions: NoteVersion[]
@@ -19,14 +20,14 @@ function DiffViewer({ text }: { text: string }) {
   const lines = useMemo(() => text.split('\n'), [text])
 
   return (
-    <div className="diff-panel">
-      <pre className="diff-pre">
+    <div className={s.diffPanel}>
+      <pre className={s.diffPre}>
         {lines.map((line, i) => {
           if (line.startsWith('+')) {
-            return <code key={i} className="diff-line-add">{line}</code>
+            return <code key={i} className={s.diffLineAdd}>{line}</code>
           }
           if (line.startsWith('-')) {
-            return <code key={i} className="diff-line-del">{line}</code>
+            return <code key={i} className={s.diffLineDel}>{line}</code>
           }
           return <code key={i}>{line}</code>
         })}
@@ -40,20 +41,20 @@ export default function VersionHistoryPanel({ versions, restoringId, diffText, o
   const { t } = useTranslation()
 
   return (
-    <div className="version-history-panel">
-      <div className="version-history-header">
+    <div className={s.versionHistoryPanel}>
+      <div className={s.versionHistoryHeader}>
         <h4>{t('project.versionHistory')}</h4>
         <button className="btn btn-sm" onClick={onClose}>{t('common.close')}</button>
       </div>
       {versions.length === 0 ? (
         <p className="empty-hint">{t('project.noVersions')}</p>
       ) : (
-        <div className="version-list">
+        <div className={s.versionList}>
           {versions.map(v => (
-            <div key={v.id} className="version-item">
-              <span className="version-time">{v.created_at}</span>
-              <span className="version-title">{v.title || t('project.untitled')}</span>
-              <div className="version-actions">
+            <div key={v.id} className={s.versionItem}>
+              <span className={s.versionTime}>{v.created_at}</span>
+              <span className={s.versionTitle}>{v.title || t('project.untitled')}</span>
+              <div className={s.versionActions}>
                 <button className="btn btn-sm" onClick={() => onShowDiff(v.id)} title={t('project.viewDiff')}>
                   {t('project.diff')}
                 </button>

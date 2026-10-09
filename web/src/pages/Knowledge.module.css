@@ -304,3 +304,63 @@
     font-size: 13px;
   }
 }
+
+/* --- P35：搜索命中列表（原 components/search.css 的 hit-* 簇）---
+   `.hit-type` 归本页；`.hit-type-note` / `.hit-type-todo` 由 `hit-type-${h.type}` 拼出
+   且与 ProjectSearchDropdown 共用，按跨组件共享判据留在全局 search.css，
+   因此 markup 里是 `${s.hitType} hit-type-${h.type}`。 */
+
+.hitList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hitItem {
+  display: block;
+  padding: 12px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  background: var(--bg-secondary);
+  transition: all var(--transition-fast);
+}
+
+.hitItem:hover {
+  border-color: var(--accent-light);
+  background: var(--bg-hover);
+}
+
+.hitHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.hitType {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.hitProject {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.hitTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.hitSnippet {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}

@@ -4,6 +4,20 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [1.16.2] - 2026-10-09
+
+### 变更
+
+- **P35 全局 CSS 迁移到 CSS Modules（收尾）**：把全局样式里仍由单个组件独占的规则继续下沉到组件自己的 `.module.css`——笔记与搜索（`notes.css` / `search.css`）、命令面板与 toast 与待办（`command-palette.css` / `toast.css` / `todos.css`）、散落在各文件里的 20 个零散类（新建 `App.module.css`）、`navbar.css` 整文件并入、`messages.css` 分发到 Dashboard / ErrorBanner / ErrorBoundary / NotFound 四个新 module、`tabs.css` 的三个单组件类（新建 `Settings.module.css` / `NoteFilterBar.module.css` / `ScopeToggle.module.css`）。跨组件共享的类一律留全局，module 内引用它们时用 `:global()` 包裹。
+- **共享族收口到 `shared.css`**：`buttons.css` / `cards.css` / `inputs.css` / `tabs.css` 四个文件的跨组件共享族，以及 `messages.css` 的 `.message-banner`、`search.css` 的动态类，合并为显式的 `styles/design-system/shared.css`，文件头标明这是设计系统 API。全局样式因此只剩「设计基座 + 共享族 + 工具生成类」三类，原文件删除。
+- **空壳钩子类加注释**：10 个 markup 在用但全站无样式定义的类（`ai-url-row` / `chart-simple` / `commit-log` / `commits-trend` / `knowledge-section` / `large` / `overview-empty` / `status-warn` / `knowledge` / `settings`）在对应组件里标注为预留钩子，保留不动。
+- **导入顺序调整**：`main.tsx` 中 `import './styles/index.css'` 提到 `import App` 之前，dev 模式下的样式注入顺序与设计系统优先级一致。
+
+### 修复
+
+- 清理全站已无引用的死类（`btn-active` / `badge-info` / `meta-pill` / `stat-tag` / `team` / `settings-head` / `page-sub` / `section-header-row`）。
+- 笔记编辑区与搜索框靠 doubled 选择器（`.noteTextarea.noteTextarea` 等）提到 (0,2,0)，修复构建产物中设计系统 CSS 排在最后导致的同特异性覆盖失效。
+
 ## [1.16.1] - 2026-10-09
 
 ### 变更

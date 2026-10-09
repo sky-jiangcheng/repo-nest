@@ -12,6 +12,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { ReactElement } from 'react'
 import i18n from '../i18n' // real i18next instance — otherwise t() returns raw keys
 import NotFound from './NotFound'
+import styles from './NotFound.module.css'
 
 beforeAll(async () => {
   window.matchMedia = window.matchMedia || ((query: string) => ({
@@ -69,7 +70,7 @@ describe('NotFound', () => {
   it('offers a way out instead of a dead end', async () => {
     renderAt('/whatever')
     await screen.findByText('404')
-    const hrefs = [...document.querySelectorAll('.notfound-actions a')].map(a => a.getAttribute('href'))
+    const hrefs = [...document.querySelectorAll(`.${styles.notfoundActions} a`)].map(a => a.getAttribute('href'))
     expect(hrefs).toContain('/')
     expect(hrefs.length).toBeGreaterThanOrEqual(2)
   })

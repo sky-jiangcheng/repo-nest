@@ -5,6 +5,9 @@ import s from './ProjectCommitLog.module.css'
 import { useToast } from '../../hooks/useToast'
 import { getProjectCommits, getRepoCommits, type RepoCommit, type RepoInfo } from '../../api/client'
 
+// 预留钩子类：`commit-log` —— 目前全站没有对应样式定义（P35 复核确认），
+// 保留在 markup 里作为将来挂样式的锚点，删留都不影响行为。
+
 interface Props {
   projectId: number
   repos: RepoInfo[]

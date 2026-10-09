@@ -6,7 +6,7 @@
 # Version is stamped by scripts/update-manifests.sh from wails.json
 # (info.productVersion) — never edit it by hand.
 cask "reponest-mcp" do
-  version "1.16.1"
+  version "1.16.2"
   name "RepoNest MCP Server"
   desc "MCP stdio server exposing the RepoNest local knowledge base to AI agents"
   homepage "https://github.com/sky-jiangcheng/repo-nest"

@@ -3,6 +3,15 @@ import type { ProjectOverview } from '../../api/client'
 import { renderMarkdown } from '../../utils/markdown'
 import s from './ProjectOverviewSection.module.css'
 
+// 预留钩子类：`overview-empty` —— 目前全站没有对应样式定义（P35 复核确认），
+// 保留在 markup 里作为将来挂样式的锚点，删留都不影响行为。
+
+// tech.category 是自由字符串，只有 framework / tool 有专属配色，其余落回 techChip 基态。
+const TECH_CLASS: Record<string, string | undefined> = {
+  framework: s.techFramework,
+  tool: s.techTool,
+}
+
 interface Props {
   overview: ProjectOverview
 }
@@ -44,7 +53,7 @@ export default function ProjectOverviewSection({ overview }: Props) {
       {(overview.tech_stack?.length ?? 0) > 0 && (
         <div className={s.tech}>
           {overview.tech_stack!.map(tech => (
-            <span key={tech.name} className={`tech-chip tech-${tech.category}`}>{tech.name}</span>
+            <span key={tech.name} className={`${s.techChip} ${TECH_CLASS[tech.category] ?? ''}`}>{tech.name}</span>
           ))}
         </div>
       )}

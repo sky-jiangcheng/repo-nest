@@ -1,0 +1,98 @@
+/* VersionHistoryPanel styles (P35: component-owned CSS).
+
+   整簇本组件独占（面板外壳、版本列表与条目、动作、diff 面板），从 features/notes.css
+   原样下沉，选择器结构不变——包括 `.version-history-header h4` 与 `.diff-pre code`
+   两个后代选择器。`.empty-hint`、`.btn` 是全局共享类，不在本文件内。 */
+
+.versionHistoryPanel {
+  margin-top: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  background: var(--bg-secondary);
+}
+
+.versionHistoryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.versionHistoryHeader h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.versionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.versionItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.versionTime {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.versionTitle {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.versionActions {
+  display: flex;
+  gap: 4px;
+}
+
+.diffPanel {
+  margin-top: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.diffPre {
+  margin: 0;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.diffPre code {
+  font-family: inherit;
+}
+
+.diffLineAdd {
+  display: block;
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.diffLineDel {
+  display: block;
+  background: var(--danger-soft);
+  color: var(--danger);
+}

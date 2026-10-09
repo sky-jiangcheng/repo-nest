@@ -1,4 +1,5 @@
 import type { KindFilter } from '../../types/kind'
+import s from './NoteFilterBar.module.css'
 
 interface NoteFilterBarProps {
   filter: KindFilter
@@ -12,7 +13,7 @@ export default function NoteFilterBar({ filter, setFilter, notesCount, t }: Note
   if (notesCount === 0) return null
   const kinds: KindFilter[] = ['all', 'knowledge', 'log', 'idea', 'other']
   return (
-    <div className="note-filters">
+    <div className={`${s.noteFilters}`}>
       {kinds.map(k => (
         <button
           key={k}

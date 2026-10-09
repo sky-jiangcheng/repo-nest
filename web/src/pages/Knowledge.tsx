@@ -8,6 +8,9 @@ import Icon from '../components/Icon'
 import { useKnowledgePage } from '../hooks/useKnowledgePage'
 import s from './Knowledge.module.css'
 
+// 预留钩子类：`knowledge`、`knowledge-section`、`large` —— 目前全站没有对应样式定义（P35 复核确认），
+// 保留在 markup 里作为将来挂样式的锚点，删留都不影响行为。
+
 function KnowledgePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -95,7 +98,7 @@ function KnowledgePage() {
           <div className={s.newNotePickerList}>
             {projectNames.map(([name, id]) => (
               <button key={id} className={s.newNotePickerItem} onClick={() => pickProject(id)}>
-                <span className="hit-project">{name}</span>
+                <span className={s.hitProject}>{name}</span>
               </button>
             ))}
           </div>
@@ -107,24 +110,24 @@ function KnowledgePage() {
       {hits !== null ? (
         <div className="knowledge-section">
           <div className="section-header">
-            <h2>{t('knowledge.searchResults')} ({hits.length}) {askMode && <span className="hit-project">（{t('knowledge.localSearch')}）</span>}</h2>
+            <h2>{t('knowledge.searchResults')} ({hits.length}) {askMode && <span className={s.hitProject}>（{t('knowledge.localSearch')}）</span>}</h2>
           </div>
           {hits.length === 0 ? (
             <p className="empty-hint">{t('knowledge.noResults')}</p>
           ) : (
-            <div className="hit-list">
+            <div className={s.hitList}>
               {hits.map(h => (
                 <Link
                   key={`${h.type}-${h.id}`}
                   to={`/project/${h.project_id}`}
-                  className="hit-item"
+                  className={s.hitItem}
                 >
-                  <div className="hit-head">
-                    <span className={`hit-type hit-type-${h.type}`}>{h.type === 'note' ? t('dashboard.noteType') : t('summaryBar.todos')}</span>
-                    <span className="hit-project">{h.project_name}</span>
+                  <div className={s.hitHead}>
+                    <span className={`${s.hitType} hit-type-${h.type}`}>{h.type === 'note' ? t('dashboard.noteType') : t('summaryBar.todos')}</span>
+                    <span className={s.hitProject}>{h.project_name}</span>
                   </div>
-                  <div className="hit-title">{h.title}</div>
-                  <div className="hit-snippet" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(h.snippet) }} />
+                  <div className={s.hitTitle}>{h.title}</div>
+                  <div className={s.hitSnippet} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(h.snippet) }} />
                 </Link>
               ))}
             </div>

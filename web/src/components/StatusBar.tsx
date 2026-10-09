@@ -4,6 +4,9 @@ import { getStatusBar, type StatusBarData } from '../api/client'
 import { getConnectionKind, subscribeConnection } from '../api/client'
 import s from './StatusBar.module.css'
 
+// 预留钩子类：`status-warn` —— 目前全站没有对应样式定义（P35 复核确认），
+// 保留在 markup 里作为将来挂样式的锚点，删留都不影响行为。
+
 export default function StatusBar() {
   const { t } = useTranslation()
   const [data, setData] = useState<StatusBarData | null>(null)

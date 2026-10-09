@@ -1,12 +1,20 @@
-/* ============================================
-   Search / hits / dropdown
-   ============================================ */
+/* ProjectSearchDropdown styles (P35: component-owned CSS).
 
-.search-box {
+   边界判据：
+   - `.search-*` 全族与 `.hit-type-mini` 只被本组件引用，从 components/search.css 整体下沉。
+   - 类型徽章配色 `.hit-type-note` / `.hit-type-todo` 同时被 Knowledge 使用（两边都由
+     `hit-type-${h.type}` 动态拼出），按跨组件共享判据留在全局 search.css，这里用
+     `.hitTypeMini:global(.hit-type-note)` 复合，hash 之后仍能命中。
+   - `form-input`（基元）、`card-star` / `starred`（与 ProjectCard 共享）保持全局。 */
+
+.searchBox {
   position: relative;
 }
 
-.search-input {
+/* doubled 选择器：`.search-input` 是 inputs.css 共享族成员，产物里基态排在后面，会把 32px
+   左内边距与 `transition: all 0.15s` 覆盖掉（浏览器实测 padding-left 落回 14px、transition
+   只剩 border-color/box-shadow）。连写两次提到 (0,2,0)。 */
+.searchInput.searchInput {
   width: 200px;
   padding: 7px 12px 7px 32px;
   border: 1px solid var(--border-default);
@@ -17,14 +25,14 @@
   transition: all 0.15s;
 }
 
-.search-input:focus {
+.searchInput:focus {
   outline: none;
   border-color: var(--accent-light);
   box-shadow: 0 0 0 2px var(--accent-soft);
   width: 260px;
 }
 
-.search-dropdown {
+.searchDropdown {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -39,15 +47,15 @@
   overflow-y: auto;
 }
 
-.search-loading,
-.search-empty {
+.searchLoading,
+.searchEmpty {
   padding: 16px;
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
 }
 
-.search-result-item {
+.searchResultItem {
   display: block;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-subtle);
@@ -55,47 +63,47 @@
   transition: background 0.1s;
 }
 
-.search-result-item:last-child {
+.searchResultItem:last-child {
   border-bottom: none;
 }
 
-.search-result-item:hover {
+.searchResultItem:hover {
   background: var(--bg-tertiary);
 }
 
-.search-result-header {
+.searchResultHeader {
   margin-bottom: 4px;
 }
 
-.search-result-project {
+.searchResultProject {
   font-size: 11px;
   color: var(--accent);
   font-weight: 500;
 }
 
-.search-result-preview {
+.searchResultPreview {
   font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.4;
   white-space: pre-wrap;
 }
 
-.search-result-title {
+.searchResultTitle {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 2px;
 }
 
-.search-group {
+.searchGroup {
   border-top: 1px solid var(--border-subtle);
 }
 
-.search-group:first-child {
+.searchGroup:first-child {
   border-top: none;
 }
 
-.search-group-header {
+.searchGroupHeader {
   padding: 8px 14px;
   font-size: 11px;
   font-weight: 600;
@@ -104,13 +112,13 @@
   letter-spacing: 0.05em;
 }
 
-.search-result-project-item {
+.searchResultProjectItem {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.search-project-name {
+.searchProjectName {
   flex: 1;
   font-size: 12px;
   color: var(--text-primary);
@@ -120,47 +128,7 @@
   white-space: nowrap;
 }
 
-.hit-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.hit-item {
-  display: block;
-  padding: 12px 16px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  background: var(--bg-secondary);
-  transition: all var(--transition-fast);
-}
-
-.hit-item:hover {
-  border-color: var(--accent-light);
-  background: var(--bg-hover);
-}
-
-.hit-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.hit-type {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 1px 7px;
-  border-radius: 8px;
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-}
-
-.hit-type-note { background: var(--accent-soft); color: var(--accent); }
-.hit-type-todo { background: var(--warning-soft); color: var(--warning); }
-
-.hit-type-mini {
+.hitTypeMini {
   font-size: 11px;
   font-weight: 600;
   padding: 1px 6px;
@@ -168,23 +136,5 @@
   margin-right: 6px;
 }
 
-.hit-type-mini.hit-type-note { background: var(--accent-soft); color: var(--accent); }
-.hit-type-mini.hit-type-todo { background: var(--warning-soft); color: var(--warning); }
-
-.hit-project {
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-.hit-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 3px;
-}
-
-.hit-snippet {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
+.hitTypeMini:global(.hit-type-note) { background: var(--accent-soft); color: var(--accent); }
+.hitTypeMini:global(.hit-type-todo) { background: var(--warning-soft); color: var(--warning); }

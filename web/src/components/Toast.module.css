@@ -1,8 +1,12 @@
-/* ============================================
-   Toast notifications
-   ============================================ */
-
-.toast-host {
+/* Toast 通知（右上角浮层）— 组件独占样式。
+   边界判据：
+   - 10 个类只被 Toast.tsx 引用；`toast-${toast.kind}` 动态拼接出来的
+     toast-success / toast-error / toast-info 会被静态审计误报成零引用，实为活类，
+     本轮改成 kind → 类的查表，不再拼字符串。
+   - `@keyframes toast-in` 随 module 一起作用域化，同文件内 animation 引用会自动同步。
+   - 该文件原样整文件下沉，未留任何全局类。
+*/
+.toastHost {
   position: fixed;
   top: 16px;
   right: 16px;
@@ -30,25 +34,25 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.toast-success {
+.toastSuccess {
   border-left: 3px solid var(--success);
 }
 
-.toast-error {
+.toastError {
   border-left: 3px solid var(--danger);
 }
 
-.toast-info {
+.toastInfo {
   border-left: 3px solid var(--accent-light);
 }
 
-.toast-title {
+.toastTitle {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.toast-message {
+.toastMessage {
   font-size: 12px;
   color: var(--text-secondary);
   margin-top: 2px;
@@ -57,7 +61,7 @@
   overflow-wrap: anywhere;
 }
 
-.toast-close {
+.toastClose {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -70,17 +74,17 @@
   padding: 2px 4px;
 }
 
-.toast-close:hover {
+.toastClose:hover {
   color: var(--text-primary);
 }
 
-.toast-body {
+.toastBody {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.toast-action {
+.toastAction {
   align-self: flex-start;
   margin-top: 2px;
   padding: 6px 12px;
@@ -94,7 +98,7 @@
   transition: background 0.15s ease;
 }
 
-.toast-action:hover {
+.toastAction:hover {
   background: var(--accent-dark);
   border-color: var(--accent-dark);
 }

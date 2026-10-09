@@ -15,6 +15,9 @@ import {
 import { cssVar } from '../utils/theme'
 import { useTheme } from '../hooks/useTheme'
 
+// 预留钩子类：`chart-simple` —— 目前全站没有对应样式定义（P35 复核确认），
+// 保留在 markup 里作为将来挂样式的锚点，删留都不影响行为。
+
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Title)
 
 export interface TrendDataset {

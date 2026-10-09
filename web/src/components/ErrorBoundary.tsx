@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import Icon from './Icon'
+import s from './ErrorBoundary.module.css'
 
 interface Props {
   children: ReactNode
@@ -50,10 +51,10 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback
       return (
-        <div className="error-boundary-fallback">
-          <div className="error-boundary-icon"><Icon name="warning" size={34} /></div>
+        <div className={`${s.errorBoundaryFallback}`}>
+          <div className={`${s.errorBoundaryIcon}`}><Icon name="warning" size={34} /></div>
           <h2>Something went wrong</h2>
-          <p className="error-boundary-message">{this.state.error?.message}</p>
+          <p className={`${s.errorBoundaryMessage}`}>{this.state.error?.message}</p>
           <button className="btn btn-primary" onClick={this.handleReset}>
             Try again
           </button>

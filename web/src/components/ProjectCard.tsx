@@ -3,9 +3,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from './Icon'
 import type { Project } from '../api/client'
-// Scoped styles for everything ProjectCard owns; .card-star / .card-refresh-btn
-// (shared with ProjectSearchDropdown) and the .badge set (shared with
-// NoteSection) stay global — see the header of ProjectCard.module.css.
+// Scoped styles for everything ProjectCard owns. Only `.card-star` (shared with
+// ProjectSearchDropdown) and the `.badge` base class (shared with NoteSection)
+// stay global — the badge variants, the refresh button and the spin animation
+// live in ProjectCard.module.css; see its header.
 import s from './ProjectCard.module.css'
 
 interface Props {
@@ -100,25 +101,25 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
           </span>
         </span>
         <span className={s.badges}>
-          {reachedGoal && <span className="badge badge-goal" title={t('project.goalReached', { defaultValue: '已达成今日目标' })}>{t('project.goalBadge')}</span>}
+          {reachedGoal && <span className={`badge ${s.badgeGoal}`} title={t('project.goalReached', { defaultValue: '已达成今日目标' })}>{t('project.goalBadge')}</span>}
           {noteCount !== undefined && noteCount > 0 && (
-            <span className="badge badge-note" title={t('project.noteBadgeTitle')}>{noteCount}</span>
+            <span className={`badge ${s.badgeNote}`} title={t('project.noteBadgeTitle')}>{noteCount}</span>
           )}
           {todoCount !== undefined && todoCount > 0 && (
-            <span className="badge badge-todo">{todoCount}</span>
+            <span className={`badge ${s.badgeTodo}`}>{todoCount}</span>
           )}
-          {project.below_standard && <span className="badge badge-warning">{t('project.belowBadge')}</span>}
+          {project.below_standard && <span className={`badge ${s.badgeWarning}`}>{t('project.belowBadge')}</span>}
         </span>
       </Link>
       <button
-        className="card-refresh-btn"
+        className={s.cardRefreshBtn}
         onClick={handleRefreshClick}
         disabled={refreshing}
         title={refreshing ? t('project.refreshingHistory', { defaultValue: 'Refreshing…' }) : t('project.refreshHistory', { defaultValue: 'Refresh history' })}
         aria-label={refreshing ? t('project.refreshingHistory', { defaultValue: 'Refreshing…' }) : t('project.refreshHistory', { defaultValue: 'Refresh history' })}
       >
         {refreshing ? (
-          <Icon name="refresh-partial" size={14} className="spin" />
+          <Icon name="refresh-partial" size={14} className={s.spin} />
         ) : (
           <Icon name="refresh" size={14} />
         )}

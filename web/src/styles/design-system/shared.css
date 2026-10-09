@@ -1,0 +1,559 @@
+/* 设计系统共享族 —— 跨组件复用的类集中在这里（P35 第十轮）。
+
+   边界判据：这里的每个类都被两个及以上组件使用（或由另一个样式文件的后代选择器
+   引用），所以它们不是任何单个组件的私有样式，必须留全局。组件自己的 .module.css
+   要引用它们时，用 :global(.x) 显式声明这层依赖。
+
+   内容按原 index.css 的导入顺序拼接（buttons → cards → inputs → tabs），族规则之间
+   的相对顺序与拆分前完全一致，避免同特异性下的层叠结果发生位移。
+*/
+
+/* ==== 来自 components/buttons.css ==== */
+/* ============================================
+   Buttons
+   ============================================ */
+
+/* Every button is a fixed-height box driven by --control-h, not by whatever
+   line-height the element happens to inherit.
+
+   The reason: `.btn` is applied to both <button> and <a>. A <button> uses the
+   UA's `line-height: normal` while an <a> inherits the body's 1.6 — so the
+   same class rendered 36px on a button and 38.8px on a link. Side by side in
+   an action row they read as the same control at slightly different sizes,
+   which is exactly the "off by a hair" feel. One explicit height + one
+   explicit line-height makes every button identical regardless of tag. */
+.btn {
+  --control-h: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-h);
+  padding: 0 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast);
+  text-decoration: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  /* Buttons must never wrap: a two-line button is taller than its row and
+     knocks the baseline out of alignment with its neighbours. */
+  white-space: nowrap;
+}
+
+
+.btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--text-muted);
+}
+
+
+.btn:active {
+  background: var(--bg-active);
+}
+
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg-secondary);
+  border-color: var(--accent);
+}
+
+
+.btn-primary:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-light);
+}
+
+
+.btn-secondary {
+  background: var(--bg-tertiary);
+  border-color: transparent;
+}
+
+
+.btn-secondary:hover {
+  background: var(--bg-active);
+}
+
+
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--border-default);
+}
+
+
+.btn-danger:hover {
+  background: var(--danger-soft);
+  border-color: transparent;
+}
+
+
+/* The small variant steps down to a 28px control. It is a fixed height for
+   the same reason as .btn — .btn-sm was `padding: 5px 12px` on a 12px font,
+   which lands within a pixel or two of its neighbours' heights depending on
+   the tag. */
+.btn-sm {
+  --control-h: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+}
+
+
+/* Segmented filter chip — the selected state of a range switch (近7天/近30天/全部,
+   昨日/今日). A filled primary button here would put three or more saturated
+   blocks on one page and none of them would read as the primary action; the
+   selected chip is tinted instead, so the eye can find "what range am I
+   looking at" without the page competing with itself. */
+.seg-chip {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+}
+
+
+.seg-chip:hover:not(.seg-chip-active) {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+
+.seg-chip-active,
+.seg-chip-active:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+
+.seg-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+
+.btn-icon {
+  border: none;
+  background: none;
+  cursor: pointer;
+  /* Square hit area, fixed size — these sit in dense rows (level −/+, note
+     actions) where a 24px-tall icon button next to a 28px chip looked
+     accidental. 28px matches .btn-sm, which is its usual neighbour. */
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+
+.btn-icon svg {
+  display: block;
+}
+
+
+.btn-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+
+.btn-icon:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+
+.btn-icon:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ==== 来自 components/inputs.css ==== */
+/* ============================================
+   Inputs, selects, form controls
+   ============================================ */
+
+.form-input,
+.form-select,
+.search-input,
+.note-textarea,
+.note-title-input,
+.note-tags-input,
+.date-input,
+.sort-select,
+.cmdk-input {
+  padding: 9px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  font-family: inherit;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.form-input:hover,
+.search-input:hover,
+.note-textarea:hover,
+.note-title-input:hover,
+.note-tags-input:hover,
+.date-input:hover,
+.sort-select:hover {
+  border-color: var(--text-muted);
+}
+
+.form-input:focus,
+.form-select:focus,
+.search-input:focus,
+.note-textarea:focus,
+.note-title-input:focus,
+.note-tags-input:focus,
+.date-input:focus,
+.sort-select:focus {
+  border-color: var(--accent-light);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.form-input::placeholder,
+.search-input::placeholder,
+.note-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* Native <select> renders an OS-drawn control that clashes with the app's
+   custom buttons (flat, inconsistent height, default arrow). Strip the native
+   chrome and draw a consistent chevron; keep it on the shared input surface. */
+.form-select,
+.sort-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 34px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 12px;
+}
+
+.form-select:hover,
+.sort-select:hover {
+  border-color: var(--text-muted);
+}
+
+.form-select:focus-visible,
+.sort-select:focus-visible {
+  border-color: var(--accent-light);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .sort-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a8a8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+/* Hint text sits at 12px, where WCAG AA requires 4.5:1. --text-tertiary is
+   only 3.5:1 on white and --text-muted 2.3:1, so hints use the secondary
+   ramp instead — legibility over "looks quieter". */
+.form-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+/* Numeric fields have no intrinsic width and collapse to the browser's
+   default (~5ch), which reads as a mistake next to full-width text inputs. */
+input[type="number"].form-input {
+  width: 160px;
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.input-row .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ==== 来自 components/cards.css ==== */
+/* ============================================
+   Cards, panels, badges
+   ============================================ */
+
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+
+.panel-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+}
+
+
+.panel-section h3 {
+  font-size: 15px;
+  margin-bottom: 14px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+
+.empty-state {
+  text-align: center;
+  padding: 48px 28px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+
+.empty-state.small {
+  padding: 32px 20px;
+}
+
+
+/* The icon marks the state; it does not headline it. At 0.3 opacity and 32px
+   it reads as a quiet annotation next to the message instead of competing
+   with the heading for attention. */
+.empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  opacity: 0.28;
+}
+
+
+.empty-state.small .empty-icon {
+  margin-bottom: 10px;
+}
+
+
+.empty-state h3 {
+  font-size: 17px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+
+.empty-state p {
+  color: var(--text-tertiary);
+  margin-bottom: 22px;
+  font-size: 13px;
+  /* Centre-anchored empty states still need a readable measure. Expressed in
+     px, not ch: a Chinese sentence has no inter-word spaces, so a ch-based
+     cap lands mid-phrase and forces a one-word last line. */
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.65;
+}
+
+
+.empty-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+
+.empty-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* ==== 来自 components/tabs.css ==== */
+/* Restores the space the strip's negative margin removed, so the panel below
+   starts at the same offset it did before the strip became sticky. */
+
+
+
+
+.tab-btn {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  font-family: inherit;
+  font-weight: 500;
+  /* Underline the label too, so the active tab is distinguishable without
+     relying on the 2px border alone (which is easy to miss at 1x). */
+  position: relative;
+  white-space: nowrap;
+}
+
+
+
+.tab-btn:first-child {
+  padding-left: 0;
+}
+
+
+
+.tab-btn:hover {
+  color: var(--text-secondary);
+}
+
+
+
+.tab-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--text-primary);
+}
+
+
+
+.tab-active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .tab-btn { padding: 10px 14px;
+    font-size: 13px; }
+}
+
+
+
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+
+
+.filter-btn {
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  /* Chinese labels have no spaces: without this the browser breaks between
+     any two characters and "全部" renders as 全 / 部 on two lines. */
+  white-space: nowrap;
+}
+
+
+
+.filter-btn:hover {
+  color: var(--text-primary);
+}
+
+
+
+.filter-btn.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==== 来自 components/messages.css ==== */
+.message-banner {
+  padding: 12px 16px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 13px;
+  transition: opacity 0.3s;
+  font-weight: 500;
+}
+
+/* ==== 来自 components/search.css ==== */
+/* ============================================
+   Search / hits —— 仅剩跨组件共享的类型徽章配色
+
+   `.hit-type-note` / `.hit-type-todo` 同时被 Knowledge 与 ProjectSearchDropdown 使用
+   （两边都由 `hit-type-${h.type}` 动态拼出），按 P35 跨组件共享判据留在全局；
+   两个组件各自的 `search-*` / `hit-*` 簇已分别下沉到
+   pages/Knowledge.module.css 与 pages/dashboard/ProjectSearchDropdown.module.css
+   （`.hit-type-mini` 及其复合配色也随之下沉）。
+   ============================================ */
+
+.hit-type-note { background: var(--accent-soft); color: var(--accent); }
+.hit-type-todo { background: var(--warning-soft); color: var(--warning); }

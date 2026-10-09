@@ -1,0 +1,48 @@
+/* ErrorBoundary 独占样式（P35 第七轮，从 components/messages.css 下沉）。
+   边界判据：这些类全站只被 ErrorBoundary.tsx 引用；跨组件的 .btn / .message-banner 仍留全局。
+*/
+
+
+
+/* Error boundary fallback */
+.errorBoundaryFallback  {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  padding: 48px 24px;
+  text-align: center;
+  gap: 16px;
+}
+
+
+
+.errorBoundaryIcon  {
+  font-size: 48px;
+  line-height: 1;
+}
+
+
+
+.errorBoundaryFallback h2  {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+
+
+.errorBoundaryMessage  {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 400px;
+}
+
+
+
+.errorBoundaryFallback :global(.btn)  {
+  margin-top: 8px;
+}

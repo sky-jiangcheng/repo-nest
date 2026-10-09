@@ -1,3 +1,51 @@
+/* App 外壳（导航栏容器、主内容区、跳转链接）— 组件独占样式。
+   边界判据：skip-link / main-content 全站只被 App.tsx 引用（main-content 另有一个
+   id 同名，那是 #main-content 锚点，不属样式）。main-content 的 768px 媒体查询一并
+   随之下沉。navbar.css 里的 nav-* / lang-* 仍留全局，下一轮再处理。
+*/
+.skipLink {
+  position: absolute;
+  left: 8px;
+  top: -40px;
+  z-index: 3000;
+  padding: 8px 14px;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.skipLink:focus {
+  top: 8px;
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+}
+
+.mainContent {
+  flex: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px;
+  width: 100%;
+  overflow-y: auto; /* pages without an internal scroller (Settings/Knowledge) must scroll */
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 20px;
+  }
+  .mainContent {
+    padding: 20px;
+  }
+}
+
+/* ==== 从 layouts/navbar.css 整文件并入（P35 第七轮）====
+   导航栏 markup 全在 App.tsx 内，14 个类均为其独占；`.active` 是全站共享状态类
+   （十余个组件在用），故按 :global(.active) 引用；原文件里零引用的 .lang-flag 规则已删。 */
 /* ============================================
    Navbar
    ============================================ */
@@ -16,14 +64,14 @@
   gap: 16px;
 }
 
-.nav-left {
+.navLeft {
   display: flex;
   align-items: center;
   gap: 28px;
   min-width: 0;
 }
 
-.nav-brand {
+.navBrand {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -38,7 +86,7 @@
   flex-shrink: 0;
 }
 
-.nav-brand-mark {
+.navBrandMark {
   display: block;
   /* The tile is a rounded square with its own dark gradient. Without a radius
      here it would be a hard square inside a soft UI, and at 26px the corner
@@ -50,13 +98,13 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
-.nav-links {
+.navLinks {
   display: flex;
   gap: 4px;
   min-width: 0;
 }
 
-.nav-links a {
+.navLinks a {
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 14px;
@@ -70,22 +118,22 @@
   flex-shrink: 0;
 }
 
-.nav-links a:hover {
+.navLinks a:hover {
   color: var(--text-primary);
   background: var(--bg-tertiary);
 }
 
-.nav-links a.active {
+.navLinks a:global(.active) {
   color: var(--text-primary);
   background: var(--bg-tertiary);
   font-weight: 600;
 }
 
-.nav-palette-btn {
+.navPaletteBtn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  /* Matches .nav-lang-btn's 30px so the two right-hand controls share one
+  /* Matches .navLangBtn's 30px so the two right-hand controls share one
      horizontal band — they were 32px and 29px, a 3px step that read as a
      misalignment rather than a choice. */
   height: 30px;
@@ -100,12 +148,12 @@
   font-family: inherit;
 }
 
-.nav-palette-btn:hover {
+.navPaletteBtn:hover {
   border-color: var(--text-muted);
   color: var(--text-primary);
 }
 
-.nav-kbd {
+.navKbd {
   font-family: var(--font-mono);
   font-size: 11px;
   padding: 1px 5px;
@@ -116,7 +164,7 @@
 }
 
 @media (max-width: 640px) {
-  .nav-kbd, .nav-palette-btn span:not(.nav-kbd) { display: none; }
+  .navKbd, .navPaletteBtn span:not(.navKbd) { display: none; }
 
   /* Tighten every horizontal step so brand + 3 links + 2 controls fit a 390px
      viewport without scrolling: wordmark drops its label, link padding halves,
@@ -126,17 +174,17 @@
     gap: 8px;
   }
 
-  .nav-left {
+  .navLeft {
     gap: 12px;
   }
 
   /* Drop only the "RepoNest" word. font-size:0 collapses the gap too, so the
-     mark's own margin has to be re-added — .nav-brand keeps its flex gap. */
-  .nav-brand-name {
+     mark's own margin has to be re-added — .navBrand keeps its flex gap. */
+  .navBrandName {
     display: none;
   }
 
-  .nav-brand-mark {
+  .navBrandMark {
     /* Slightly larger once the wordmark is gone: it is now the only thing
        identifying the app in the bar. */
     width: 28px;
@@ -144,33 +192,33 @@
     border-radius: 7px;
   }
 
-  .nav-links a {
+  .navLinks a {
     padding: 6px 9px;
     font-size: 13px;
   }
 
-  .lang-label {
+  .langLabel {
     display: none;
   }
 
-  .nav-lang-btn {
+  .navLangBtn {
     padding: 0 8px;
   }
 
-  .nav-palette-btn {
+  .navPaletteBtn {
     padding: 0 9px;
   }
 }
 
 @media (max-width: 400px) {
-  .nav-links a {
+  .navLinks a {
     padding: 6px 7px;
     font-size: 12px;
   }
 }
 
 /* Language switcher */
-.nav-right {
+.navRight {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -178,15 +226,15 @@
   flex-shrink: 0;
 }
 
-.lang-switcher {
+.langSwitcher {
   position: relative;
 }
 
-.nav-lang-btn {
+.navLangBtn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  /* Same 30px band as .nav-palette-btn — see note there. */
+  /* Same 30px band as .navPaletteBtn — see note there. */
   height: 30px;
   padding: 0 10px;
   border: 1px solid var(--border-default);
@@ -199,17 +247,17 @@
   font-family: inherit;
 }
 
-.nav-lang-btn:hover {
+.navLangBtn:hover {
   border-color: var(--text-muted);
   color: var(--text-primary);
 }
 
-.lang-label {
+.langLabel {
   font-size: 12px;
   font-weight: 500;
 }
 
-.lang-dropdown {
+.langDropdown {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
@@ -222,7 +270,7 @@
   overflow: hidden;
 }
 
-.lang-option {
+.langOption {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -238,17 +286,13 @@
   font-family: inherit;
 }
 
-.lang-option:hover {
+.langOption:hover {
   background: var(--bg-tertiary);
   color: var(--text-primary);
 }
 
-.lang-option.active {
+.langOption:global(.active) {
   color: var(--text-primary);
   background: var(--bg-tertiary);
   font-weight: 500;
-}
-
-.lang-flag {
-  font-size: 15px;
 }

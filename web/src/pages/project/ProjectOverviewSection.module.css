@@ -145,3 +145,25 @@
   color: var(--text-tertiary);
   font-size: 12px;
 }
+
+/* ---- 从 components/cards.css 下沉（P35 第六轮）----
+   `.tech-chip.tech-*` 是同一元素上的复合类，下沉后两者都在 module 作用域内，直接用
+   复合选择器即可（不需要 doubled：变体 (0,2,0) 本来就高于基类 (0,1,0)）。 */
+.techChip {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.techChip.techFramework {
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.techChip.techTool {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}

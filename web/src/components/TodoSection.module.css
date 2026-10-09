@@ -1,0 +1,65 @@
+/* TodoSection — 组件独占样式。
+   边界判据：
+   - 7 个类只被 TodoSection.tsx 引用；裸类 `completed`（`.todo-item.completed`）也只在
+     这里用，随 module 一起作用域化，markup 改成 s.completed，不再留全局泛名类。
+   - `.todo-add .form-input`：`form-input` 是全局基元，module 内用 :global() 包裹，
+     只声明 todo 输入框自己的 flex / max-width。
+   - 三个复合/伪类规则（:last-child、.completed 后代、:hover 后代）一并下沉。
+*/
+.todoAdd {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.todoAdd :global(.form-input) {
+  flex: 1;
+  max-width: none;
+}
+
+.todoList {
+  list-style: none;
+}
+
+.todoItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.todoItem:last-child {
+  border-bottom: none;
+}
+
+.todoCheckbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.todoTitle {
+  flex: 1;
+  font-size: 13px;
+  word-break: break-word;
+  color: var(--text-primary);
+}
+
+.todoItem.completed .todoTitle {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.todoActions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.todoItem:hover .todoActions {
+  opacity: 1;
+}

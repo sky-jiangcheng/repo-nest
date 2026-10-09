@@ -199,3 +199,19 @@
   font-size: 13px;
   color: var(--text-secondary);
 }
+
+
+
+.confirmGroup  {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+
+.confirmText  {
+  font-size: 13px;
+  color: var(--warning);
+  font-weight: 500;
+}

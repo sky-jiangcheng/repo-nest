@@ -15,6 +15,9 @@ import { copyText } from '../utils/clipboard'
 import s from './ProjectDetail.module.css'
 import trendCss from '../components/TrendChart.module.css'
 
+// 预留钩子类：`commits-trend` —— 目前全站没有对应样式定义（P35 复核确认），
+// 保留在 markup 里作为将来挂样式的锚点，删留都不影响行为。
+
 const TAB_KEYS = ['overview', 'commits', 'notes', 'todos'] as const
 type DetailTab = typeof TAB_KEYS[number]
 
@@ -286,7 +289,7 @@ function ProjectDetailPage() {
                 {trendData.labels.length > 0 ? (
                   <TrendChart labels={trendData.labels} datasets={trendData.datasets} />
                 ) : (
-                  <div className="empty-section">
+                  <div className={s.emptySection}>
                     {t('project.noDataInRange')}
                     {scope !== 'all' && (
                       <div className="empty-actions">

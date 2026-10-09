@@ -4,6 +4,7 @@ import { listTodos, createTodo, toggleTodo, deleteTodo, reorderTodos, type Todo 
 import { useConfirmClick } from '../hooks/useConfirmClick'
 import ErrorBanner from './ErrorBanner'
 import Icon from './Icon'
+import s from './TodoSection.module.css'
 
 interface Props {
   projectId: number
@@ -94,7 +95,7 @@ function TodoSection({ projectId }: Props) {
 
       {error && <ErrorBanner message={error} onRetry={fetchTodos} />}
 
-      <div className="todo-add">
+      <div className={s.todoAdd}>
         <input
           type="text"
           value={title}
@@ -111,17 +112,17 @@ function TodoSection({ projectId }: Props) {
       {todos.length === 0 ? (
         <p className="empty-hint">{t('todo.empty')}</p>
       ) : (
-        <ul className="todo-list">
+        <ul className={s.todoList}>
           {todos.map((todo, i) => (
-            <li key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+            <li key={todo.id} className={`${s.todoItem} ${todo.completed ? s.completed : ''}`}>
               <input
                 type="checkbox"
                 checked={todo.completed}
                 onChange={() => handleToggle(todo)}
-                className="todo-checkbox"
+                className={s.todoCheckbox}
               />
-              <span className="todo-title">{todo.title}</span>
-              <div className="todo-actions">
+              <span className={s.todoTitle}>{todo.title}</span>
+              <div className={s.todoActions}>
                 <button className="btn-icon" onClick={() => move(i, -1)} disabled={i === 0} title={t('todo.moveUp')} aria-label={t('todo.moveUp')}>
                   <Icon name="arrow-up" size={14} />
                 </button>
