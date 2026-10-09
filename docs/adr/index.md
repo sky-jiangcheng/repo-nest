@@ -24,9 +24,10 @@ order: 21
 | [0015](0015-w3-minimal-compile-loop.md) | W3 最小编译闭环——LLM 只写 pending 页，人批准才进检索 | Accepted |
 | [0016](0016-async-batch-jobs.md) | 长时批任务的异步化——提交即返回、进度可查、结果可取 | Accepted |
 | [0017](0017-one-kernel-two-entry-points.md) | 一个内核、两个入口——产品分层而不分叉仓库 | Proposed |
+| [0018](0018-knowledge-graph-foundation.md) | 知识图谱底座——受控关系词表让图可查，图感知取证让图被读 | Proposed（lane 1 = 关系词表 + Wikilink + 结构 lint，schema v21；lane 2 = 页面向量 + 图感知取证，schema v22；两半各自晋升） |
 
 ## 约定
 
 - 每个重大不可逆决策一篇：背景 → 决策 → 后果
 - 被 superseded 的 ADR 保留原文与横幅，不删除
-- 新 ADR 从 `0017` 递增编号，文件名 `NNNN-kebab-title.md`
+- 新 ADR 从 `0018` 递增编号，文件名 `NNNN-kebab-title.md`

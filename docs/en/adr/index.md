@@ -24,9 +24,10 @@ order: 21
 | [0015](0015-w3-minimal-compile-loop.md) | W3 minimal compile loop — the LLM writes pending pages only, humans gate what enters search | Accepted |
 | [0016](0016-async-batch-jobs.md) | Async long-running batch jobs — submit returns, progress is queryable, results survive | Accepted |
 | [0017](0017-one-kernel-two-entry-points.md) | One kernel, two entry points — product layering without forking the repo | Proposed |
+| [0018](0018-knowledge-graph-foundation.md) | Knowledge-graph foundation — a controlled relation vocabulary makes the graph queryable, graph-aware evidence makes it read | Proposed (lane 1 = relation vocabulary + wikilink + structural lint, schema v21; lane 2 = page vectors + graph-aware evidence, schema v22; the two halves promote independently) |
 
 ## Conventions
 
 - One ADR per major irreversible decision: Background → Decision → Consequences
 - Superseded ADRs keep their original text and banner; they are never deleted
-- New ADRs increment from `0017`, file name `NNNN-kebab-title.md`
+- New ADRs increment from `0018`, file name `NNNN-kebab-title.md`
