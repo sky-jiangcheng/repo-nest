@@ -22,16 +22,13 @@ import { describe, it, expect } from 'vitest'
 // classes they render alongside. Keep in sync with the assertions below —
 // adding a new number class means adding it here too.
 //
-// .flat-num is NOT in this list anymore: ProjectCard was migrated to
-// ProjectCard.module.css (Sprint 14, TODO P35), where the number class (.num)
-// and its ink (.numSuccess/.numDanger/.numMuted) are module-scoped — a CSS
-// module hash-scopes both, so the global-cascade ordering hazard this file
-// guards against cannot occur between them. If a component ever renders
-// global .flat-num again, re-add it here AND restore the base rule in
-// dashboard.css.
+// ProjectCard, SummaryBar and ProjectDetail are NOT in this list anymore: they
+// were migrated to CSS modules, where the number class and its ink are
+// hash-scoped together (or the component declares its own doubled rule). The
+// global-cascade ordering hazard this file guards against cannot occur between
+// module classes. If a component renders global number classes again, add it
+// back to this list and keep its doubled rule in a global stylesheet.
 const pairs: Array<[string, string[]]> = [
-  ['summary-value', ['green', 'red', 'zero']],
-  ['head-stat-value', ['green', 'red']],
 ]
 
 // Every stylesheet in the cascade, in the order styles/index.css imports them.

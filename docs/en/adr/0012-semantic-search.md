@@ -18,4 +18,4 @@ FTS5 trigram + bm25 handles literal/substring well but has no semantic recall ("
 
 ## Landed + live-verified
 
-`internal/search/hybrid` (+`RemoteEmbedder`), `internal/db/vecindex.go`, `internal/search/vectordb` (Local/Qdrant/Weaviate, ADR-0013), C (FTS OR-relaxation) default-on. Live smoke tests (`ollamalive`/`qdrantlive`/`aelive`/`weavialive`) ran against **real local Ollama + Qdrant/Weaviate**, incl. full "Ollama→Qdrant→fused recall". Remaining: user-facing embedding/vector-store UI, A/B harness on real labeled queries, incremental (per-note) embedding, cloud-vendor verification.
+`internal/search/hybrid` (+`RemoteEmbedder`), `internal/db/vecindex.go`, `internal/search/vectordb` (Local/Qdrant/Weaviate, ADR-0013), C (FTS OR-relaxation) default-on. Live smoke tests (`ollamalive`/`qdrantlive`/`aelive`/`weavialive`) ran against **real local Ollama + Qdrant/Weaviate**, incl. full "Ollama→Qdrant→fused recall". Remaining: A/B harness on real labeled queries and cloud-vendor verification. The settings UI now exposes the opt-in switch and rebuild action; incremental per-note embedding has landed.

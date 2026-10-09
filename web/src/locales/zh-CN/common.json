@@ -231,6 +231,25 @@
       "testModel": "测试模型",
       "testingModel": "测试中…",
       "modelsFoundResolved": "发现 {{count}} 个可用模型——Base URL 已自动修正为 {{url}}"
+    },
+    "semantic": {
+      "title": "语义检索",
+      "desc": "开启后，笔记文本会发送到你配置的 embedding 端点用于建索引；检索失败时自动退回 FTS5。请只在信任的本地或远程服务上开启。",
+      "enabled": "启用语义检索",
+      "enabledHint": "默认关闭。开启前请先保存 embedding 端点与模型。",
+      "baseUrl": "Embedding Base URL",
+      "model": "Embedding 模型",
+      "apiKeyOptional": "Embedding API Key（可选）",
+      "vectorStore": "向量存储",
+      "localStore": "本地 SQLite-vec",
+      "vectorUrl": "服务地址或持久化目录",
+      "vectorApiKey": "向量存储 API Key",
+      "collection": "集合名称",
+      "rebuild": "重建索引",
+      "rebuilding": "重建中…",
+      "rebuildDone": "索引重建完成：{{count}} 条笔记",
+      "rebuildFailed": "重建失败：{{msg}}",
+      "missingFields": "启用前需要填写 Embedding Base URL 和模型"
     }
   },
   "project": {

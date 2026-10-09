@@ -79,7 +79,7 @@ Externally, still only the two existing surfaces: MCP tools and `/api/rpc`. **Do
 - The privacy surface widens: see the prerequisite in decision 4.
 - New migration + new config keys + new UI: three layers move at once; this is not a one-sprint job.
 
-**Open questions**: ~~whether four page kinds suffice~~ (→ **decided by W1: five kinds**); whether the `schema.md` equivalent is global or per-project (leaning global default + per-project override); the relationship with `dsh-plugin-reponest` (should the export bypass feed a dsh session?); whether the semantic fusion scope should extend from notes to `wiki_pages` once page volume grows (currently constrained by ADR-0012's "fuse notes only").
+**Open questions**: ~~whether four page kinds suffice~~ (→ **decided by W1: five kinds**); ~~whether the `schema.md` equivalent is global or per-project~~ (→ **decided 2026-10-09: global default + per-project override**; the kind vocabulary and the safety contract (three ops, budgets, review-before-index) stay global and non-overridable, the override surface is descriptive discipline only, and the SSOT lives in SQLite, not the export tree. Full rationale in TODO M6); the relationship with `dsh-plugin-reponest` (should the export bypass feed a dsh session?); whether the semantic fusion scope should extend from notes to `wiki_pages` once page volume grows (currently constrained by ADR-0012's "fuse notes only").
 
 > **Two corrections made while implementing W1 (2026-10-08, schema v16)**
 >

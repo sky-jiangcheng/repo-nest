@@ -54,6 +54,7 @@ import (
 //   Plugins/knowledge sources: GetPluginStatuses, GetKnowledgeSources,
 //                              TriggerKnowledgeImport, TriggerAllKnowledgeImports,
 //                              ReloadPlugins, ImportClaudeMemory, CaptureClaudeHandoff
+//   IDE chrome: LatestHandoff (timestamp/title only; content stays behind notes_read)
 //
 // Conversely these MCP tools have no binding (agent-only flows, served straight
 // off the service layer): reponest_ask, reponest_handoff, reponest_agent_score,
@@ -297,6 +298,13 @@ func (a *App) ImportClaudeMemory() (*service.ImportResult, error) {
 // agents push handoffs via reponest_handoff instead.
 func (a *App) CaptureClaudeHandoff(projectID int64) (*service.HandoffResult, error) {
 	return a.svc.CaptureClaudeHandoff(projectID)
+}
+
+// LatestHandoff returns a minimal status record for the most recent handoff
+// (projectID>0 scopes it; 0 is global). It intentionally has no MCP twin: the
+// body is available through notes_read, this binding is UI chrome only.
+func (a *App) LatestHandoff(projectID int64) (*service.HandoffStatus, error) {
+	return a.svc.LatestHandoff(projectID)
 }
 
 // RebuildEmbeddings (re)embeds every note into the semantic-search vector index.

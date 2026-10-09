@@ -232,6 +232,25 @@
       "testModel": "Test model",
       "testingModel": "Testing…",
       "modelsFoundResolved": "{{count}} model(s) available — base URL corrected to {{url}}"
+    },
+    "semantic": {
+      "title": "Semantic search",
+      "desc": "When enabled, note text is sent to the configured embedding endpoint for indexing; retrieval falls back to FTS5 on failure. Enable only for a trusted local or remote service.",
+      "enabled": "Enable semantic search",
+      "enabledHint": "Off by default. Save the embedding endpoint and model before enabling.",
+      "baseUrl": "Embedding base URL",
+      "model": "Embedding model",
+      "apiKeyOptional": "Embedding API key (optional)",
+      "vectorStore": "Vector store",
+      "localStore": "Local SQLite-vec",
+      "vectorUrl": "Service URL or persistence directory",
+      "vectorApiKey": "Vector store API key",
+      "collection": "Collection",
+      "rebuild": "Rebuild index",
+      "rebuilding": "Rebuilding…",
+      "rebuildDone": "Index rebuilt: {{count}} notes",
+      "rebuildFailed": "Rebuild failed: {{msg}}",
+      "missingFields": "Embedding base URL and model are required before enabling"
     }
   },
   "project": {

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { cssVar } from '../utils/theme'
 import { useTheme } from '../hooks/useTheme'
+import s from './GoalRing.module.css'
 
 interface Props {
   value: number
@@ -48,8 +49,8 @@ export default function GoalRing({ value, goal, size = 80, stroke = 7, label, su
   }, [value, goal, size, stroke])
 
   return (
-    <div className="goal-ring" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="goal-ring-svg" aria-hidden="true">
+    <div className={s.ring} style={{ width: size, height: size }}>
+      <svg width={size} height={size} className={s.svg} aria-hidden="true">
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -69,14 +70,14 @@ export default function GoalRing({ value, goal, size = 80, stroke = 7, label, su
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          className="goal-ring-progress"
+          className={s.progress}
         />
       </svg>
-      <div className="goal-ring-center">
-        <span className="goal-ring-value" style={{ fontSize: Math.round(size * 0.26) }}>{pct}%</span>
-        {label && <span className="goal-ring-label">{label}</span>}
+      <div className={s.center}>
+        <span className={s.value} style={{ fontSize: Math.round(size * 0.26) }}>{pct}%</span>
+        {label && <span className={s.label}>{label}</span>}
       </div>
-      {sublabel && <span className="goal-ring-sub">{sublabel}</span>}
+      {sublabel && <span className={s.sublabel}>{sublabel}</span>}
     </div>
   )
 }

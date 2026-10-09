@@ -1,0 +1,56 @@
+/* SummaryBar — scoped module styles migrated from dashboard.css. */
+.bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  align-content: center;
+  gap: 10px 16px;
+  padding: 16px 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.value {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 1px;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.valueTodo {
+  color: var(--warning);
+}
+
+.valueZero {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.valueSuccess {
+  color: var(--success);
+}
+
+.valueDanger {
+  color: var(--danger);
+}
+
+@media (max-width: 768px) {
+  .bar {
+    gap: 16px 20px;
+    padding: 20px;
+  }
+}

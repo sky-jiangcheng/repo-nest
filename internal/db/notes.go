@@ -139,6 +139,30 @@ func ListNotes(db *sql.DB, projectID int64) ([]Note, error) {
 	return notes, rows.Err()
 }
 
+// LatestHandoffNote returns the most recently updated handoff-tagged note.
+// projectID>0 scopes the result to one project; zero means the latest across
+// all projects. It returns sql.ErrNoRows when none exists.
+func LatestHandoffNote(db *sql.DB, projectID int64) (*Note, error) {
+	query := "SELECT id, project_id, title, content, tags, kind, pinned, source, sort_order, created_at, updated_at " +
+		"FROM project_notes WHERE ',' || REPLACE(LOWER(tags), ' ', '') || ',' LIKE '%,handoff,%'"
+	args := []any{}
+	if projectID > 0 {
+		query += " AND project_id = ?"
+		args = append(args, projectID)
+	}
+	query += " ORDER BY updated_at DESC, id DESC LIMIT 1"
+	note := &Note{}
+	err := db.QueryRow(query, args...).Scan(
+		&note.ID, &note.ProjectID, &note.Title, &note.Content, &note.Tags,
+		&note.Kind, &note.Pinned, &note.Source, &note.SortOrder,
+		&note.CreatedAt, &note.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return note, nil
+}
+
 // UpdateNote updates the content of a note. An absent id yields an error.
 func UpdateNote(db *sql.DB, noteID int64, content string) error {
 	if err := ValidateNoteBounds("", content, ""); err != nil {

@@ -1,9 +1,12 @@
 package service
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
+
+	"repo-nest/internal/db"
 )
 
 // handoffTag is the reserved tag marking a note as a structured session
@@ -98,6 +101,35 @@ type HandoffResult struct {
 	NoteID int64  `json:"note_id"`
 	Title  string `json:"title"`
 	Tags   string `json:"tags"`
+}
+
+// HandoffStatus is the minimal status surface for UI chrome (currently the VS
+// Code status bar). It intentionally excludes content: status updates may poll
+// periodically, and the last handoff's body belongs to the knowledge reader.
+type HandoffStatus struct {
+	NoteID    int64  `json:"note_id"`
+	ProjectID int64  `json:"project_id"`
+	Title     string `json:"title"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// LatestHandoff returns the newest handoff note's status. projectID>0 scopes
+// to one project; zero means the newest across the knowledge base. A missing
+// handoff is (nil, nil), not an error.
+func (s *Service) LatestHandoff(projectID int64) (*HandoffStatus, error) {
+	note, err := db.LatestHandoffNote(s.db, projectID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &HandoffStatus{
+		NoteID:    note.ID,
+		ProjectID: note.ProjectID,
+		Title:     note.Title,
+		UpdatedAt: note.UpdatedAt,
+	}, nil
 }
 
 // handoffHasContent checks whether any structured section carries information.

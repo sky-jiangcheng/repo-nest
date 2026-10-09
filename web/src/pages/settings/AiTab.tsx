@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { listAIModels, testAIChat, updateConfig } from '../../api/client'
+import { listAIModels, rebuildEmbeddings, testAIChat, updateConfig } from '../../api/client'
 
 interface Props {
   /** Flat key/value config record (data.config from GetConfig). */
@@ -29,6 +29,17 @@ export default function AiTab({ config, showMessage, onSaved }: Props) {
   const [modelsMsg, setModelsMsg] = useState('')
   const [testMsg, setTestMsg] = useState('')
   const [testing, setTesting] = useState(false)
+  const [semanticEnabled, setSemanticEnabled] = useState(config.semantic_search === '1')
+  const [embeddingBaseURL, setEmbeddingBaseURL] = useState(config.embedding_base_url || '')
+  const [embeddingModel, setEmbeddingModel] = useState(config.embedding_model || '')
+  const [embeddingAPIKey, setEmbeddingAPIKey] = useState(config.embedding_api_key || '')
+  const [vectorStore, setVectorStore] = useState(config.vector_store || 'local')
+  const [vectorStoreURL, setVectorStoreURL] = useState(config.vector_store_url || '')
+  const [vectorStoreAPIKey, setVectorStoreAPIKey] = useState(config.vector_store_api_key || '')
+  const [vectorCollection, setVectorCollection] = useState(config.vector_store_collection || '')
+  const [semanticSaving, setSemanticSaving] = useState(false)
+  const [rebuilding, setRebuilding] = useState(false)
+  const [semanticMsg, setSemanticMsg] = useState('')
 
   const fetchModels = async () => {
     if (!baseURL.trim() || modelsLoading) return
@@ -92,6 +103,53 @@ export default function AiTab({ config, showMessage, onSaved }: Props) {
       return false
     } finally {
       setSaving(false)
+    }
+  }
+
+  const saveSemantic = async (nextEnabled: boolean): Promise<boolean> => {
+    if (nextEnabled && (!embeddingBaseURL.trim() || !embeddingModel.trim())) {
+      showMessage(t('settings.semantic.missingFields'))
+      return false
+    }
+    setSemanticSaving(true)
+    setSemanticMsg('')
+    try {
+      await updateConfig('semantic_search', nextEnabled ? '1' : '0')
+      await updateConfig('embedding_base_url', embeddingBaseURL.trim())
+      await updateConfig('embedding_model', embeddingModel.trim())
+      // GetConfig masks both secrets. A placeholder means "keep the stored
+      // value"; sending it back would replace the real key with stars.
+      if (embeddingAPIKey.trim() && embeddingAPIKey !== '********') {
+        await updateConfig('embedding_api_key', embeddingAPIKey.trim())
+      }
+      await updateConfig('vector_store', vectorStore)
+      await updateConfig('vector_store_url', vectorStoreURL.trim())
+      if (vectorStoreAPIKey.trim() && vectorStoreAPIKey !== '********') {
+        await updateConfig('vector_store_api_key', vectorStoreAPIKey.trim())
+      }
+      await updateConfig('vector_store_collection', vectorCollection.trim())
+      showMessage(t('settings.configSaved'))
+      onSaved()
+      return true
+    } catch (e: unknown) {
+      showMessage(t('settings.saveFailedMsg', { msg: e instanceof Error ? e.message : t('common.unknownError') }))
+      return false
+    } finally {
+      setSemanticSaving(false)
+    }
+  }
+
+  const rebuild = async () => {
+    setRebuilding(true)
+    setSemanticMsg('')
+    try {
+      const count = await rebuildEmbeddings()
+      setSemanticMsg(t('settings.semantic.rebuildDone', { count }))
+      onSaved()
+    } catch (e: unknown) {
+      setSemanticMsg(t('settings.semantic.rebuildFailed', { msg: e instanceof Error ? e.message : t('common.unknownError') }))
+    } finally {
+      setRebuilding(false)
     }
   }
 
@@ -162,6 +220,126 @@ export default function AiTab({ config, showMessage, onSaved }: Props) {
         </button>
       </div>
       {testMsg && <p className="form-hint">{testMsg}</p>}
+
+      <h3>{t('settings.semantic.title')}</h3>
+      <p className="section-desc">{t('settings.semantic.desc')}</p>
+
+      <div className="form-group">
+        <label htmlFor="semantic-enabled">
+          <input
+            id="semantic-enabled"
+            type="checkbox"
+            checked={semanticEnabled}
+            onChange={(e) => setSemanticEnabled(e.target.checked)}
+          />
+          {t('settings.semantic.enabled')}
+        </label>
+        <span className="form-hint">{t('settings.semantic.enabledHint')}</span>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="embedding-base-url">{t('settings.semantic.baseUrl')}</label>
+        <input
+          id="embedding-base-url"
+          type="text"
+          value={embeddingBaseURL}
+          onChange={(e) => setEmbeddingBaseURL(e.target.value)}
+          className="form-input"
+          placeholder="http://localhost:11434/v1"
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="embedding-model">{t('settings.semantic.model')}</label>
+        <input
+          id="embedding-model"
+          type="text"
+          value={embeddingModel}
+          onChange={(e) => setEmbeddingModel(e.target.value)}
+          className="form-input"
+          placeholder="nomic-embed-text / text-embedding-3-small"
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="embedding-api-key">{t('settings.semantic.apiKeyOptional')}</label>
+        <input
+          id="embedding-api-key"
+          type="password"
+          value={embeddingAPIKey}
+          onChange={(e) => setEmbeddingAPIKey(e.target.value)}
+          className="form-input"
+          placeholder={t('settings.ai.apiKeyPlaceholder')}
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="vector-store">{t('settings.semantic.vectorStore')}</label>
+        <select
+          id="vector-store"
+          value={vectorStore}
+          onChange={(e) => setVectorStore(e.target.value)}
+          className="form-input"
+        >
+          <option value="local">{t('settings.semantic.localStore')}</option>
+          <option value="qdrant">Qdrant</option>
+          <option value="weaviate">Weaviate</option>
+          <option value="chromem">chromem</option>
+        </select>
+      </div>
+
+      {vectorStore !== 'local' && (
+        <>
+          <div className="form-group">
+            <label htmlFor="vector-store-url">{t('settings.semantic.vectorUrl')}</label>
+            <input
+              id="vector-store-url"
+              type="text"
+              value={vectorStoreURL}
+              onChange={(e) => setVectorStoreURL(e.target.value)}
+              className="form-input"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="vector-store-api-key">{t('settings.semantic.vectorApiKey')}</label>
+            <input
+              id="vector-store-api-key"
+              type="password"
+              value={vectorStoreAPIKey}
+              onChange={(e) => setVectorStoreAPIKey(e.target.value)}
+              className="form-input"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="vector-collection">{t('settings.semantic.collection')}</label>
+            <input
+              id="vector-collection"
+              type="text"
+              value={vectorCollection}
+              onChange={(e) => setVectorCollection(e.target.value)}
+              className="form-input"
+            />
+          </div>
+        </>
+      )}
+
+      <div className="empty-actions">
+        <button
+          className="btn btn-primary"
+          onClick={() => saveSemantic(semanticEnabled)}
+          disabled={semanticSaving || rebuilding}
+        >
+          {semanticSaving ? t('settings.saving', { defaultValue: 'Saving…' }) : t('settings.save', { defaultValue: 'Save' })}
+        </button>
+        <button
+          className="btn btn-secondary"
+          onClick={rebuild}
+          disabled={semanticSaving || rebuilding || !semanticEnabled || !embeddingBaseURL.trim() || !embeddingModel.trim()}
+        >
+          {rebuilding ? t('settings.semantic.rebuilding') : t('settings.semantic.rebuild')}
+        </button>
+      </div>
+      {semanticMsg && <p className="form-hint">{semanticMsg}</p>}
     </div>
   )
 }

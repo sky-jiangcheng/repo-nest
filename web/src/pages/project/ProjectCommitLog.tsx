@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Icon from '../../components/Icon'
+import s from './ProjectCommitLog.module.css'
 import { useToast } from '../../hooks/useToast'
 import { getProjectCommits, getRepoCommits, type RepoCommit, type RepoInfo } from '../../api/client'
 
@@ -106,10 +107,10 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
   return (
     <div className="commit-log">
       {repos.length > 1 && (
-        <div className="commit-filter" role="group" aria-label={t('project.subRepos')}>
+        <div className={s.filter} role="group" aria-label={t('project.subRepos')}>
           <button
             type="button"
-            className={`commit-chip ${selected === 'all' ? 'commit-chip-active' : ''}`}
+            className={`${s.chip} ${selected === 'all' ? s.chipActive : ''}`}
             aria-pressed={selected === 'all'}
             onClick={() => choose('all')}
           >
@@ -119,7 +120,7 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
             <button
               key={repo.id}
               type="button"
-              className={`commit-chip ${selected === repo.id ? 'commit-chip-active' : ''}`}
+              className={`${s.chip} ${selected === repo.id ? s.chipActive : ''}`}
               aria-pressed={selected === repo.id}
               title={repo.path}
               onClick={() => choose(repo.id)}
@@ -131,11 +132,11 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
       )}
 
       {activeRepo && repoTotals && (
-        <div className="commit-repo-bar">
-          <span className="commit-repo-path" title={activeRepo.path}>{activeRepo.path}</span>
-          <div className="repo-tools">
+        <div className={s.repoBar}>
+          <span className={s.repoPath} title={activeRepo.path}>{activeRepo.path}</span>
+          <div className={s.tools}>
             <a
-              className="repo-tool"
+              className={s.tool}
               href={`vscode://file/${activeRepo.path}`}
               title={t('project.openEditor')}
               aria-label={t('project.openEditor')}
@@ -143,7 +144,7 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
               <Icon name="zap" size={13} />
             </a>
             <button
-              className={`repo-tool ${copiedPath === activeRepo.path ? 'repo-tool-done' : ''}`}
+              className={`${s.tool} ${copiedPath === activeRepo.path ? s.toolDone : ''}`}
               onClick={() => copyPath(activeRepo.path)}
               title={t('project.copyPath')}
               aria-label={t('project.copyPath')}
@@ -152,7 +153,7 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
             </button>
             {activeRepo.web_url && (
               <a
-                className="repo-tool"
+                className={s.tool}
                 href={activeRepo.web_url}
                 target="_blank"
                 rel="noreferrer noopener"
@@ -162,7 +163,7 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
                 <Icon name="globe" size={13} />
               </a>
             )}
-            <div className="repo-totals">
+            <div className={s.totals}>
               {/* Sign only when non-zero: "+0"/"-0" on every idle repo turns
                   the bar into visual noise. */}
               <span className={repoTotals.added > 0 ? 'green' : 'muted-num'}>
@@ -176,41 +177,41 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
         </div>
       )}
 
-      {commits === null && <div className="commit-log-status">{t('common.loading')}</div>}
-      {error && <div className="commit-log-status commit-log-error">{error}</div>}
+      {commits === null && <div className={s.status}>{t('common.loading')}</div>}
+      {error && <div className={`${s.status} ${s.statusError}`}>{error}</div>}
       {commits !== null && !error && commits.length === 0 && (
-        <div className="commit-log-status">{t('project.noCommits')}</div>
+        <div className={s.status}>{t('project.noCommits')}</div>
       )}
       {commits !== null && commits.length > 0 && (
         <>
-          <ul className="commit-feed">
+          <ul className={s.feed}>
             {commits.map((c, i) => {
               // In the merged view the repo label doubles as the way into
               // that repo's log — a click narrows the timeline instead of
               // sending the reader back up to the filter row.
               const repo = showRepo ? repos.find(r => r.path === c.repo) : undefined
               return (
-                <li key={c.hash || `${c.time}-${i}`} className="commit-feed-item">
-                  <span className="commit-dot" />
-                  <div className="commit-feed-body">
-                    <div className="commit-feed-msg" title={c.message}>{c.message}</div>
-                    <div className="commit-feed-meta">
+                <li key={c.hash || `${c.time}-${i}`} className={s.feedItem}>
+                  <span className={s.dot} />
+                  <div className={s.feedBody}>
+                    <div className={s.feedMessage} title={c.message}>{c.message}</div>
+                    <div className={s.feedMeta}>
                       <span>{c.time}</span>
                       {showRepo && (repo ? (
                         <button
-                          className="commit-repo commit-repo-btn"
+                          className={`${s.repo} ${s.repoButton}`}
                           title={`${c.repo} · ${t('project.filterRepoHint')}`}
                           onClick={() => choose(repo.id)}
                         >
                           {shortPath(c.repo)}
                         </button>
                       ) : (
-                        <span className="commit-repo" title={c.repo}>{shortPath(c.repo)}</span>
+                        <span className={s.repo} title={c.repo}>{shortPath(c.repo)}</span>
                       ))}
-                      {c.branch && <span className="commit-branch">{c.branch}</span>}
-                      <span className="commit-author">{c.author}</span>
+                      {c.branch && <span className={s.branch}>{c.branch}</span>}
+                      <span className={s.author}>{c.author}</span>
                       <button
-                        className={`commit-hash ${copiedHash === c.hash ? 'commit-hash-copied' : ''}`}
+                        className={`${s.hash} ${copiedHash === c.hash ? s.hashCopied : ''}`}
                         onClick={() => copyHash(c.hash)}
                         title={t('project.copyHash')}
                       >
@@ -223,10 +224,10 @@ export default function ProjectCommitLog({ projectId, repos }: Props) {
               )
             })}
           </ul>
-          <div className="commit-log-foot">
+          <div className={s.footer}>
             <span>{t('project.commitCount', { count: commits.length })}</span>
             {commits.length >= LIMIT && (
-              <span className="commit-log-cap">{t('project.commitsCapped', { limit: LIMIT })}</span>
+              <span className={s.cap}>{t('project.commitsCapped', { limit: LIMIT })}</span>
             )}
           </div>
         </>

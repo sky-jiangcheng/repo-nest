@@ -12,6 +12,8 @@ import NoteSection from '../components/NoteSection'
 import TodoSection from '../components/TodoSection'
 import { useProjectDetail } from '../hooks/useProjectDetail'
 import { copyText } from '../utils/clipboard'
+import s from './ProjectDetail.module.css'
+import trendCss from '../components/TrendChart.module.css'
 
 const TAB_KEYS = ['overview', 'commits', 'notes', 'todos'] as const
 type DetailTab = typeof TAB_KEYS[number]
@@ -126,13 +128,13 @@ function ProjectDetailPage() {
 
   if (loading) {
     return (
-      <div className="project-detail">
-        <div className="project-fixed">
+      <div className={s.page}>
+        <div className={s.fixed}>
           <div className="skeleton skeleton-text" style={{width: 200, height: 28, marginBottom: 8}} />
           <div className="skeleton skeleton-text" style={{width: '50%', height: 14, marginBottom: 20}} />
           <div className="skeleton skeleton-text" style={{width: '100%', height: 80, marginBottom: 16}} />
         </div>
-        <div className="project-scroll">
+        <div className={s.scroll}>
           <div className="skeleton skeleton-text" style={{width: '100%', height: 280, marginBottom: 16}} />
         </div>
         <StatusBar />
@@ -149,7 +151,7 @@ function ProjectDetailPage() {
     const notFound = !error || /not found|不存在/i.test(error)
     if (notFound) {
       return (
-        <div className="project-detail">
+        <div className={s.page}>
           <div className="empty-state">
             <div className="empty-icon"><Icon name="search" size={34} /></div>
             <h3>{t('project.notFoundTitle')}</h3>
@@ -165,8 +167,8 @@ function ProjectDetailPage() {
       )
     }
     return (
-      <div className="project-detail">
-        <button className="btn btn-secondary back-btn" onClick={() => navigate('/dashboard')}>&larr; {t('project.backToDashboard')}</button>
+        <div className={s.page}>
+        <button className={`btn btn-secondary ${s.backButton}`} onClick={() => navigate('/dashboard')}>&larr; {t('project.backToDashboard')}</button>
         <ErrorBanner message={error || t('project.noRepos')} onRetry={retry} />
         <StatusBar />
       </div>
@@ -174,24 +176,24 @@ function ProjectDetailPage() {
   }
 
   return (
-    <div className="project-detail">
-      <div className="project-fixed">
+    <div className={s.page}>
+      <div className={s.fixed}>
         {actionMsg && <div className="message-banner" role="status">{actionMsg}</div>}
 
         {/* Compact head: identity + copy action on line 1, one stat strip on
             line 2, tab strip on line 3. Everything that used to be a stacked
             card here (title card, 4-column stats grid, meta row) collapsed
             into ~120px so the tab panels own the viewport. */}
-        <div className="detail-head-compact">
-          <div className="head-line1">
+        <div className={s.head}>
+          <div className={s.headLine}>
             <button className="btn btn-secondary btn-sm" onClick={() => navigate('/dashboard')}>
               &larr; {t('project.backToDashboard')}
             </button>
             <h1>{project.name}</h1>
-            <span className="head-path" title={project.root_path}>{project.root_path}</span>
-            <span className="level-control" title={t('project.groupLevelHint')}>
+            <span className={s.headPath} title={project.root_path}>{project.root_path}</span>
+            <span className={s.levelControl} title={t('project.groupLevelHint')}>
               <button className="btn btn-sm btn-icon" onClick={() => onLevelChange('down')} aria-label={t('project.levelDown')}><Icon name="minus" size={14} /></button>
-              <span className="level-value">{t('project.groupLevel', { n: project.level_override || 0 })}</span>
+              <span className={s.levelValue}>{t('project.groupLevel', { n: project.level_override || 0 })}</span>
               <button className="btn btn-sm btn-icon" onClick={() => onLevelChange('up')} aria-label={t('project.levelUp')}><Icon name="plus" size={14} /></button>
             </span>
             <button className="btn btn-primary btn-sm" onClick={handleCopyContext}>
@@ -199,25 +201,25 @@ function ProjectDetailPage() {
             </button>
           </div>
 
-          <div className="head-stats-line">
-            <span className="head-stat"><span className="head-stat-label">{t('project.activeDays')}</span><span className="head-stat-value">{totals.active}</span></span>
-            <span className="head-stat"><span className="head-stat-label">{t('project.fileChanges')}</span><span className="head-stat-value">{totals.files}</span></span>
-            <span className="head-stat"><span className="head-stat-label">{t('project.added')}</span><span className={`head-stat-value ${totals.added > 0 ? 'green' : ''}`}>{totals.added > 0 ? `+${totals.added}` : '0'}</span></span>
-            <span className="head-stat"><span className="head-stat-label">{t('project.deleted')}</span><span className={`head-stat-value ${totals.deleted > 0 ? 'red' : ''}`}>{totals.deleted > 0 ? `-${totals.deleted}` : '0'}</span></span>
-            <span className="head-stat"><span className="head-stat-label">{t('project.subRepos')}</span><span className="head-stat-value">{project.repos?.length || 0}</span></span>
+          <div className={s.statsLine}>
+            <span className={s.stat}><span className={s.statLabel}>{t('project.activeDays')}</span><span className={s.statValue}>{totals.active}</span></span>
+            <span className={s.stat}><span className={s.statLabel}>{t('project.fileChanges')}</span><span className={s.statValue}>{totals.files}</span></span>
+            <span className={s.stat}><span className={s.statLabel}>{t('project.added')}</span><span className={`${s.statValue} ${totals.added > 0 ? 'green' : ''}`}>{totals.added > 0 ? `+${totals.added}` : '0'}</span></span>
+            <span className={s.stat}><span className={s.statLabel}>{t('project.deleted')}</span><span className={`${s.statValue} ${totals.deleted > 0 ? 'red' : ''}`}>{totals.deleted > 0 ? `-${totals.deleted}` : '0'}</span></span>
+            <span className={s.stat}><span className={s.statLabel}>{t('project.subRepos')}</span><span className={s.statValue}>{project.repos?.length || 0}</span></span>
             {overview?.activity?.last_commit_date && (
-              <span className="head-stat"><span className="head-stat-label">{t('project.lastCommit')}</span><span className="head-stat-value">{overview.activity.last_commit_date}</span></span>
+              <span className={s.stat}><span className={s.statLabel}>{t('project.lastCommit')}</span><span className={s.statValue}>{overview.activity.last_commit_date}</span></span>
             )}
             {overview?.languages?.[0] && (
-              <span className="head-stat"><span className="head-stat-label">{t('project.mainLanguage')}</span><span className="head-stat-value">{overview.languages[0].language}</span></span>
+              <span className={s.stat}><span className={s.statLabel}>{t('project.mainLanguage')}</span><span className={s.statValue}>{overview.languages[0].language}</span></span>
             )}
-            <span className="head-stat"><span className="head-stat-label">{t('project.grouping')}</span><span className="head-stat-value">{project.is_auto_grouped ? t('project.autoGroup') : t('project.manualGroup')}</span></span>
+            <span className={s.stat}><span className={s.statLabel}>{t('project.grouping')}</span><span className={s.statValue}>{project.is_auto_grouped ? t('project.autoGroup') : t('project.manualGroup')}</span></span>
             {dateParam && (
-              <span className="head-stat"><span className="head-stat-label">{t('project.datePill')}</span><span className="head-stat-value">{dateParam}</span></span>
+              <span className={s.stat}><span className={s.statLabel}>{t('project.datePill')}</span><span className={s.statValue}>{dateParam}</span></span>
             )}
           </div>
 
-          <div className="detail-tabs" role="tablist" aria-label={t('project.sectionTabs', { defaultValue: 'Sections' })}>
+          <div className={s.tabs} role="tablist" aria-label={t('project.sectionTabs', { defaultValue: 'Sections' })}>
             {TAB_KEYS.map((key) => (
               <button
                 key={key}
@@ -245,7 +247,7 @@ function ProjectDetailPage() {
         </div>
       </div>
 
-      <div className="project-scroll" role="tabpanel" id={`project-panel-${tab}`} aria-labelledby={`project-tab-${tab}`}>
+      <div className={s.scroll} role="tabpanel" id={`project-panel-${tab}`} aria-labelledby={`project-tab-${tab}`}>
           {tab === 'overview' && overview && <ProjectOverviewSection overview={overview} />}
 
           {tab === 'commits' && (
@@ -255,27 +257,27 @@ function ProjectDetailPage() {
                a repo filter). The heatmap card that used to hold half the top
                band duplicated the dashboard's heatmap and pushed both
                answers below the fold. */
-            <div className="commits-tab">
+            <div className={s.commitsTab}>
               <div className="detail-section commits-trend">
                 <div className="section-header">
                   <h2>{t('project.trendTitle')}</h2>
                   {overview?.activity && (
-                    <div className="trend-metrics">
-                      <span className="trend-metric">
-                        <span className="trend-metric-label">{t('project.totalCommits')}</span>
-                        <span className="trend-metric-value">{overview.activity.total_commits}</span>
+                    <div className={trendCss.metrics}>
+                      <span className={trendCss.metric}>
+                        <span className={trendCss.metricLabel}>{t('project.totalCommits')}</span>
+                        <span className={trendCss.metricValue}>{overview.activity.total_commits}</span>
                       </span>
-                      <span className="trend-metric">
-                        <span className="trend-metric-label">{t('project.last30d')}</span>
-                        <span className="trend-metric-value">{overview.activity.commit_rate_30d}</span>
+                      <span className={trendCss.metric}>
+                        <span className={trendCss.metricLabel}>{t('project.last30d')}</span>
+                        <span className={trendCss.metricValue}>{overview.activity.commit_rate_30d}</span>
                       </span>
-                      <span className="trend-metric">
-                        <span className="trend-metric-label">{t('project.activeDays90')}</span>
-                        <span className="trend-metric-value">{overview.activity.active_days}</span>
+                      <span className={trendCss.metric}>
+                        <span className={trendCss.metricLabel}>{t('project.activeDays90')}</span>
+                        <span className={trendCss.metricValue}>{overview.activity.active_days}</span>
                       </span>
-                      <span className="trend-metric">
-                        <span className="trend-metric-label">{t('project.activeMonths')}</span>
-                        <span className="trend-metric-value">{overview.activity.active_months}</span>
+                      <span className={trendCss.metric}>
+                        <span className={trendCss.metricLabel}>{t('project.activeMonths')}</span>
+                        <span className={trendCss.metricValue}>{overview.activity.active_months}</span>
                       </span>
                     </div>
                   )}

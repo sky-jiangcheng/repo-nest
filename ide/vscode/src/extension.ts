@@ -9,7 +9,7 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import { accessSync } from "node:fs";
 import { McpStdioClient } from "./mcpClient.js";
-import { getJson } from "./headless.js";
+import { getJson, postJson } from "./headless.js";
 import { NotesSearchProvider, parseSearchHits } from "./notesTree.js";
 
 const CONFIG_SECTION = "reponest";
@@ -20,6 +20,13 @@ const BINARY_NAMES = ["reponest-mcp", "reponest-mcp.exe"];
 export let output: vscode.OutputChannel;
 let statusItem: vscode.StatusBarItem;
 let mcp: McpStdioClient | null = null;
+
+interface HandoffStatus {
+  note_id?: number;
+  project_id?: number;
+  title?: string;
+  updated_at?: string;
+}
 
 function serverUrl(): string {
   return (
@@ -92,6 +99,29 @@ async function pingHeadless(): Promise<boolean> {
   }
 }
 
+async function refreshLastHandoff(): Promise<void> {
+  if (!statusItem) return;
+  const projectId = configuredProjectId() ?? 0;
+  try {
+    const response = (await postJson(serverUrl(), "/api/rpc", {
+      method: "LatestHandoff",
+      args: [projectId],
+    })) as { result?: HandoffStatus | null };
+    const handoff = response.result;
+    const at = handoff?.updated_at ? new Date(handoff.updated_at) : undefined;
+    if (handoff && at && !Number.isNaN(at.getTime())) {
+      statusItem.text = `$(nest) RepoNest · ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+      statusItem.tooltip = `Last handoff: ${handoff.title ?? "session"}\n${at.toLocaleString()}\n\nClick to load the session context`;
+    } else {
+      statusItem.text = "$(nest) RepoNest";
+      statusItem.tooltip = "RepoNest: no session handoff yet. Click to load the session context";
+    }
+  } catch {
+    statusItem.text = "$(nest) RepoNest";
+    statusItem.tooltip = "RepoNest: click to load the session context";
+  }
+}
+
 function withProgress<T>(title: string, task: () => Promise<T>): Thenable<T> {
   return vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: `RepoNest: ${title}` },
@@ -156,6 +186,7 @@ async function writeHandoff(): Promise<void> {
     }),
   );
   showOutput("Handoff recorded", noteText);
+  void refreshLastHandoff();
 }
 
 async function searchKnowledge(notes: NotesSearchProvider): Promise<void> {
@@ -213,8 +244,12 @@ export function activate(context: vscode.ExtensionContext): void {
   statusItem.text = "$(nest) RepoNest";
   statusItem.tooltip = "RepoNest: click to load the session context";
   statusItem.command = "reponest.loadContext";
+  void refreshLastHandoff();
 
   const notes = new NotesSearchProvider();
+
+  const handoffTimer = setInterval(() => void refreshLastHandoff(), 60_000);
+  context.subscriptions.push({ dispose: () => clearInterval(handoffTimer) });
 
   const register = (id: string, fn: () => Promise<void>) =>
     context.subscriptions.push(

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Line } from 'react-chartjs-2'
+import s from './TrendChart.module.css'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -147,7 +148,7 @@ function TrendChart({ labels, datasets }: Props) {
   }, [labels, datasets, t])
 
   return (
-    <div className="chart-container" style={{ height: 220 }}>
+    <div className={s.container} style={{ height: 220 }}>
       <Line data={data} options={options} className="chart-simple" />
     </div>
   )

@@ -275,6 +275,10 @@ export function testAIChat(baseURL: string, model: string, apiKey: string): Prom
   }).then(d => d ?? { reply: '', resolved_base_url: '' })
 }
 
+export function rebuildEmbeddings(): Promise<number> {
+  return call<number>({ method: 'RebuildEmbeddings' }).then(d => d ?? 0)
+}
+
 export function askAI(projectId: number, question: string): Promise<string> {
   return call<string>({
     method: 'AskAI',
@@ -587,4 +591,3 @@ export function startLintJob(projectId: number): Promise<number> {
 export function cancelCompileJob(jobId: number): Promise<CompileJob | null> {
   return call<CompileJob | null>({ method: 'CancelCompileJob', args: [jobId] })
 }
-

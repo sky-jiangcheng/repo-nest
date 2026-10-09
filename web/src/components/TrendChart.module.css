@@ -1,0 +1,30 @@
+/* TrendChart wrapper — scoped styles migrated from project-detail.css. */
+.container {
+  height: 320px;
+}
+
+/* Activity metrics ride in the trend card header so they share the chart's
+   date window without reading as a second card. */
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.metricLabel {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.metricValue {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}

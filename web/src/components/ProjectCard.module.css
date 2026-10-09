@@ -10,9 +10,27 @@
    - .spin + @keyframes spin         → kept next to the icon set for reuse
    ============================================ */
 
-/* Base card surface. Dashboard's loading skeleton reuses the global
-   .project-card shape, so the base block stays global; the variants the real
-   card adds beyond the skeleton are scoped here. */
+/* Base card surface. Dashboard's loading skeleton owns its own placeholder
+   surface in Dashboard.module.css, so this is the real card only. */
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  text-decoration: none;
+  color: inherit;
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-default);
+}
 
 /* Minimal (unstarred) variant: name + star button on one line. */
 .minimal {

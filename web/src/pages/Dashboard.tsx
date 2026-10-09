@@ -10,6 +10,7 @@ import ProjectSearchDropdown from './dashboard/ProjectSearchDropdown'
 import ErrorBanner from '../components/ErrorBanner'
 import Icon from '../components/Icon'
 import { useDashboardData, type SortKey } from '../hooks/useDashboardData'
+import s from './Dashboard.module.css'
 
 function Dashboard() {
   const { t } = useTranslation()
@@ -24,28 +25,28 @@ function Dashboard() {
   } = useDashboardData()
 
   return (
-    <div className="dashboard">
+    <div className={s.page}>
       <h1 className="visually-hidden">{t('dashboard.title')}</h1>
       <div className="visually-hidden" role="status" aria-live="polite">
         {scanning ? (scanMsg || t('dashboard.scanning', { defaultValue: 'Scanning…' })) : scanDoneMsg}
       </div>
-      <div className="dashboard-fixed">
-        <div className="hero-row">
-          <div className="hero-card">
+      <div className={s.fixed}>
+        <div className={s.heroRow}>
+          <div className={s.heroCard}>
             <GoalRing
               value={myAdded}
               goal={isWorkday ? dailyGoal : 0}
               label={isWorkday ? t('dashboard.todayGoal', { defaultValue: "Today's Goal" }) : t('dashboard.notWorkday', { defaultValue: 'Not a workday' })}
               sublabel={isWorkday ? `${myAdded} / ${dailyGoal} ${t('dashboard.linesUnit')}` : `${myAdded} ${t('dashboard.linesUnit')}`}
             />
-            <div className="hero-text">
-              <div className="hero-eyebrow">{date} · {isWorkday ? t('dashboard.workday', { defaultValue: 'Workday' }) : t('dashboard.weekendShort')}</div>
-              <div className="hero-title">
+            <div className={s.heroText}>
+              <div className={s.heroEyebrow}>{date} · {isWorkday ? t('dashboard.workday', { defaultValue: 'Workday' }) : t('dashboard.weekendShort')}</div>
+              <div className={s.heroTitle}>
                 {isWorkday
                   ? (myAdded >= dailyGoal ? t('dashboard.goalReached', { defaultValue: "Today's goal reached" }) : t('dashboard.goalRemaining', { count: Math.max(dailyGoal - myAdded, 0) }))
                   : t('dashboard.weekend', { defaultValue: 'Happy weekend' })}
               </div>
-              <div className="hero-sub">
+              <div className={s.heroSub}>
                 {t('dashboard.personalAdded')}{' '}
                 <strong className={myAdded > 0 ? 'green' : 'muted-num'}>
                   {myAdded > 0 ? `+${myAdded}` : '0'}
@@ -61,9 +62,9 @@ function Dashboard() {
 
         <Heatmap onDayClick={setDate} />
 
-        <div className="dashboard-controls">
+        <div className={s.controls}>
           <DatePicker value={date} onChange={setDate} />
-          <div className="dashboard-actions">
+          <div className={s.actions}>
             <ProjectSearchDropdown onToggleStar={handleToggleStar} />
             <div className="filter-toggle">
               <button className={`filter-btn ${!showStarredOnly ? 'active' : ''}`} onClick={() => setShowStarredOnly(false)}>{t('dashboard.all', { defaultValue: 'All' })}</button>
@@ -94,17 +95,17 @@ function Dashboard() {
         )}
       </div>
 
-      <div className="dashboard-scroll">
+      <div className={s.scroll}>
         {loading ? (
-          <div className="project-grid">
+          <div className={s.projectGrid}>
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="project-card skeleton-card">
-                <div className="card-header">
+              <div key={i} className={`${s.skeletonCard} skeleton-card`}>
+                <div className={s.skeletonHeader}>
                   <div className="skeleton skeleton-text" style={{ width: '60%', height: 20 }} />
                 </div>
-                <div className="card-grid">
+                <div className={s.skeletonGrid}>
                   {Array.from({ length: 4 }).map((_, j) => (
-                    <div key={j} className="card-stat">
+                    <div key={j} className={s.skeletonStat}>
                       <div className="skeleton skeleton-text" style={{ width: 32, height: 10 }} />
                       <div className="skeleton skeleton-text" style={{ width: 40, height: 16 }} />
                     </div>
@@ -141,12 +142,12 @@ function Dashboard() {
         ) : (
           <>
             {starredProjects.length > 0 && (
-              <div className="project-section">
-                <div className="project-section-header">
-                  <h2 className="project-section-title">{t('dashboard.starredSection')}</h2>
-                  <span className="project-section-count">{starredProjects.length}</span>
+              <div className={s.section}>
+                <div className={s.sectionHeader}>
+                  <h2 className={s.sectionTitle}>{t('dashboard.starredSection')}</h2>
+                  <span className={s.sectionCount}>{starredProjects.length}</span>
                 </div>
-                <div className="project-list-flat">
+                <div className={s.listFlat}>
                   {starredProjects.map(p => (
                     <ProjectCard
                       key={p.id}
@@ -165,12 +166,12 @@ function Dashboard() {
             )}
 
             {unstarredProjects.length > 0 && (
-              <div className="project-section">
-                <div className="project-section-header">
-                  <h2 className="project-section-title">{t('dashboard.otherSection')}</h2>
-                  <span className="project-section-count">{unstarredProjects.length}</span>
+              <div className={s.section}>
+                <div className={s.sectionHeader}>
+                  <h2 className={s.sectionTitle}>{t('dashboard.otherSection')}</h2>
+                  <span className={s.sectionCount}>{unstarredProjects.length}</span>
                 </div>
-                <div className="project-grid project-grid-minimal">
+                <div className={`${s.projectGrid} ${s.projectGridMinimal}`}>
                   {unstarredProjects.map(p => (
                     <ProjectCard
                       key={p.id}

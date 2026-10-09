@@ -26,6 +26,38 @@ export function getJson(base: string, path: string): Promise<unknown> {
   });
 }
 
+export function postJson(base: string, path: string, body: unknown): Promise<unknown> {
+  const payload = JSON.stringify(body);
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      base + path,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) },
+      },
+      (res) => {
+        let data = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk: string) => {
+          data += chunk;
+        });
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch {
+            reject(new Error(`invalid JSON from ${path}`));
+          }
+        });
+      },
+    );
+    req.on("error", reject);
+    req.setTimeout(4000, () => {
+      req.destroy(new Error(`timeout: ${path}`));
+    });
+    req.end(payload);
+  });
+}
+
 export interface NoteHit {
   id?: number;
   title?: string;

@@ -4,16 +4,19 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
-## [Unreleased]
+## [1.16.0] - 2026-10-09
 
 ### 新增
 
+- **语义检索设置 UI**：设置 → AI 新增默认关的语义检索开关、embedding endpoint/model/key、向量存储（本地 SQLite-vec / Qdrant / Weaviate / chromem）与重建索引入口。真实标注 A/B 门未过，因此默认值不变；密钥继续脱敏回显，仅输入新值时覆盖。
+- **VS Code 状态栏显示最近交接时间**：新增 `LatestHandoff` 只读绑定（仅 note id / project id / title / updated_at，不返回正文），扩展启动、写入交接后与每分钟轮询一次；服务不可达时状态栏保持基础文案。
 - **chromem-go 向量存储后端（第 3 个可选后端，纯 Go 嵌入式）**：`internal/search/vectordb/chromem.go` 实现 `Store` 接口并注册进 registry（`"chromem"`），ADR-0013 候选矩阵里「纯 Go 本地备选」的接缝终于接上——它是**嵌入式**存储而非服务器：`vector_store_url` 存的是持久化目录而非 URL，无需可达性探测；空目录配置会被工厂拒绝并退回本地 sqlite-vec，因为内存模式会在重启时把用户重建过的向量全部丢光，假装可用比直接说不行更糟。映射细节：note id ↔ `"note:<id>"` doc id；Upsert 采用 delete-first（chromem 拒绝重复 id，这样才能幂等重写同一条笔记）；Search 对「要前 10 条但库里只有 3 条」做钳制而非报错（chromem 原生会拒绝 nResults > 库内总数，而调用方本就接受少命中）；collection 的 embeddingFunc 恒为一个「必须永不运行」的哨兵函数——向量一律由 RebuildEmbeddings / embed-drainer 预算好，若哨兵被触发说明有代码路径忘了带向量，宁可报错也不静默存零向量。持久化模式经 reopen 往返验证。顺带修掉一个被新后端暴露的既有缺陷：`Kinds()` 对含 `"local"` 在内的全列表排字典序，`chromem` 恰好排在 `local` 前面把默认项挤出首位（既有测试断言 `ks[0]=="local"`，此前只因字母序侥幸成立）——现在 local 恒在首、registry 键单独排序。回归 6 组（`chromem_test.go`：往返/幂等/删除可召回/持久化 reopen/Clear 后可用/超限钳制/校验/registry 退回）。Bleve（需先做「是否替代 FTS5」的架构决策）与 Pinecone/Milvus（需凭据/集群）仍待接
 - **5 个零测试 cmd 补齐冒烟测试**：`cmd/abeval`（JSONL 解析：合法/坏行整文件拒绝而非静默跳过/空文件与不可读文件区分开 + `labeledCase` ↔ `abeval.Case` 形状钉死 + `ids` 保序）、`cmd/reponest-capture`（`resolveCwd` 三级优先级：flag > stdin 的 `{"cwd":...}` hook 对象 > 进程工作目录，含截断 JSON 不崩——hook 在用户每次会话结束时跑，panic 会打进终端）、`cmd/server`（WriteTimeout > 批处理上限的启动期守卫独立复核 + 本地回环绑定 + slowloris/keep-alive 超时都在 + `envOr` 端口覆盖优先级）、`cmd/vector-init`（provider 默认表钉住——写错的默认值会被直接写进用户配置、`firstNonEmpty` 覆盖优先级、provider 契约）、`cmd/wiki-export`（真 main() 全流程：导出树 + source 戳 + 回执行、非空目标拒写、缺 `--out` 退田 2；flag 重定义与 log.Fatalf 的 os.Exit 经子进程隔离，一套 inline-first-then-subprocess 机制保证同一二进制可重入）。此前这 5 个二进制在 CI 里只有「能编译」的保证，行为回归无任何网
 - **ProjectCard 迁入 CSS Modules（P35 第四块）**：`ProjectCard.module.css` 新建，`dashboard.css` 524 → 446 行。边界判据落地成文（写在 module 文件头）：`.card-star`/`.card-refresh-btn`（与 ProjectSearchDropdown 共享）、`.green/.red/.muted-num` 语义色、`.badge*` 集合（与 NoteSection 共享）、基础 `.project-card` 面（Dashboard 骨架屏在用）全部留全局；组件独占的 shell/flat/name/stats/pair/label/num/badges 全部下沉。`.flat-num` 全局基类与三条 doubled 规则随之退役——`.num` 与 `.numSuccess/.numDanger/.numMuted` 同在一个 module 里被同一套 hash 作用域，全局级联顺序风险从结构上消失；`semanticInk.test.ts` 的 pairs 列表同步移除 `flat-num` 并写明缘由。累计全局 CSS 5101 → 4758、module 464 → 580
 
 ### 变更
 
+- **Dashboard 与 ProjectDetail 迁入 CSS Modules（P35）**：Dashboard、SummaryBar、GoalRing、ProjectCard 基座、ProjectDetail、Overview、CommitLog 与 TrendChart 的组件独占样式全部 hash 作用域；跨组件共享的语义色、card action button、`.detail-section` 与 `.section-header` 留在全局设计系统。全局 CSS 从 4,758 行降至 3,556 行，module CSS 增至 1,993 行；旧 dashboard/project-detail 类在 `src/` 零引用。tsc、eslint、vite 与 108 个前端用例通过；两屏仍建议人工实机复核。
 - **审核页 UI 重做——对齐设计系统（用户可见）**：上一轮可读性修复只解决了"读得懂"，没解决"看着不糙"。本轮按知识页已验证的视觉语言整体重排：顶部改知识页同款 **sticky 工具栏**（同一套负 margin 算术：`top:-32px` + 对称负 margin/padding 补偿，静态布局零变化；断点跟 main.css 的 768px 缩到 -20px；不透明背景防内容透出），项目下拉自绘而非复用 `.form-select`——那个控件是 34px 文本输入高度，而工具栏按钮排是 28px 的 `.btn-sm`，module 里做高度覆盖赢不赢要看 import 顺序而非意图；可见大标题退役（导航已命名本 tab，h1 留 `visually-hidden` 给读屏，与知识页同一判例），标题的语义职责压缩成一行 lead——"拒绝=替换为错误页而非删除、链接不断"这条规则从界面猜不出来，值得占一行。job 行升级为卡片：soft 状态徽章（running 带呼吸圆点，全页唯一动效，`prefers-reduced-motion` 下关闭）、进度独立成行、计数改 chips、补上此前没显示的项目名。审核卡重排信息层级：kind 徽章按类别着色（entity/concept/synthesis 三色，模型自造的未知 kind 退中性灰——着色是扫读辅助不是语义保证）、标题 15px 提为主角、slug 降为 mono 次行、来源笔记与出入链全部 chips 化（链改显 title 而非 slug）、动作按钮次左主右、≤768px 拉满整行宽度。后台任务与错误页两个区块**空时整体不渲染**——审核者每次进页不必滚过两个空盒子。i18n +6 键（空态标题/正文、笔记引用、kind 双语名）−3 死键（`emptyJobs`/`emptyRejected` 随区块隐藏退役，`noProjects` 早已无人引用）
 - **审核 tab 的可读性修复（用户可见）**：待审/错误页卡片此前用裸 `<pre>` 渲染页面正文——编译产物本身是 markdown（标题、列表、`[[wikilink]]`），原文裸奔让每张卡片读起来像内存转储，且卡片头不显示页面标题（只有机器 slug）。现在正文走与知识库同一条 `renderMarkdown` 管线（strip frontmatter + DOMPurify 清洗，与 NoteSection 同源），标题优先渲染、slug 退为次要元数据；错误页占位文本刻意保持纯文本（它是错误说明不是文档）。补上后端早已返回却从未渲染的 `in_links`（反向链接——审一条模型写的页时最需要的是"谁引用了它"），以及此前漏掉的 `pages_updated`/`links_created` 计数；job 行的进度文本在 `notes_total` 与 `requested_notes` 都是 0 时（worker 被杀、快照缺失）不再渲染出可疑的 "0 / 0"，只显示状态徽章。新增 i18n key 双语对齐（`pagesUpdated`/`linksCreated`）
 - **首页（知识库）工具栏冻结**：搜索框 + 新建/导入按钮 sticky 化，长列表滚动时始终可见。复用 `.settings-tabs` 验证过的负 margin 算术（sticky 的 `top` 以 scrollport 为原点，而工具栏的静态位置在 `.main-content` 32px padding 之下，`top: 0` 会让内容从 32px 空带里穿过去；`top: -32px` + 对称负 margin + padding 补偿使静态布局零变化）。全出血边距让分隔线贯穿整个内容区，不透明背景防止滚动内容透出。断点刻意跟随 main.css 的 768px（padding 缩窄点）而非本文件其他规则的 640px——sticky 偏移必须跟着 padding 变，否则钉住的栏会偏离边缘；settings-tabs 存在同样的 640/768 错位，本轮不动它
@@ -782,4 +785,3 @@ CBiPay 真实数据样例测试(11 仓库聚合工作区)暴露的修复批次,�
 [1.2.0]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.2.0
 [1.1.0]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.1.0
 [1.0.0]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.0.0
-

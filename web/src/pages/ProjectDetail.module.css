@@ -1,0 +1,144 @@
+/* ProjectDetail — page shell and compact head.
+   .detail-section / .section-header stay global: child sections consume both. */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.fixed {
+  flex-shrink: 0;
+  padding-bottom: 4px;
+}
+
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.backButton {
+  margin-bottom: 12px;
+}
+
+/* Group-level stepper on the compact identity line. */
+.levelControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.levelValue {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  min-width: 84px;
+  text-align: center;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 0 0;
+}
+
+.headLine {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.headLine h1 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.headPath {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.headLine :global(.btn-primary) {
+  flex-shrink: 0;
+}
+
+.statsLine {
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  padding: 2px 0;
+}
+
+.stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.statLabel {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.statValue {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+/* The semantic class stays global; a module-scoped doubled rule removes the
+   source-order dependency on that utility. */
+.statValue :global(.green) {
+  color: var(--success);
+}
+
+.statValue :global(.red) {
+  color: var(--danger);
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tabs :global(.tab-btn) {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.tabs :global(.tab-btn:first-child) {
+  padding-left: 0;
+}
+
+.commitsTab {
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .commitsTab {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    align-items: start;
+  }
+}

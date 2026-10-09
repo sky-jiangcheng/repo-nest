@@ -1,0 +1,147 @@
+/* Project overview section — scoped styles migrated from project-detail.css. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cacheHint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.tech {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.langs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.langRow {
+  display: grid;
+  grid-template-columns: 90px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.langName {
+  color: var(--text-secondary);
+}
+
+.langBar {
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.langFill {
+  height: 100%;
+  background: var(--accent-light);
+  border-radius: 3px;
+}
+
+.langCount {
+  text-align: right;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.readme {
+  font-size: 13px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+}
+
+.subTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.dependencies {
+  margin-top: 20px;
+}
+
+.depsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.depChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.depName {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.depVersion {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.depSource {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.contributors {
+  margin-top: 20px;
+}
+
+.contribList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contribItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.contribRank {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 12px;
+  min-width: 24px;
+}
+
+.contribName {
+  flex: 1;
+  color: var(--text-primary);
+}
+
+.contribCount {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}

@@ -21,7 +21,7 @@ order: 21
 | [0012](0012-semantic-search.md) | Semantic search — vector recall over FTS5, stay zero-CGO (M3) | Accepted-in-principle |
 | [0013](0013-vector-database-selection.md) | Vector store selection (sqlite-vec) and onboarding guide | Accepted |
 | [0014](0014-llm-wiki-knowledge-compiler.md) | LLM Wiki knowledge compiler — compile at ingest, gather evidence at query time (M6) | Proposed (W1/W1b/W4 landed, W2 core + UI landed; its promotion still needs a real labelled query set — see 0015 for W3) |
-| [0015](0015-w3-minimal-compile-loop.md) | W3 minimal compile loop — the LLM writes pending pages only, humans gate what enters search | Proposed |
+| [0015](0015-w3-minimal-compile-loop.md) | W3 minimal compile loop — the LLM writes pending pages only, humans gate what enters search | Accepted |
 | [0016](0016-async-batch-jobs.md) | Async long-running batch jobs — submit returns, progress is queryable, results survive | Accepted |
 | [0017](0017-one-kernel-two-entry-points.md) | One kernel, two entry points — product layering without forking the repo | Proposed |
 

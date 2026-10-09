@@ -1,6 +1,6 @@
 # ADR-0015: W3 最小编译闭环——LLM 只写 pending 页，人批准才进检索
 
-- 状态：Proposed（schema v18 与编译器已实现并通过契约测试；**并已在真库副本上用本地模型跑通一轮编译**——4 项目 / 14 仓库 / 5 笔记的库，v13→v18 一次升级成功，产出 4 张 pending 页且 4/4 挂上来源笔记，安全不变量在真实条件下成立。仍差两件事才够晋升：**人对这批产物的审核与质量判断**，以及长任务的异步化（见 [ADR-0016](0016-async-batch-jobs.md)）——见末尾）
+- 状态：Accepted（schema v18 与编译器已实现并通过契约测试；真库副本用本地模型跑通编译并完成逐页人审；审核 tab 与长任务异步化已由 [ADR-0016](0016-async-batch-jobs.md) 落地。晋升条件 1-5 均已满足）
 - 日期：2026-10-08
 - 关联：[ADR-0014](0014-llm-wiki-knowledge-compiler.md)（本方案实现其决策 4 与决策 5 的前半）、[ADR-0012](0012-semantic-search.md)、[ADR-0011](0011-multi-agent-memory-importers.md)、[ADR-0007](0007-session-memory-protocol.md)、TODO **M6-W3**；前置 W1（schema v16）、W1b（v17 页索引）、W4（lint）均已落地
 

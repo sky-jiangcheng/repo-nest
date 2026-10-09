@@ -4,10 +4,8 @@ import { Link } from 'react-router-dom'
 import Icon from './Icon'
 import type { Project } from '../api/client'
 // Scoped styles for everything ProjectCard owns; .card-star / .card-refresh-btn
-// (shared with ProjectSearchDropdown), the .green/.red/.muted-num semantic ink
-// and the .badge set (shared with NoteSection) stay global — see the header of
-// ProjectCard.module.css. The base .project-card surface stays global too:
-// Dashboard's loading skeleton renders the same shape without this component.
+// (shared with ProjectSearchDropdown) and the .badge set (shared with
+// NoteSection) stay global — see the header of ProjectCard.module.css.
 import s from './ProjectCard.module.css'
 
 interface Props {
@@ -50,7 +48,7 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
 
   if (!project.is_starred) {
     return (
-      <div className={`project-card ${s.minimal}`}>
+      <div className={`${s.card} ${s.minimal}`}>
         <button
           className="card-star"
           onClick={handleStarClick}
@@ -61,7 +59,7 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
         </button>
         {/* Unstarred repos only show name + star button (no detail page) — clicking
             would lead to an empty detail page with no stats, so it is non-interactive. */}
-        <span className="card-name">{project.name}</span>
+        <span className={s.name}>{project.name}</span>
       </div>
     )
   }
@@ -72,7 +70,7 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
   // my +/-, repo count, badges — instead of the old tall hero card. One
   // starred repo used to render a full-width slab that read like a dropdown.
   return (
-    <div className={`project-card-shell ${s.shell}`}>
+    <div className={s.shell}>
       <button
         className="card-star starred"
         onClick={handleStarClick}
@@ -81,7 +79,7 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
       >
         <Icon name="star" size={16} filled />
       </button>
-      <Link to={to} className={`project-card project-card-flat ${reachedGoal ? 'card-goal-reached' : ''}`}>
+      <Link to={to} className={`${s.card} ${s.flat} ${reachedGoal ? s.goalReached : ''}`}>
         <span className={s.flatName}>{project.name}</span>
         <span className={s.flatStats}>
           <span className={s.pair}>
