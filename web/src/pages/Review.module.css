@@ -1,195 +1,134 @@
 /* ============================================
-   Review — standalone knowledge-review & compile-progress tab
-   All styles are scoped to this module (P35 convention: new components own a
-   .module.css). Only genuinely global affordances (.btn, .btn-primary,
-   .btn-danger, .btn-sm) are reused from the design system.
+   Review — knowledge-review queue & compile progress
+   Scoped module (P35 convention). Global affordances reused: .btn /
+   .btn-sm / .btn-primary / .btn-danger, .empty-state / .empty-icon,
+   .markdown-body, .visually-hidden.
    ============================================ */
 
 .page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  max-width: 900px;
-  margin: 0 auto;
 }
 
-.header {
+/* Frozen toolbar, same mechanics as .knowledge-toolbar (the full essay lives
+   there): sticky measures `top` from the scrollport edge, but the toolbar's
+   normal-flow position starts below .main-content's 32px padding-top, so
+   `top: -32px` + the matching negative margin / restored padding pins it flush
+   while leaving the resting layout unchanged. Full-bleed margins make the
+   hairline span the gutter; the opaque background is load-bearing — content
+   must not read through the bar. */
+.toolbar {
+  position: sticky;
+  top: -32px;
+  margin-top: -32px;
+  padding-top: 32px;
+  margin-left: -32px;
+  margin-right: -32px;
+  padding-left: 32px;
+  padding-right: 32px;
+  background: var(--bg-primary);
+  z-index: 5;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.title {
-  font-size: 20px;
-  font-weight: 600;
+/* Sized to sit flush with the 28px .btn-sm row. Self-drawn rather than
+   .form-select: that control is the 34px text-input height, and a height
+   override in a module would win or lose on import order, not intent. */
+.select {
+  height: 28px;
+  padding: 0 30px 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 11px 11px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.select:hover {
+  border-color: var(--text-muted);
+}
+
+.select:focus-visible {
+  border-color: var(--accent-light);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+[data-theme='dark'] .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a8a8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+/* Reading column: reviewer compares page bodies against source notes, so the
+   cards stay at a document measure instead of stretching to the 1280px
+   content width. */
+.content {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* One line of semantics that is not guessable from the UI: rejecting replaces
+   a page with an error placeholder rather than deleting it, precisely so
+   inbound links stay resolvable. */
+.lead {
   margin: 0;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  max-width: 72ch;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.sectionHead h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
-.subtitle {
-  margin: 6px 0 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-  max-width: 62ch;
-}
-
-.controls {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.selectWrap {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.selectLabel {
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-.group {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--bg-secondary);
-  padding: 16px 18px;
-}
-
-.groupTitle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0 0 12px;
-}
-
-.count {
+.countChip {
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   background: var(--bg-tertiary);
-  border-radius: 10px;
-  padding: 1px 8px;
+  border-radius: 999px;
+  padding: 1px 9px;
+  font-variant-numeric: tabular-nums;
 }
 
-.empty {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-tertiary);
-}
-
-.cardList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.card {
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-primary);
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* A replaced result is visually de-emphasised but never removed: its whole
-   purpose is to keep inbound links resolvable. */
-.cardRejected {
-  border-style: dashed;
-  background: transparent;
-}
-
-.cardHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  flex-wrap: wrap;
-}
-
-.kind {
-  text-transform: lowercase;
-  background: var(--bg-tertiary);
-  border-radius: 4px;
-  padding: 1px 6px;
-}
-
-.slug {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-.pageTitle {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.proj {
-  margin-left: auto;
-}
-
-.body {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-primary);
-  /* Rendered markdown (same pipeline as the knowledge base), not raw text —
-     so the scroll cap and word-wrap still apply, but the inner spacing is the
-     markdown-body's. */
-  max-height: 260px;
-  overflow-y: auto;
-  word-break: break-word;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  background: var(--bg-secondary);
-}
-
-/* Inside the padded frame the markdown-body needs no extra top margin, or the
-   first heading floats below the frame edge. */
-.body :global(.markdown-body > :first-child) {
-  margin-top: 0;
-}
-
-.body :global(.markdown-body > :last-child) {
-  margin-bottom: 0;
-}
-
-.errLine {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin: 0;
-  font-size: 13px;
-  color: var(--warning);
-}
-
-.meta {
-  margin: 0;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+/* ---------- Job rows ---------- */
 
 .jobList {
   list-style: none;
@@ -203,10 +142,12 @@
 .job {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
+  background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
 }
 
 .jobTop {
@@ -216,10 +157,106 @@
   flex-wrap: wrap;
 }
 
-.jobMeta {
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 10px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.status_running {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.status_succeeded {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.status_failed {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.status_canceled {
+  color: var(--text-tertiary);
+}
+
+/* The one moving element on the page: a running job should look alive. */
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
+}
+
+.jobKind {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.jobProject {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.jobProgress {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+}
+
+.cancel {
+  margin-left: auto;
+}
+
+.jobStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stat {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 2px 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--transition-base);
 }
 
 .jobNote {
@@ -234,29 +271,192 @@
   color: var(--danger);
 }
 
-.badge {
+/* ---------- Review cards ---------- */
+
+.cardList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 16px 18px;
+  transition: border-color var(--transition-fast);
+}
+
+.card:hover {
+  border-color: var(--border-default);
+}
+
+/* A replaced result is visually de-emphasised but never removed: its whole
+   purpose is to keep inbound links resolvable. */
+.cardRejected {
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Hue per kind is a scanning aid, not a semantic guarantee: kind is a
+   model-chosen string, so unknown kinds fall back to the neutral badge. */
+.kindBadge {
   font-size: 11px;
   font-weight: 600;
-  border-radius: 10px;
-  padding: 2px 9px;
+  border-radius: 999px;
+  padding: 2px 10px;
   background: var(--bg-tertiary);
   color: var(--text-secondary);
 }
 
-.badge_running { color: var(--accent); }
-.badge_succeeded { color: var(--success); }
-.badge_failed { color: var(--danger); }
-.badge_canceled { color: var(--text-tertiary); }
-
-.progressTrack {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--bg-tertiary);
-  overflow: hidden;
+.kindBadge_entity {
+  background: var(--info-soft);
+  color: var(--info);
 }
 
-.progressFill {
-  height: 100%;
-  background: var(--accent);
-  transition: width var(--transition-base);
+.kindBadge_concept {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.kindBadge_synthesis {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  min-width: 0;
+  word-break: break-word;
+}
+
+.cardProject {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.slug {
+  margin: -4px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  word-break: break-all;
+}
+
+.body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  /* Rendered markdown (same pipeline as the knowledge base), so the scroll
+     cap and word-wrap apply but the inner spacing is the markdown-body's. */
+  max-height: 260px;
+  overflow-y: auto;
+  word-break: break-word;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  background: var(--bg-primary);
+}
+
+/* Inside the padded frame the markdown-body needs no extra top margin, or the
+   first heading floats below the frame edge. */
+.body :global(.markdown-body > :first-child) {
+  margin-top: 0;
+}
+
+.body :global(.markdown-body > :last-child) {
+  margin-bottom: 0;
+}
+
+/* The rejected body is an error placeholder, not a document: soft warning
+   plate instead of a markdown frame. */
+.errLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--warning);
+  background: var(--warning-soft);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.errLine > :global(svg) {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.metaLabel {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-right: 2px;
+}
+
+.chip {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-radius: 999px;
+  padding: 2px 9px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Breakpoint tracks layouts/main.css's 768px (where the main-content gutter
+   drops to 20px) — the sticky offsets must follow the padding change, not the
+   toolbar's own wrap point. */
+@media (max-width: 768px) {
+  .toolbar {
+    top: -20px;
+    margin-top: -20px;
+    padding-top: 20px;
+    margin-left: -20px;
+    margin-right: -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  /* One thumb-width target per action instead of a cramped right-aligned row. */
+  .actions > :global(.btn) {
+    flex: 1;
+  }
 }

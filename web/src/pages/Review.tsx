@@ -134,19 +134,22 @@ function ReviewPage() {
 
   return (
     <div className={s.page}>
-      <header className={s.header}>
-        <div>
-          <h1 className={s.title}>{t('review.title')}</h1>
-          <p className={s.subtitle}>{t('review.subtitle')}</p>
-        </div>
-        <div className={s.controls}>
-          <label className={s.selectWrap}>
-            <span className={s.selectLabel}>{t('review.projectFilter')}</span>
-            <select value={projectFilter} onChange={e => setProjectFilter(Number(e.target.value))}>
-              <option value={0}>{t('review.allProjects')}</option>
-              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </label>
+      {/* The nav bar already names this tab ("审核"), so a visible title would
+          be duplication — it stays for screen readers and the document outline
+          (same call as the knowledge page). */}
+      <h1 className="visually-hidden">{t('review.title')}</h1>
+
+      <div className={s.toolbar}>
+        <select
+          className={s.select}
+          value={projectFilter}
+          onChange={e => setProjectFilter(Number(e.target.value))}
+          aria-label={t('review.projectFilter')}
+        >
+          <option value={0}>{t('review.allProjects')}</option>
+          {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <div className={s.toolbarActions}>
           <button className="btn btn-sm" onClick={reload}>{t('review.reload')}</button>
           <button
             className="btn btn-sm btn-primary"
@@ -167,72 +170,123 @@ function ReviewPage() {
             {t('review.startLint')}
           </button>
         </div>
-      </header>
+      </div>
 
-      {loadError && <ErrorBanner message={loadError} onRetry={reload} />}
+      <div className={s.content}>
+        <p className={s.lead}>{t('review.subtitle')}</p>
 
-      <section className={s.group}>
-        <h2 className={s.groupTitle}>{t('review.jobHeading')}</h2>
-        {jobs.length === 0
-          ? <p className={s.empty}>{t('review.emptyJobs')}</p>
-          : <ul className={s.jobList}>
-            {jobs.map(j => (
-              <li key={j.id} className={s.job}>
-                <div className={s.jobTop}>
-                  <span className={`${s.badge} ${s['badge_' + j.status] ?? ''}`}>{t(statusKey(j.status), j.status)}</span>
-                  {/* One queue, two kernels (ADR-0016 待决 ①), so the counters are
-                      labelled per kind: "pages created" is always 0 on a lint row
-                      and "notes" is not what a lint row counts. */}
-                  <span className={s.badge}>{kindLabel(j, t)}</span>
-                  <span className={s.jobMeta}>
-                    {jobProgressText(j, t)}
-                    {j.kind === 'lint'
-                      ? (j.findings > 0 || j.notes_done > 0) && <> · {t('review.findingsCount', { n: j.findings })}</>
-                      : (j.pages_created > 0 || j.notes_done > 0) && <> · {t('review.pagesCreated', { n: j.pages_created })}</>}
-                    {j.kind !== 'lint' && j.pages_updated > 0 && <> · {t('review.pagesUpdated', { n: j.pages_updated })}</>}
-                    {j.kind !== 'lint' && j.links_created > 0 && <> · {t('review.linksCreated', { n: j.links_created })}</>}
-                    {j.kind !== 'lint' && j.rejected_ops > 0 && <> · {t('review.rejectedOps', { n: j.rejected_ops })}</>}
-                    {j.kind !== 'lint' && j.revision_todos > 0 && <> · {t('review.revisionTodos', { n: j.revision_todos })}</>}
-                  </span>
-                  {(j.status === 'queued' || j.status === 'running') && (
-                    <button className="btn btn-sm" onClick={() => onCancel(j.id)} disabled={busy}>
-                      {t('review.cancelJob')}
-                    </button>
-                  )}
-                </div>
-                {(j.status === 'running' || j.status === 'queued') && j.notes_total > 0 && (
-                  <div className={s.progressTrack}>
-                    <div className={s.progressFill}
-                      style={{ width: `${Math.min(100, (j.notes_done / j.notes_total) * 100)}%` }} />
-                  </div>
-                )}
-                {j.stopped && <p className={s.jobNote}>{t('review.stopped', { reason: j.stopped })}</p>}
-                {j.error && <p className={s.jobError}>{t('review.error', { msg: j.error })}</p>}
-              </li>
-            ))}
-          </ul>}
-      </section>
+        {loadError && <ErrorBanner message={loadError} onRetry={reload} />}
 
-      <section className={s.group}>
-        <h2 className={s.groupTitle}>{t('review.pendingHeading')} <span className={s.count}>{pending.length}</span></h2>
-        {pending.length === 0
-          ? <p className={s.empty}>{t('review.emptyPending')}</p>
-          : <ul className={s.cardList}>
-            {pending.map(p => <ReviewCard key={p.page.id} item={p} projectLabel={projectLabel}
-              busy={busy} onApprove={onApprove} onReject={onReject} />)}
-          </ul>}
-      </section>
+        {/* Jobs and rejected sections only exist when they have content: a
+            reviewer who just wants the queue should not scroll past two empty
+            boxes on every visit. */}
+        {jobs.length > 0 && (
+          <section>
+            <div className={s.sectionHead}>
+              <h2>{t('review.jobHeading')}</h2>
+            </div>
+            <ul className={s.jobList}>
+              {jobs.map(j => (
+                <JobRow key={j.id} job={j} projectLabel={projectLabel} busy={busy} onCancel={onCancel} />
+              ))}
+            </ul>
+          </section>
+        )}
 
-      <section className={s.group}>
-        <h2 className={s.groupTitle}>{t('review.rejectedHeading')} <span className={s.count}>{rejected.length}</span></h2>
-        {rejected.length === 0
-          ? <p className={s.empty}>{t('review.emptyRejected')}</p>
-          : <ul className={s.cardList}>
-            {rejected.map(p => <ReviewCard key={p.page.id} item={p} projectLabel={projectLabel}
-              busy={busy} rejected onDelete={onDelete} />)}
-          </ul>}
-      </section>
+        <section>
+          <div className={s.sectionHead}>
+            <h2>{t('review.pendingHeading')}</h2>
+            <span className={s.countChip}>{pending.length}</span>
+          </div>
+          {pending.length === 0
+            ? <div className="empty-state small">
+                <div className="empty-icon"><Icon name="file-text" size={32} /></div>
+                <h3>{t('review.emptyPendingTitle')}</h3>
+                <p>{t('review.emptyPendingMsg')}</p>
+              </div>
+            : <ul className={s.cardList}>
+                {pending.map(p => (
+                  <ReviewCard key={p.page.id} item={p} projectLabel={projectLabel}
+                    busy={busy} onApprove={onApprove} onReject={onReject} />
+                ))}
+              </ul>}
+        </section>
+
+        {rejected.length > 0 && (
+          <section>
+            <div className={s.sectionHead}>
+              <h2>{t('review.rejectedHeading')}</h2>
+              <span className={s.countChip}>{rejected.length}</span>
+            </div>
+            <ul className={s.cardList}>
+              {rejected.map(p => (
+                <ReviewCard key={p.page.id} item={p} projectLabel={projectLabel}
+                  busy={busy} rejected onDelete={onDelete} />
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
     </div>
+  )
+}
+
+function JobRow({
+  job, projectLabel, busy, onCancel,
+}: {
+  job: CompileJob
+  projectLabel: (pid: number) => string
+  busy: boolean
+  onCancel: (id: number) => void
+}) {
+  const { t } = useTranslation()
+  const active = job.status === 'queued' || job.status === 'running'
+  return (
+    <li className={s.job}>
+      <div className={s.jobTop}>
+        <span className={`${s.status} ${s['status_' + job.status] ?? ''}`}>
+          {job.status === 'running' && <span className={s.dot} />}
+          {t(statusKey(job.status), job.status)}
+        </span>
+        <span className={s.jobKind}>{kindLabel(job, t)}</span>
+        <span className={s.jobProject}>{projectLabel(job.project_id)}</span>
+        <span className={s.jobProgress}>{jobProgressText(job, t)}</span>
+        {active && (
+          <button className={`btn btn-sm ${s.cancel}`} onClick={() => onCancel(job.id)} disabled={busy}>
+            {t('review.cancelJob')}
+          </button>
+        )}
+      </div>
+      {active && job.notes_total > 0 && (
+        <div className={s.progressTrack}>
+          <div className={s.progressFill}
+            style={{ width: `${Math.min(100, (job.notes_done / job.notes_total) * 100)}%` }} />
+        </div>
+      )}
+      {/* One queue, two kernels (ADR-0016 待决 ①), so the counters are
+          labelled per kind: "pages created" is always 0 on a lint row and
+          "notes" is not what a lint row counts. Chips are only emitted for
+          non-zero stats — a wall of "新建 0 页" chips is noise, and the
+          done>0 disjunct keeps an in-flight row's first chip visible from
+          note one. */}
+      <div className={s.jobStats}>
+        {job.kind === 'lint'
+          ? (job.findings > 0 || job.notes_done > 0) && (
+              <span className={s.stat}>{t('review.findingsCount', { n: job.findings })}</span>
+            )
+          : <>
+              {(job.pages_created > 0 || job.notes_done > 0) && (
+                <span className={s.stat}>{t('review.pagesCreated', { n: job.pages_created })}</span>
+              )}
+              {job.pages_updated > 0 && <span className={s.stat}>{t('review.pagesUpdated', { n: job.pages_updated })}</span>}
+              {job.links_created > 0 && <span className={s.stat}>{t('review.linksCreated', { n: job.links_created })}</span>}
+              {job.rejected_ops > 0 && <span className={s.stat}>{t('review.rejectedOps', { n: job.rejected_ops })}</span>}
+              {job.revision_todos > 0 && <span className={s.stat}>{t('review.revisionTodos', { n: job.revision_todos })}</span>}
+            </>}
+      </div>
+      {job.stopped && <p className={s.jobNote}>{t('review.stopped', { reason: job.stopped })}</p>}
+      {job.error && <p className={s.jobError}>{t('review.error', { msg: job.error })}</p>}
+    </li>
   )
 }
 
@@ -252,14 +306,16 @@ function ReviewCard({
   return (
     <li className={`${s.card} ${rejected ? s.cardRejected : ''}`}>
       <div className={s.cardHead}>
-        <span className={s.kind}>{p.kind}</span>
+        <span className={`${s.kindBadge} ${s['kindBadge_' + p.kind] ?? ''}`}>
+          {t(`review.kind_${p.kind}`, p.kind)}
+        </span>
         {/* Title first — the slug is the machine key, the title is what a
             reviewer compares against the sources. A missing title renders the
             slug instead so a row never opens nameless. */}
-        <span className={s.pageTitle}>{p.title || p.slug}</span>
-        <span className={s.slug}>{p.slug}</span>
-        <span className={s.proj}>{projectLabel(p.project_id)}</span>
+        <span className={s.cardTitle}>{p.title || p.slug}</span>
+        <span className={s.cardProject}>{projectLabel(p.project_id)}</span>
       </div>
+      <p className={s.slug}>{p.slug}</p>
       {/* Render the body as markdown (the same pipeline the knowledge base
           uses): compiler output IS markdown — headings, lists, [[wikilinks]] —
           and a raw <pre> made every pending page read like a dump. The
@@ -270,22 +326,39 @@ function ReviewCard({
         ? <p className={s.errLine}><Icon name="warning" size={14} /> {p.content}</p>
         : <div className={`${s.body} markdown-body`} dangerouslySetInnerHTML={{ __html: renderMarkdown(p.content) }} />}
       {item.source_note_ids?.length > 0 && (
-        <p className={s.meta}>{t('review.sourceNotes')}: {item.source_note_ids.join(', ')}</p>
+        <div className={s.metaRow}>
+          <span className={s.metaLabel}>{t('review.sourceNotes')}</span>
+          {item.source_note_ids.map(id => (
+            <span key={id} className={s.chip}>{t('review.noteRef', { n: id })}</span>
+          ))}
+        </div>
       )}
       {item.in_links?.length > 0 && (
-        <p className={s.meta}>{t('review.inLinks')}: {item.in_links.map(l => l.slug).join(', ')}</p>
+        <div className={s.metaRow}>
+          <span className={s.metaLabel}>{t('review.inLinks')}</span>
+          {item.in_links.map(l => (
+            <span key={`${l.page_id}-${l.relation}`} className={s.chip}>{l.title || l.slug}</span>
+          ))}
+        </div>
       )}
       {item.out_links?.length > 0 && (
-        <p className={s.meta}>{t('review.outLinks')}: {item.out_links.map(l => l.slug).join(', ')}</p>
+        <div className={s.metaRow}>
+          <span className={s.metaLabel}>{t('review.outLinks')}</span>
+          {item.out_links.map(l => (
+            <span key={`${l.page_id}-${l.relation}`} className={s.chip}>{l.title || l.slug}</span>
+          ))}
+        </div>
       )}
+      {/* Secondary action left, primary right — the page's whole job is the
+          approve/decline decision, so the pair reads as one dialog. */}
       <div className={s.actions}>
         {!rejected && (
           <>
-            <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => onApprove?.(p.id)}>
-              <Icon name="check" size={13} /> {t('review.approve')}
-            </button>
             <button className="btn btn-sm" disabled={busy} onClick={() => onReject?.(p.id)}>
               {t('review.reject')}
+            </button>
+            <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => onApprove?.(p.id)}>
+              <Icon name="check" size={13} /> {t('review.approve')}
             </button>
           </>
         )}
