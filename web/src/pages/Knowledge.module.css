@@ -1,0 +1,306 @@
+/* ============================================
+   Knowledge page — scoped module styles
+   Migrated from the global knowledge.css (P35).
+   Only classes exclusive to the Knowledge page live here. Still global:
+   .pin-btn (+ :hover/.pinned, shared with NoteSection), .filter-btn /
+   .active / .pinned-active, .page-head-actions, .btn, .form-input,
+   .empty-* , .section-header, .hit-* .
+   ============================================ */
+/* ============================================
+   Knowledge hub
+   ============================================ */
+
+/* Page toolbar: search is the page's primary verb, so it and the two write
+   actions share one row. The previous version stacked a large "Knowledge Base"
+   title above a separate action row — but the nav bar already names this
+   section, so that block was pure duplication and pushed the actual content
+   below the fold. */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  /* A single hairline instead of a heading block: the toolbar reads as a
+     control surface, not as a title, which is what it is. */
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+
+  /* Frozen header: the toolbar stays pinned while the note list scrolls, so
+     search/filtering is always one glance away no matter how far down the
+     list the user has read. Same mechanics as .settings-tabs (see the essay
+     there): sticky measures `top` from the scrollport edge, but the toolbar's
+     normal-flow position starts below .main-content's 32px padding-top, so a
+     plain `top: 0` would park it 32px down with content visibly scrolling
+     through the band. `top: -32px` pins it flush; the matching negative
+     margin-top pulls the unpinned position back up, and the padding-top
+     restores the space the negative margin removed, so the resting layout is
+     unchanged. Full-bleed margins make the hairline span the gutter; the
+     opaque background is load-bearing — a translucent bar lets scrolled
+     content read through it. */
+  position: sticky;
+  top: -32px;
+  margin-top: -32px;
+  padding-top: 32px;
+  margin-left: -32px;
+  margin-right: -32px;
+  padding-left: 32px;
+  padding-right: 32px;
+  background: var(--bg-primary);
+  z-index: 5;
+}
+
+.search {
+  position: relative;
+  /* Capped, not `flex: 1`. A search box stretched to 970px on a wide monitor
+     is a scanning problem, not a convenience — the eye has to travel from the
+     magnifier to the far end of the field to find what you typed. 520px keeps
+     the query and its result on one short line. */
+  flex: 1 1 320px;
+  max-width: 520px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+  display: block;
+}
+
+.searchInput {
+  width: 100%;
+  /* Taller than the shared 9px/14px form control: this is the page's primary
+     input, not one field among several. */
+  padding: 10px 14px 10px 34px;
+  font-size: 14px;
+  /* Room for the icon on the left and the hint on the right. */
+  padding-right: 16px;
+}
+
+.searchHint {
+  position: absolute;
+  right: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  pointer-events: none;
+  background: var(--bg-secondary);
+  padding-left: 8px;
+}
+
+/* Note: this breakpoint intentionally tracks layouts/main.css's 768px (where
+   the gutter drops to 20px), not the 640px used elsewhere in this file — the
+   sticky offsets must follow the padding change, not the toolbar's own wrap
+   point. (settings-tabs has the same 640/768 mismatch; left alone there.) */
+@media (max-width: 768px) {
+  .toolbar {
+    gap: 10px;
+  }
+
+  /* The layout gutter drops to 20px at this breakpoint (layouts/main.css),
+     so the sticky offsets must track it or the pinned bar parks off-edge —
+     same arithmetic as .settings-tabs. */
+  .toolbar {
+    top: -20px;
+    margin-top: -20px;
+    padding-top: 20px;
+    margin-left: -20px;
+    margin-right: -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  /* Actions take the full width on a phone: two 13px labels plus a search
+     field cannot share a 390px line without either wrapping or shrinking the
+     field below a usable size. */
+  .toolbar :global(.page-head-actions) {
+    width: 100%;
+  }
+
+  .toolbar :global(.page-head-actions) :global(.btn) {
+    flex: 1;
+  }
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.filters :global(.filter-btn.pinned-active) {
+  background: var(--warning-soft);
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+.tagChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.tagChip {
+  padding: 4px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+}
+
+.tagChip:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.tagChipActive {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Live result count. Replaces the old "笔记 (N)" heading: same information,
+   but set as quiet metadata so it does not compete with the notes it counts.
+   `aria-live` lives on this element, so screen readers hear the count change
+   as filters narrow the list. */
+.resultCount {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 12px;
+}
+
+.projectJump {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+
+.projectJumpLabel {
+  color: var(--text-tertiary);
+}
+
+.projectJumpItem {
+  color: var(--accent);
+  text-decoration: none;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  transition: background var(--transition-fast);
+}
+
+.projectJumpItem:hover {
+  background: var(--accent-light);
+  color: white;
+}
+
+.newNotePicker {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.newNotePickerTitle {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+
+.newNotePickerList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.newNotePickerItem {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: none;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.newNotePickerItem:hover {
+  background: var(--accent-light);
+  color: white;
+}
+
+.noteGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.recentSection {
+  margin-bottom: 18px;
+}
+
+.recentList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recentItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-tertiary, var(--bg-secondary));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.recentItem:hover {
+  border-color: var(--accent);
+  background: var(--bg-hover, var(--bg-secondary));
+}
+
+.recentTitle {
+  font-weight: 500;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentProject {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.recentTime {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+  .searchInput {
+    font-size: 13px;
+  }
+}

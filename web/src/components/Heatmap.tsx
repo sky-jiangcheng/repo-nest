@@ -3,8 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { useEffect, useState, useMemo } from 'react'
 import { getHeatmapData, type HeatmapDay } from '../api/client'
 import type { Scope } from './ScopeToggle'
+import s from './Heatmap.module.css'
 
 const DAYS_PER_WEEK = 7
+
+// Scoped level classes: CSS Modules hashes them, so the old `level-N`
+// template string becomes a lookup.
+const LEVEL_CLASS = [s.level0, s.level1, s.level2, s.level3, s.level4]
 
 const SCOPE_DAYS: Record<Scope, number> = {
   week: 7,
@@ -106,7 +111,7 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onSc
     return (
       <div
         key={key}
-        className={`heatmap-cell-simple level-${getLevel(day)}`}
+        className={`${s.cellSimple} ${LEVEL_CLASS[getLevel(day)]}`}
         role={clickable ? 'button' : undefined}
         tabIndex={clickable ? 0 : undefined}
         aria-label={day ? `${day.date}: +${day.lines_added} -${day.lines_deleted}` : t('heatmap.noData')}
@@ -124,8 +129,8 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onSc
 
   if (loading) {
     return (
-      <div className="heatmap-simple">
-        <div className="heatmap-loading">{t('common.loading', { defaultValue: '加载中…' })}</div>
+      <div className={s.simple}>
+        <div className={s.loading}>{t('common.loading', { defaultValue: '加载中…' })}</div>
       </div>
     )
   }
@@ -146,8 +151,8 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onSc
       days.some(d => d.date >= mk(n) && d.date <= todayStr && (d.lines_added || 0) + (d.lines_deleted || 0) > 0)
     const canWiden = onScopeChange && scope !== 'all' && activeSince(364)
     return (
-      <div className="heatmap-simple heatmap-empty-state">
-        <div className="heatmap-empty-body">
+      <div className={`${s.simple} heatmap-empty-state`}>
+        <div className={s.emptyBody}>
           <p className="empty-hint">{t('heatmap.noActivityInRange')}</p>
           {canWiden && (
             <div className="empty-actions">
@@ -167,24 +172,24 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onSc
   }
 
   return (
-    <div className="heatmap-simple">
-      <div className="heatmap-header">
-        <div className="heatmap-stats">
-          <div className="heatmap-stat">
-            <span className="heatmap-stat-label">{t('heatmap.active')}</span>
-            <span className="heatmap-stat-value">{stats.active}</span>
+    <div className={s.simple}>
+      <div className={s.header}>
+        <div className={s.stats}>
+          <div className={s.stat}>
+            <span className={s.statLabel}>{t('heatmap.active')}</span>
+            <span className={s.statValue}>{stats.active}</span>
           </div>
-          <div className="heatmap-stat">
-            <span className="heatmap-stat-label">{t('heatmap.commits')}</span>
-            <span className="heatmap-stat-value">{stats.commits}</span>
+          <div className={s.stat}>
+            <span className={s.statLabel}>{t('heatmap.commits')}</span>
+            <span className={s.statValue}>{stats.commits}</span>
           </div>
-          <div className="heatmap-stat">
-            <span className="heatmap-stat-label">{t('heatmap.added')}</span>
-            <span className="heatmap-stat-value">{stats.added}</span>
+          <div className={s.stat}>
+            <span className={s.statLabel}>{t('heatmap.added')}</span>
+            <span className={s.statValue}>{stats.added}</span>
           </div>
-          <div className="heatmap-stat">
-            <span className="heatmap-stat-label">{t('heatmap.deleted')}</span>
-            <span className="heatmap-stat-value">-{stats.deleted}</span>
+          <div className={s.stat}>
+            <span className={s.statLabel}>{t('heatmap.deleted')}</span>
+            <span className={s.statValue}>-{stats.deleted}</span>
           </div>
         </div>
       </div>
@@ -192,21 +197,21 @@ export default function Heatmap({ onDayClick, projectId = 0, scope = 'all', onSc
       {/* One row of week-columns sharing the card width. Columns flex to fill
           when the card is wide enough; below ~53×14px the row scrolls
           horizontally instead of squeezing cells into slivers. */}
-      <div className="heatmap-grid-simple heatmap-grid-year" role="grid" aria-label={t('heatmap.title')}>
+      <div className={`${s.gridSimple} ${s.gridYear}`} role="grid" aria-label={t('heatmap.title')}>
         {grid.map((week, wi) => (
-          <div key={wi} className="heatmap-week-simple" role="gridcolumn">
+          <div key={wi} className={s.weekSimple} role="gridcolumn">
             {week.map((day, di) => renderCell(day, di))}
           </div>
         ))}
       </div>
 
-      <div className="heatmap-legend-simple">
+      <div className={s.legendSimple}>
         <span>{t('heatmap.less')}</span>
-        <div className="heatmap-cell-simple level-0" />
-        <div className="heatmap-cell-simple level-1" />
-        <div className="heatmap-cell-simple level-2" />
-        <div className="heatmap-cell-simple level-3" />
-        <div className="heatmap-cell-simple level-4" />
+        <div className={`${s.cellSimple} ${s.level0}`} />
+        <div className={`${s.cellSimple} ${s.level1}`} />
+        <div className={`${s.cellSimple} ${s.level2}`} />
+        <div className={`${s.cellSimple} ${s.level3}`} />
+        <div className={`${s.cellSimple} ${s.level4}`} />
         <span>{t('heatmap.more')}</span>
       </div>
     </div>

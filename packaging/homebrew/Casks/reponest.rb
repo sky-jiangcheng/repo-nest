@@ -6,7 +6,7 @@
 # sha256 must be filled after each release is published; Homebrew hard-fails on
 # a mismatch, which is exactly what we want from a placeholder.
 cask "reponest" do
-  version "1.15.1"
+  version "1.16.0"
   name "RepoNest"
   desc "Local-first code project context base"
   homepage "https://github.com/sky-jiangcheng/repo-nest"

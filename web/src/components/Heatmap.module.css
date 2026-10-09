@@ -1,0 +1,180 @@
+/* ============================================
+   Heatmap — scoped module styles
+   Migrated from the global heatmap.css (P35).
+   Every class here is exclusive to Heatmap.tsx; the file heatmap.css was
+   deleted in the same change. Still global: .heatmap-empty-state (declared
+   in project-detail.css, applied by this component).
+   Dead full-variant rules (.heatmap-container / -grid / -week / -cell /
+   -legend / -content / -grid-wrapper / -day-labels and the shadowed base
+   .heatmap-loading rule) were dropped, not relocated — they matched nothing
+   in src/.
+   ============================================ */
+/* ============================================
+   Heatmap (simple + full)
+   ============================================ */
+
+/* --- Simple variant used by dashboard --- */
+.simple {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.simple .header {
+  margin-bottom: 10px;
+}
+
+.simple .stats {
+  gap: 12px;
+}
+
+.simple .stat {
+  min-width: 40px;
+}
+
+.simple .statLabel {
+  font-size: 11px;
+}
+
+.simple .statValue {
+  font-size: 14px;
+}
+
+.gridSimple {
+  display: flex;
+  gap: 3px;
+  /* Horizontal drag below ~53 × 14px, where the row can no longer fit. */
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.weekSimple {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+/* Year layout (dashboard): one row of 53 week-columns fills the card width.
+   Columns share the width evenly when there is room, and the row scrolls
+   horizontally below ~53 × 14px instead of squashing every cell into a
+   sliver. Without this the default flex-shrink: 0 clamped cells to their
+   natural 11px and the row always overflowed even on wide cards. */
+.gridYear .weekSimple {
+  flex: 1 1 0;
+  min-width: 14px; /* one 11px cell + the 3px column gap */
+  justify-content: center;
+  align-items: center;
+}
+
+.cellSimple {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--bg-tertiary);
+  cursor: default;
+  transition: transform 0.1s ease, outline 0.1s ease;
+  flex-shrink: 0;
+}
+
+.cellSimple[role="button"] {
+  cursor: pointer;
+}
+
+.cellSimple[role="button"]:hover {
+  transform: scale(1.4);
+  outline: 1px solid var(--text-primary);
+  position: relative;
+  z-index: 1;
+}
+
+.cellSimple[role="button"]:focus-visible {
+  transform: scale(1.4);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  position: relative;
+  z-index: 1;
+}
+
+.cellSimple.level0 { background: #f0f0ee; }
+.cellSimple.level1 { background: #c8c8c3 }
+.cellSimple.level2 { background: #9a9a94 }
+.cellSimple.level3 { background: #5e5e58 }
+.cellSimple.level4 { background: #1a1a1a }
+
+[data-theme="dark"] .cellSimple.level0 { background: #2a2a2a; }
+[data-theme="dark"] .cellSimple.level1 { background: #4a4a4a; }
+[data-theme="dark"] .cellSimple.level2 { background: #6a6a6a; }
+[data-theme="dark"] .cellSimple.level3 { background: #9a9a94; }
+[data-theme="dark"] .cellSimple.level4 { background: #e8e8e8; }
+
+.legendSimple {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.simple .loading {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+/* Stack + centre the empty state's message and widen buttons. The centring
+   parent is .heatmap-empty-state (project-detail.css); without this the two
+   children are centred as a row and read as one run-on line. */
+.emptyBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 48px;
+}
+
+.statLabel {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+.statValue {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin-top: 1px;
+}

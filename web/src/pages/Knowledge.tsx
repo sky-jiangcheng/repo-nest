@@ -6,6 +6,7 @@ import KnowledgeCard from './knowledge/KnowledgeCard'
 import ErrorBanner from '../components/ErrorBanner'
 import Icon from '../components/Icon'
 import { useKnowledgePage } from '../hooks/useKnowledgePage'
+import s from './Knowledge.module.css'
 
 function KnowledgePage() {
   const { t } = useTranslation()
@@ -64,19 +65,19 @@ function KnowledgePage() {
           thing a knowledge base is for. */}
       <h1 className="visually-hidden">{t('knowledge.title')}</h1>
 
-      <div className="knowledge-toolbar">
-        <div className="knowledge-search" role="search" aria-label={t('knowledge.searchAria')}>
-          <Icon name="search" size={15} className="knowledge-search-icon" />
+      <div className={s.toolbar}>
+        <div className={s.search} role="search" aria-label={t('knowledge.searchAria')}>
+          <Icon name="search" size={15} className={s.searchIcon} />
           <input
             type="text"
             value={query}
             onChange={e => handleSearchInput(e.target.value)}
             placeholder={askMode ? t('knowledge.searchAskPlaceholder') : t('knowledge.searchPlaceholder')}
             aria-label={t('knowledge.searchAria')}
-            className="form-input knowledge-search-input"
+            className={`form-input ${s.searchInput}`}
             autoFocus
           />
-          {query && <span className="search-hint">{t('knowledge.searchHint')}</span>}
+          {query && <span className={s.searchHint}>{t('knowledge.searchHint')}</span>}
         </div>
         <div className="page-head-actions">
           <button className="btn btn-primary btn-sm" onClick={handleQuickCreate}>
@@ -89,11 +90,11 @@ function KnowledgePage() {
       </div>
 
       {newNotePicker && (
-        <div className="new-note-picker">
-          <div className="new-note-picker-title">{t('knowledge.selectProject')}</div>
-          <div className="new-note-picker-list">
+        <div className={s.newNotePicker}>
+          <div className={s.newNotePickerTitle}>{t('knowledge.selectProject')}</div>
+          <div className={s.newNotePickerList}>
             {projectNames.map(([name, id]) => (
-              <button key={id} className="new-note-picker-item" onClick={() => pickProject(id)}>
+              <button key={id} className={s.newNotePickerItem} onClick={() => pickProject(id)}>
                 <span className="hit-project">{name}</span>
               </button>
             ))}
@@ -132,23 +133,23 @@ function KnowledgePage() {
       ) : (
         <>
           {recentNotes.length > 0 && (
-            <div className="knowledge-section recent-section">
+            <div className={`knowledge-section ${s.recentSection}`}>
               <div className="section-header">
                 <h2>{t('knowledge.recent')}</h2>
               </div>
-              <div className="recent-list">
+              <div className={s.recentList}>
                 {recentNotes.map(n => (
-                  <Link key={n.id} to={`/project/${n.project_id}`} className="recent-item">
-                    <span className="recent-title">{n.title || stripMarkdown(n.content, 40)}</span>
-                    <span className="recent-project">{n.project_name}</span>
-                    <span className="recent-time">{n.updated_at.slice(0, 10)}</span>
+                  <Link key={n.id} to={`/project/${n.project_id}`} className={s.recentItem}>
+                    <span className={s.recentTitle}>{n.title || stripMarkdown(n.content, 40)}</span>
+                    <span className={s.recentProject}>{n.project_name}</span>
+                    <span className={s.recentTime}>{n.updated_at.slice(0, 10)}</span>
                   </Link>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="knowledge-filters">
+          <div className={s.filters}>
             <div className="filter-toggle">
               <button className={`filter-btn ${kindFilter === 'all' ? 'active' : ''}`} onClick={() => setKindFilter('all')}>{t('knowledge.all')}</button>
               <button className={`filter-btn ${kindFilter === 'knowledge' ? 'active' : ''}`} onClick={() => setKindFilter('knowledge')}>{t('knowledge.knowledge')}</button>
@@ -167,9 +168,9 @@ function KnowledgePage() {
           </div>
 
           {tags.length > 0 && (
-            <div className="tag-chips">
+            <div className={s.tagChips}>
               <button
-                className={`tag-chip ${activeTag === null ? 'tag-chip-active' : ''}`}
+                className={`${s.tagChip} ${activeTag === null ? s.tagChipActive : ''}`}
                 onClick={() => setActiveTag(null)}
               >
                 {t('knowledge.allTags')}
@@ -177,7 +178,7 @@ function KnowledgePage() {
               {tags.map(tg => (
                 <button
                   key={tg}
-                  className={`tag-chip ${activeTag === tg ? 'tag-chip-active' : ''}`}
+                  className={`${s.tagChip} ${activeTag === tg ? s.tagChipActive : ''}`}
                   onClick={() => setActiveTag(activeTag === tg ? null : tg)}
                 >
                   #{tg}
@@ -193,16 +194,16 @@ function KnowledgePage() {
                 the moment a filter or search narrows a non-empty list, which is
                 the only time the number is news. */}
             {filtered.length > 0 && (
-              <div className="result-count" aria-live="polite">
+              <div className={s.resultCount} aria-live="polite">
                 {t('knowledge.resultCount', { count: filtered.length })}
               </div>
             )}
 
             {projectNames.length > 0 && (
-              <div className="project-jump">
-                <span className="project-jump-label">{t('knowledge.jumpProject')}</span>
+              <div className={s.projectJump}>
+                <span className={s.projectJumpLabel}>{t('knowledge.jumpProject')}</span>
                 {projectNames.slice(0, 8).map(([name, id]) => (
-                  <Link key={id} to={`/project/${id}`} className="project-jump-item" title={name}>{name}</Link>
+                  <Link key={id} to={`/project/${id}`} className={s.projectJumpItem} title={name}>{name}</Link>
                 ))}
               </div>
             )}
@@ -230,7 +231,7 @@ function KnowledgePage() {
                 </div>
               )
             ) : (
-              <div className="note-grid">
+              <div className={s.noteGrid}>
                 {filtered.map(n => (
                   <KnowledgeCard
                     key={n.id}

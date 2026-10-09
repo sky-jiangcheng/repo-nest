@@ -52,7 +52,6 @@ const files = [
   'features/knowledge.css',
   'features/notes.css',
   'features/markdown.css',
-  'features/heatmap.css',
   'features/todos.css',
   'features/settings.css',
   'features/block-editor.css',
