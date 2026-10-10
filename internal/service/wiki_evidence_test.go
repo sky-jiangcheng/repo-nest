@@ -578,3 +578,76 @@ func TestEvidencePages_GraphRankingEndorsesConsensus(t *testing.T) {
 		t.Errorf("gate on with limit 2: pages = %+v, want [canonical, first FTS hit]", capped)
 	}
 }
+
+// EvidencePageRanking is the exported page half of the evidence path — the
+// surface the abeval page arm measures (plan Phase 2: quantify the PPR delta).
+// The contract under test is that it IS the evidence ranking, not a lookalike:
+// the gate is read per call (so an eval harness can flip it between arms), and
+// the ordering matches evidencePages in both gate states.
+func TestEvidencePageRanking_MatchesEvidencePath(t *testing.T) {
+	svc, _ := setupService(t)
+	pid := seedProject(t, svc.db, "page-ranking", "/tmp/page-ranking")
+
+	seedA, err := db.CreateWikiPage(svc.db, db.WikiKindEntity, "alpha-seed-a", "Alpha Seed A", pid,
+		"alpha routing rules as the first seed page knows them")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedB, err := db.CreateWikiPage(svc.db, db.WikiKindEntity, "alpha-seed-b", "Alpha Seed B", pid,
+		"alpha routing rules restated by a second seed page")
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := db.CreateWikiPage(svc.db, db.WikiKindEntity, "omega-canonical", "Omega Canonical", pid,
+		"omega canonical wording shares no term with the query at all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range []struct{ from, to int64 }{
+		{seedA.ID, canonical.ID},
+		{seedB.ID, canonical.ID},
+	} {
+		if err := db.LinkWikiPages(svc.db, e.from, e.to, db.RelationRef); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	query := "alpha routing rules"
+
+	// Gate off: the FTS-only ranking — both seeds, no graph-only pages. The
+	// bm25 order between two near-identical seeds is not the contract here,
+	// so it is captured and reused as the reference below.
+	if err := db.SetConfig(svc.db, "wiki_graph_search", "0"); err != nil {
+		t.Fatal(err)
+	}
+	off := svc.EvidencePageRanking(query, pid, 10)
+	if len(off) != 2 {
+		t.Fatalf("gate off: ranking = %+v, want exactly the two FTS hits", off)
+	}
+	ftsOrder := []int64{off[0].ID, off[1].ID}
+	seen := map[int64]bool{seedA.ID: true, seedB.ID: true}
+	for _, id := range ftsOrder {
+		if !seen[id] {
+			t.Fatalf("gate off: ranking = %+v, want only the two seeds", off)
+		}
+	}
+
+	// Gate on: the doubly-endorsed page leads, the seeds keep their FTS
+	// order — the same PPR ranking evidencePages produces, with Ranks
+	// re-stamped to the exported list's positions.
+	if err := db.SetConfig(svc.db, "wiki_graph_search", "1"); err != nil {
+		t.Fatal(err)
+	}
+	on := svc.EvidencePageRanking(query, pid, 10)
+	if len(on) != 3 || on[0].ID != canonical.ID {
+		t.Fatalf("gate on: ranking = %+v, want the endorsed page first of three", on)
+	}
+	if on[1].ID != ftsOrder[0] || on[2].ID != ftsOrder[1] {
+		t.Errorf("tied seeds reordered: got [%d %d], want FTS order %v", on[1].ID, on[2].ID, ftsOrder)
+	}
+	for i, it := range on {
+		if it.Rank != i+1 {
+			t.Errorf("item %d carries Rank %d, want %d", it.ID, it.Rank, i+1)
+		}
+	}
+}

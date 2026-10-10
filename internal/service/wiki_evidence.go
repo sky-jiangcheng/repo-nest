@@ -161,6 +161,17 @@ func (e *Evidence) tryAdd(item EvidenceItem, prefix string, budget EvidenceBudge
 	return true
 }
 
+// EvidencePageRanking is the exported page half of the evidence ranking: the
+// exact list GatherEvidence would draw pages from (FTS seeds, PPR-ordered with
+// the one-hop neighbours when wiki_graph_search is on), without the note arm
+// or the interleave. It exists for the abeval page arm — a measurement harness
+// must rank the same thing users get, not a lookalike — and for evidence
+// diagnostics. The gate is read per call, so a harness can flip
+// wiki_graph_search between arms; the deadline is the default evidence budget's.
+func (s *Service) EvidencePageRanking(query string, projectID int64, limit int) []EvidenceItem {
+	return s.evidencePages(query, projectID, limit, DefaultEvidenceBudget.Deadline)
+}
+
 // evidencePages ranks wiki pages, keeping project-owned plus global pages.
 //
 // With wiki_graph_search on, the FTS hits become the seed set and the graph

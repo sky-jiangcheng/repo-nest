@@ -28,7 +28,7 @@ func TestLoadCasesParsesJSONL(t *testing.T) {
 
 `)
 
-	cases, err := loadCases(path)
+	cases, err := loadCases(path, false)
 	if err != nil {
 		t.Fatalf("loadCases: %v", err)
 	}
@@ -43,6 +43,43 @@ func TestLoadCasesParsesJSONL(t *testing.T) {
 	}
 }
 
+// The page arm (plan Phase 2: quantify the PPR delta) labels wiki_page ids in
+// `relevant_pages` on the same queries.jsonl the note arm uses. Each mode must
+// read ONLY its own key: a page run over note labels would score n=0 and a
+// note run over page labels likewise, and neither confusion is detectable in
+// the summary line.
+func TestLoadCasesArmReadsItsOwnKey(t *testing.T) {
+	path := writeCases(t, `{"query": "retry policy", "relevant": [1, 2], "relevant_pages": [7, 9]}
+{"query": "幂等键", "relevant": [3], "relevant_pages": [11]}
+
+`)
+
+	pageCases, err := loadCases(path, true)
+	if err != nil {
+		t.Fatalf("loadCases pages: %v", err)
+	}
+	if len(pageCases) != 2 {
+		t.Fatalf("page mode: got %d cases, want 2", len(pageCases))
+	}
+	if pageCases[0].Relevant[0] != 7 || pageCases[0].Relevant[1] != 9 {
+		t.Errorf("page mode case 0 = %+v, want relevant_pages [7 9]", pageCases[0])
+	}
+	if pageCases[1].Relevant[0] != 11 {
+		t.Errorf("page mode case 1 = %+v, want relevant_pages [11]", pageCases[1])
+	}
+
+	noteCases, err := loadCases(path, false)
+	if err != nil {
+		t.Fatalf("loadCases notes: %v", err)
+	}
+	if noteCases[0].Relevant[0] != 1 || noteCases[0].Relevant[1] != 2 {
+		t.Errorf("note mode case 0 = %+v, want relevant [1 2]", noteCases[0])
+	}
+	if noteCases[1].Relevant[0] != 3 {
+		t.Errorf("note mode case 1 = %+v, want relevant [3]", noteCases[1])
+	}
+}
+
 // Blank lines are legal separators; a bad line must abort the whole file —
 // silently skipping it would evaluate a smaller gate than the user labelled
 // and report an n= that matches nothing they can see.
@@ -51,7 +88,7 @@ func TestLoadCasesRejectsBadLine(t *testing.T) {
 {"query": broken json, "relevant": [2]}
 `)
 
-	if _, err := loadCases(path); err == nil {
+	if _, err := loadCases(path, false); err == nil {
 		t.Fatal("expected an error for the malformed line, got nil")
 	}
 }
@@ -61,7 +98,7 @@ func TestLoadCasesEmptyFileYieldsZeroCases(t *testing.T) {
 	// returns an empty slice rather than an error so the two failures are
 	// distinguishable ("unreadable file" vs "labelled nothing").
 	path := writeCases(t, "\n\n")
-	cases, err := loadCases(path)
+	cases, err := loadCases(path, false)
 	if err != nil {
 		t.Fatalf("loadCases: %v", err)
 	}
@@ -77,7 +114,7 @@ func TestLoadCasesEmptyFileYieldsZeroCases(t *testing.T) {
 // field names drift apart the fixture below breaks loudly.
 func TestLabeledCaseShapeMatchesAbevalCase(t *testing.T) {
 	path := writeCases(t, `{"query": "q", "relevant": [7]}`)
-	cases, err := loadCases(path)
+	cases, err := loadCases(path, false)
 	if err != nil {
 		t.Fatal(err)
 	}

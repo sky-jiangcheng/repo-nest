@@ -1,21 +1,34 @@
 // Command abeval runs the M3-A A/B evaluation gate (ADR-0012 决策 4) against the
-// live knowledge base: it executes every labeled query through lexical search
-// (semantic_search off) and hybrid search (on), compares Recall@k / NDCG@k, and
-// exits non-zero unless hybrid beats lexical by the configured margin.
+// live knowledge base: it executes every labeled query through two retrieval
+// arms and exits non-zero unless the second arm beats the first by the
+// configured margin. The arms depend on the mode:
+//
+//	default (note arm): lexical search (semantic_search off) vs hybrid (on)
+//	-pages   (page arm): page evidence with wiki_graph_search off (FTS-only)
+//	                     vs on (one-hop neighbours ordered by PPR) — the
+//	                     ADR-0018 lane 2 measurement
 //
 // Usage:
 //
 //	abeval -cases queries.jsonl -k 10 -min-recall 0.05
+//	abeval -pages -cases queries.jsonl -k 10 -project 3
 //
-// queries.jsonl — one JSON object per line: {"query": "...", "relevant": [id,...]}
-// (ids are project_notes.id that actually answer the query). Hybrid needs the
-// embedding endpoint configured (semantic_search/embedding_* settings); if it is
-// absent, hybrid == lexical and the gate correctly fails (no evidence gained).
+// queries.jsonl — one JSON object per line:
+//
+//	{"query": "...", "relevant": [id,...]}         note arm (project_notes.id)
+//	{"query": "...", "relevant_pages": [id,...]}   page arm (wiki_page.id)
+//
+// Hybrid needs the embedding endpoint configured (semantic_search/embedding_*
+// settings); if it is absent, hybrid == lexical and the gate correctly fails
+// (no evidence gained). Run against a COPY of the database: both arms flip
+// config keys (restored on exit, pass or fail), and the note arm rebuilds the
+// vector index.
 package main
 
 import (
 	"bufio"
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -32,8 +45,9 @@ import (
 )
 
 type labeledCase struct {
-	Query    string  `json:"query"`
-	Relevant []int64 `json:"relevant"`
+	Query         string  `json:"query"`
+	Relevant      []int64 `json:"relevant"`       // note arm: project_notes.id
+	RelevantPages []int64 `json:"relevant_pages"` // page arm: wiki_page.id
 }
 
 func main() {
@@ -41,14 +55,16 @@ func main() {
 
 	casesPath := flag.String("cases", "", "path to labeled queries.jsonl (required)")
 	k := flag.Int("k", 10, "cutoff for recall@k / ndcg@k")
-	minRecall := flag.Float64("min-recall", 0.05, "required recall@k gain (hybrid-lexical) to pass the gate")
+	minRecall := flag.Float64("min-recall", 0.05, "required recall@k gain (arm2-arm1) to pass the gate")
 	dbPath := flag.String("db", "", "database path (default: the app's DB)")
+	pages := flag.Bool("pages", false, "evaluate the page arm: wiki_graph_search off vs on, ids from relevant_pages")
+	project := flag.Int64("project", 0, "page arm project scope (0 = every project's pages plus global ones)")
 	flag.Parse()
 
 	if *casesPath == "" {
 		log.Fatal("abeval: -cases is required")
 	}
-	cases, err := loadCases(*casesPath)
+	cases, err := loadCases(*casesPath, *pages)
 	if err != nil {
 		log.Fatalf("abeval: load cases: %v", err)
 	}
@@ -67,21 +83,31 @@ func main() {
 	defer database.Close()
 	svc := service.New(database, "abeval")
 
-	// semanticEnabled() reads app_config on EVERY search, and db.SetConfig
-	// writes straight through to the user's database. An evaluation tool must
-	// not outlive its run: remember the original value and restore it when
-	// abeval exits, pass or fail (os.Exit below skips defers, so the restore
-	// is registered before any exit path).
-	original, _ := db.GetConfig(database, "semantic_search")
+	// Both arms read the gate config on EVERY call (EvidencePageRanking and
+	// SearchNotes both do), and db.SetConfig writes straight through to the
+	// user's database. An evaluation tool must not outlive its run: remember
+	// the original value of the key this mode flips and restore it when abeval
+	// exits, pass or fail (os.Exit below skips defers, so the restore is
+	// registered before any exit path).
+	gateKey := "semantic_search"
+	if *pages {
+		gateKey = "wiki_graph_search"
+	}
+	original, _ := db.GetConfig(database, gateKey)
 	restore := func() {
 		if original == "" {
-			_ = db.DeleteConfig(database, "semantic_search")
+			_ = db.DeleteConfig(database, gateKey)
 		} else {
-			_ = db.SetConfig(database, "semantic_search", original)
+			_ = db.SetConfig(database, gateKey, original)
 		}
 	}
 	if err := restoreOnSignal(restore); err != nil {
 		log.Printf("abeval: signal restore not installed: %v", err)
+	}
+
+	if *pages {
+		runPageGate(cases, *k, *minRecall, svc, database, *project, restore)
+		return
 	}
 
 	// The two arms MUST differ at call time, not at setup time: each closure
@@ -124,10 +150,42 @@ func main() {
 	fmt.Printf("GATE PASS: recall@%d gain %.3f >= %.3f\n", *k, dRecall, *minRecall)
 }
 
-// restoreOnSignal best-effort restores the original semantic_search value on
-// SIGINT/SIGTERM too (the gate can run against a live database for minutes).
-// SIGKILL is unrecoverable by design; the next RebuildEmbeddings or manual
-// toggle repairs the config either way.
+// runPageGate is the -pages arm (plan Phase 2: quantify the PPR delta over
+// page evidence — the first hard evidence of KG value). The two arms differ
+// only in wiki_graph_search, flipped per call like the note arm's key: FTS-only
+// ranking vs FTS seeds + one-hop neighbours ordered by PPR.
+func runPageGate(cases []abeval.Case, k int, minRecall float64, svc *service.Service, database *sql.DB, project int64, restore func()) {
+	// Matches the FTS seed cap inside evidencePages, so both arms see the same
+	// candidate ceiling and k=10 sits well inside the list.
+	const evalLimit = 50
+	ftsOnly := func(q string) []int64 {
+		_ = db.SetConfig(database, "wiki_graph_search", "0")
+		return itemIDs(svc.EvidencePageRanking(q, project, evalLimit))
+	}
+	graph := func(q string) []int64 {
+		_ = db.SetConfig(database, "wiki_graph_search", "1")
+		return itemIDs(svc.EvidencePageRanking(q, project, evalLimit))
+	}
+
+	fts, ppr, dRecall, dNDCG := abeval.Compare(cases, k, ftsOnly, graph)
+	fmt.Println(fts.SummaryLine("fts    "))
+	fmt.Println(ppr.SummaryLine("graph  "))
+	fmt.Printf("delta: recall@%d=%+.3f ndcg@%d=%+.3f\n", k, dRecall, k, dNDCG)
+
+	restore()
+
+	if dRecall < minRecall {
+		fmt.Printf("GATE FAIL: recall@%d gain %.3f < required %.3f — the graph is not yet worth enabling for page evidence\n",
+			k, dRecall, minRecall)
+		os.Exit(1)
+	}
+	fmt.Printf("GATE PASS: recall@%d gain %.3f >= %.3f\n", k, dRecall, minRecall)
+}
+
+// restoreOnSignal best-effort restores the original gate config value (the
+// key the current arm flips) on SIGINT/SIGTERM too (the gate can run against
+// a live database for minutes). SIGKILL is unrecoverable by design; the next
+// RebuildEmbeddings or manual toggle repairs the config either way.
 func restoreOnSignal(restore func()) error {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
@@ -139,7 +197,11 @@ func restoreOnSignal(restore func()) error {
 	return nil
 }
 
-func loadCases(path string) ([]abeval.Case, error) {
+// loadCases parses the labeled file; pages selects which key carries the
+// relevant ids (relevant_pages for the page arm, relevant for the note arm).
+// Each arm reads ONLY its own key — a page run over note labels would score
+// n=0, and the summary line is the only place that confusion would surface.
+func loadCases(path string, pages bool) ([]abeval.Case, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -157,7 +219,11 @@ func loadCases(path string) ([]abeval.Case, error) {
 		if err := json.Unmarshal(line, &c); err != nil {
 			return nil, fmt.Errorf("bad line %q: %w", string(line), err)
 		}
-		out = append(out, abeval.Case{Query: c.Query, Relevant: c.Relevant})
+		relevant := c.Relevant
+		if pages {
+			relevant = c.RelevantPages
+		}
+		out = append(out, abeval.Case{Query: c.Query, Relevant: relevant})
 	}
 	return out, sc.Err()
 }
@@ -167,6 +233,15 @@ func ids(hits []domain.SearchHit) []int64 {
 	out := make([]int64, len(hits))
 	for i, h := range hits {
 		out[i] = h.ID
+	}
+	return out
+}
+
+// itemIDs extracts page ids from an evidence ranking, preserving order.
+func itemIDs(items []service.EvidenceItem) []int64 {
+	out := make([]int64, len(items))
+	for i, it := range items {
+		out[i] = it.ID
 	}
 	return out
 }

@@ -149,6 +149,8 @@ Q&A evidence used to be full-text search only: whichever pages the question's wo
 
 Off by default, controlled by the config key `wiki_graph_search` (like every other boolean gate: set it to `1` to enable, absent means off). **With it off, evidence retrieval behaves exactly as before** — the walk does not run at all. With it on, the full-text hits degrade to seed recall (bm25 decides what is recalled, the graph decides what leads), the same triple budget (items / characters / deadline) still applies, and any failure is logged and falls back to the pre-walk order rather than failing the answer.
 
+- **The effect is measurable too**: `abeval -pages` runs the same labeled query set through two arms — FTS-only vs graph-aware — and quantifies the Recall@k / NDCG@k delta PPR brings (label the wiki page ids that truly answer each query under `relevant_pages`; `-project` scopes to one project; the tool restores whatever config keys it flipped on exit). That delta is what decides whether graph-aware evidence deserves to stay on, and whether page vectors are worth investing in next — measurement before parameters.
+
 ### Pending and approved (the one most often mistaken for a bug)
 
 Pages have a status, and status decides whether a page may answer anything:
