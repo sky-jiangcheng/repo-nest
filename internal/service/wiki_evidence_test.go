@@ -404,15 +404,17 @@ func TestFileAnswerAsPageClosesTheLoop(t *testing.T) {
 	_ = pageIDs
 }
 
-// ADR-0018 lane 2: evidence reads the page graph, but only behind its gate.
+// ADR-0018 lane 2: evidence reads the page graph behind its gate.
 //
 // The zero-regression contract is the point of the first half: with
-// wiki_graph_search unset (the default) the result must be exactly what FTS
+// wiki_graph_search explicitly "0" the result must be exactly what FTS
 // ranking produced before the graph existed — a page reachable only through a
-// link stays invisible. The second half proves the walk adds one-hop
-// neighbours (their bodies share no word with the query, so text search
-// cannot reach them) while the relation whitelist and the approved-only gate
-// still hold, and the budget still caps the combined list.
+// link stays invisible. ("0" is now the only OFF value; the gate defaulted to
+// ON on 2026-10-10, so the off half has to say so out loud — see
+// TestWikiGraphSearch_DefaultOnExplicitZeroOff.) The second half proves the
+// walk adds one-hop neighbours (their bodies share no word with the query, so
+// text search cannot reach them) while the relation whitelist and the
+// approved-only gate still hold, and the budget still caps the combined list.
 func TestEvidencePages_GraphSearchGate(t *testing.T) {
 	svc, _ := setupService(t)
 	pid := seedProject(t, svc.db, "graph-gate", "/tmp/graph-gate")
@@ -461,7 +463,12 @@ func TestEvidencePages_GraphSearchGate(t *testing.T) {
 		return out
 	}
 
-	// OFF (the default): the pre-graph result, exactly — one page, the FTS hit.
+	// OFF (explicit "0" — the only value that disables the walk since the
+	// 2026-10-10 default flip): the pre-graph result, exactly — one page,
+	// the FTS hit.
+	if err := db.SetConfig(svc.db, "wiki_graph_search", "0"); err != nil {
+		t.Fatal(err)
+	}
 	off := pagesOf(svc.evidencePages(query, pid, 10, time.Second))
 	if len(off) != 1 || off[0].ID != hub.ID {
 		t.Fatalf("gate off: pages = %+v, want just the FTS hit %d", off, hub.ID)
@@ -484,6 +491,38 @@ func TestEvidencePages_GraphSearchGate(t *testing.T) {
 	}
 	if capped := pagesOf(svc.evidencePages(query, pid, 1, time.Second)); len(capped) != 1 || capped[0].ID != hub.ID {
 		t.Errorf("gate on with limit 1: pages = %+v, want just the FTS hit", capped)
+	}
+}
+
+// The gate's default semantics after the 2026-10-10 flip: ON unless the row
+// says "0". This is the inverse of auto_import's predicate on purpose (an
+// absent row there means OFF), and the difference must stay deliberate — the
+// walk gates no egress, only the order of pages the FTS path already found.
+// The deleted-row case is the one an old database hits at upgrade: no row at
+// all must mean ON, not silently revert to the pre-graph ranking.
+func TestWikiGraphSearch_DefaultOnExplicitZeroOff(t *testing.T) {
+	svc, _ := setupService(t)
+
+	if !svc.wikiGraphSearchEnabled() {
+		t.Error("fresh database: wiki_graph_search must default ON")
+	}
+	if err := db.SetConfig(svc.db, "wiki_graph_search", "0"); err != nil {
+		t.Fatal(err)
+	}
+	if svc.wikiGraphSearchEnabled() {
+		t.Error(`wiki_graph_search="0" must disable the walk`)
+	}
+	if err := db.SetConfig(svc.db, "wiki_graph_search", "1"); err != nil {
+		t.Fatal(err)
+	}
+	if !svc.wikiGraphSearchEnabled() {
+		t.Error(`wiki_graph_search="1" must enable the walk`)
+	}
+	if err := db.DeleteConfig(svc.db, "wiki_graph_search"); err != nil {
+		t.Fatal(err)
+	}
+	if !svc.wikiGraphSearchEnabled() {
+		t.Error("a deleted row (the pre-flip database state) must read as ON, not fall back to the pre-graph ranking")
 	}
 }
 
@@ -541,7 +580,11 @@ func TestEvidencePages_GraphRankingEndorsesConsensus(t *testing.T) {
 		return out
 	}
 
-	// OFF: exactly the two FTS hits — the graph-only pages stay invisible.
+	// OFF (explicit "0"): exactly the two FTS hits — the graph-only pages
+	// stay invisible.
+	if err := db.SetConfig(svc.db, "wiki_graph_search", "0"); err != nil {
+		t.Fatal(err)
+	}
 	off := pagesOf(svc.evidencePages(query, pid, 10, time.Second))
 	if len(off) != 2 {
 		t.Fatalf("gate off: pages = %+v, want just the two FTS hits", off)

@@ -179,8 +179,8 @@ func (s *Service) EvidencePageRanking(query string, projectID int64, limit int) 
 // seed recall): one-hop neighbours join the candidates (db.WikiNeighbors),
 // a personalised PageRank walks the subgraph they induce (db.WikiWalkEdges +
 // graph.PPR), and a page everything relevant points at can lead even though
-// its body never mentions the query. With the gate off (the default) this is
-// the pre-graph FTS ranking exactly.
+// its body never mentions the query. With the gate explicitly off ("0") this
+// is the pre-graph FTS ranking exactly.
 func (s *Service) evidencePages(query string, projectID int64, limit int, budget time.Duration) []EvidenceItem {
 	if budget <= 0 {
 		return nil
@@ -208,14 +208,29 @@ func (s *Service) evidencePages(query string, projectID int64, limit int, budget
 }
 
 // wikiGraphSearchKey gates the graph-aware half of evidence retrieval
-// (ADR-0018 lane 2). Off by default and deliberately absent from the seeded
-// defaults: a missing row is the safe state, and with it off evidencePages is
-// the pre-graph FTS ranking, byte for byte.
+// (ADR-0018 lane 2).
+//
+// Default ON since 2026-10-10 — a flip made on measurement, not conviction.
+// The abeval page arm scored recall@5 +0.037 / ndcg@5 +0.011 over the labeled
+// set with ZERO recall regressions, the whole gain landing on the
+// vocabulary-disjoint pages the walk exists to recover. The earlier
+// default-off posture was the honest one while the delta was unmeasured: an
+// unmeasured feature does not get to be the default. What makes the flip safe
+// is structural rather than statistical — the walk only ADDS one-hop
+// neighbours of approved pages to the candidate list (bm25 still decides what
+// is recalled), and any failure degrades to the pre-walk order instead of
+// failing the answer.
+//
+// An explicit "0" is the only value that turns it off; a missing row now
+// means ON. That is the inverse of the auto_import lesson (migrate.go), and
+// the difference is the blast radius: this key gates no data egress and no
+// privacy surface — nothing leaves the machine either way, the walk reads
+// only pages the FTS path could already surface.
 const wikiGraphSearchKey = "wiki_graph_search"
 
 func (s *Service) wikiGraphSearchEnabled() bool {
 	v, err := db.GetConfig(s.db, wikiGraphSearchKey)
-	return err == nil && v == "1"
+	return err == nil && v != "0"
 }
 
 // rankWithGraph is the gate-on half of evidencePages (ADR-0018 lane 2).
@@ -228,7 +243,7 @@ func (s *Service) wikiGraphSearchEnabled() bool {
 // them, so none of them gets a head start the graph would then have to
 // argue against.
 //
-// Two properties keep this safe to default off:
+// Two properties keep the walk safe to leave on by default:
 //   - ties break on the pre-walk position, so a graph with nothing to say
 //     (no edges at all) returns exactly the FTS-then-in-degree order;
 //   - any failure — the walk, the edge query — degrades to that same

@@ -60,7 +60,8 @@ var allowedConfigKeys = map[string]bool{
 	"wiki_lint_llm": true,
 	// ADR-0018 lane 2: gates the graph-aware half of evidence retrieval — the
 	// one-hop walk over page_links that widens recall beyond what FTS matches.
-	// Off by default; with it off, evidence is the pre-graph FTS ranking.
+	// ON by default since 2026-10-10 (measured recall@5 +0.037, zero
+	// regressions; see wikiGraphSearchEnabled); an explicit "0" turns it off.
 	"wiki_graph_search": true,
 	"ai_chat_base_url":  true,
 	"ai_chat_model":     true,

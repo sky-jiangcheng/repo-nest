@@ -250,6 +250,12 @@
       "rebuildDone": "索引重建完成：{{count}} 条笔记",
       "rebuildFailed": "重建失败：{{msg}}",
       "missingFields": "启用前需要填写 Embedding Base URL 和模型"
+    },
+    "graphSearch": {
+      "title": "图感知取证",
+      "desc": "AI 问答引用知识页面时，除了全文命中的页面，还会沿页面之间的链接走一跳，用个性化 PageRank 决定证据的排序——正文不出现问题词、但被多个命中页共同指向的页面也能排到前面。",
+      "enabled": "启用图感知取证",
+      "enabledHint": "默认开启（2026-10-10 起，评测实测 Recall@5 +0.037、无一条查询变差）。不发送任何数据到外部；关掉后恢复纯全文排序。"
     }
   },
   "project": {

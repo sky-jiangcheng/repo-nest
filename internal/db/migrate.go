@@ -518,6 +518,13 @@ func insertDefaults(db *sql.DB) error {
 		"daily_code_standard": "500",
 		"scan_depth":          "2",
 		"auto_import":         "0",
+		// ADR-0018 lane 2: the graph-aware evidence walk is ON by default
+		// since 2026-10-10 (measured recall@5 +0.037 with zero regressions;
+		// service.wikiGraphSearchEnabled). Seeded rather than left absent only
+		// so the settings page shows a real value — the predicate reads
+		// `!= "0"`, so absent and "1" mean the same thing here, the inverse
+		// of auto_import above because this key gates no data egress.
+		"wiki_graph_search": "1",
 	}
 
 	for key, value := range defaults {

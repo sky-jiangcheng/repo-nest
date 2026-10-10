@@ -251,6 +251,12 @@
       "rebuildDone": "Index rebuilt: {{count}} notes",
       "rebuildFailed": "Rebuild failed: {{msg}}",
       "missingFields": "Embedding base URL and model are required before enabling"
+    },
+    "graphSearch": {
+      "title": "Graph-aware evidence",
+      "desc": "When answering from knowledge pages, the AI also walks one hop along page links and orders the evidence with personalised PageRank — a page whose body never mentions the query can still lead when several hits point at it.",
+      "enabled": "Enable graph-aware evidence",
+      "enabledHint": "On by default since 2026-10-10 (measured Recall@5 +0.037, no query got worse). Nothing is sent anywhere; turning it off restores plain full-text ordering."
     }
   },
   "project": {

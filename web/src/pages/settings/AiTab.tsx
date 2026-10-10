@@ -43,6 +43,12 @@ export default function AiTab({ config, showMessage, onSaved }: Props) {
   const [semanticSaving, setSemanticSaving] = useState(false)
   const [rebuilding, setRebuilding] = useState(false)
   const [semanticMsg, setSemanticMsg] = useState('')
+  // 图感知取证默认开（2026-10-10 起）：abeval 页臂实测 recall@5 +0.037、
+  // 零查询变差。读法与 semantic_search 相反——只有显式 "0" 才关，缺行即开，
+  // 因为这个键不触发任何外发（走查只读本库页面）。见 service.wikiGraphSearchEnabled。
+  const [graphSearchEnabled, setGraphSearchEnabled] = useState(config.wiki_graph_search !== '0')
+  const [graphSaving, setGraphSaving] = useState(false)
+  const [graphMsg, setGraphMsg] = useState('')
 
   const fetchModels = async () => {
     if (!baseURL.trim() || modelsLoading) return
@@ -153,6 +159,22 @@ export default function AiTab({ config, showMessage, onSaved }: Props) {
       setSemanticMsg(t('settings.semantic.rebuildFailed', { msg: e instanceof Error ? e.message : t('common.unknownError') }))
     } finally {
       setRebuilding(false)
+    }
+  }
+
+  // 单个布尔门，翻转即存——不像语义区那样要等一堆字段一起保存。
+  const saveGraphSearch = async (nextEnabled: boolean): Promise<void> => {
+    setGraphSaving(true)
+    setGraphMsg('')
+    try {
+      await updateConfig('wiki_graph_search', nextEnabled ? '1' : '0')
+      setGraphSearchEnabled(nextEnabled)
+      showMessage(t('settings.configSaved'))
+      onSaved()
+    } catch (e: unknown) {
+      setGraphMsg(t('settings.saveFailedMsg', { msg: e instanceof Error ? e.message : t('common.unknownError') }))
+    } finally {
+      setGraphSaving(false)
     }
   }
 
@@ -343,6 +365,24 @@ export default function AiTab({ config, showMessage, onSaved }: Props) {
         </button>
       </div>
       {semanticMsg && <p className="form-hint">{semanticMsg}</p>}
+
+      <h3>{t('settings.graphSearch.title')}</h3>
+      <p className="section-desc">{t('settings.graphSearch.desc')}</p>
+
+      <div className="form-group">
+        <label htmlFor="graph-search-enabled">
+          <input
+            id="graph-search-enabled"
+            type="checkbox"
+            checked={graphSearchEnabled}
+            disabled={graphSaving}
+            onChange={(e) => saveGraphSearch(e.target.checked)}
+          />
+          {t('settings.graphSearch.enabled')}
+        </label>
+        <span className="form-hint">{t('settings.graphSearch.enabledHint')}</span>
+      </div>
+      {graphMsg && <p className="form-hint">{graphMsg}</p>}
     </div>
   )
 }
