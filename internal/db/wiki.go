@@ -784,6 +784,173 @@ func wikiEdges(db *sql.DB, where string, pageID int64, inbound bool) ([]PageEdge
 	return out, rows.Err()
 }
 
+// wikiWalkRelations is the closed set the evidence walk may traverse
+// (ADR-0018 lane 2). ref/part-of/documents say "this page is about that page";
+// depends/implements/supersedes are claims about build order or recency,
+// contradicts is a conflict (something to show the user, never to blend into
+// the same evidence block as the claim it conflicts with), and mentions is the
+// compiler's cheap body-link echo — none of them mean "reading this page helps
+// answer a question about that one".
+var wikiWalkRelations = []string{RelationRef, RelationPartOf, RelationDocuments}
+
+// WikiNeighbor is one one-hop neighbor of the seed set plus the authority
+// signal that ranks it.
+type WikiNeighbor struct {
+	Page    WikiPage `json:"page"`
+	Inlinks int      `json:"inlinks"`
+}
+
+// WikiNeighbors returns the approved pages one hop from seeds — in either
+// direction, along wikiWalkRelations only — ranked by in-degree.
+//
+// This is the recall-expansion half of graph-aware evidence (ADR-0018 lane 2):
+// the seeds are what retrieval already matched, and the walk brings in the
+// pages those matches point at, or are pointed at by, which a text search
+// alone cannot reach (a page whose body never mentions the query terms can
+// still be the best evidence when everything relevant links to it).
+//
+// The gates, each pinned by a test:
+//   - one hop: a neighbor of a neighbor is not a neighbor, so the walk cannot
+//     snowball through a hub;
+//   - whitelist: only wikiWalkRelations are walkable — contradicts above all
+//     must not pull a conflicting claim into the same evidence block;
+//   - approved only: pending pages are unreviewed compiler output and may not
+//     answer anything (ADR-0015 决策 1);
+//   - scope: a project-scoped walk keeps that project's pages plus global ones
+//     (project_id NULL) and drops every other project's; projectID <= 0 walks
+//     unscoped, matching evidencePages' cross-project behaviour;
+//   - seeds excluded: they are already candidates in their own right, so
+//     returning them again would double-count them.
+//
+// Inlinks is the page's full in-degree over page_links — every inbound edge,
+// whatever its relation and whoever wrote it. It is a raw statistic, not a
+// walk result: the gates above decide candidacy, this only ranks it. Ties
+// break on slug so the order is deterministic.
+func WikiNeighbors(db *sql.DB, seeds []int64, projectID int64, limit int) ([]WikiNeighbor, error) {
+	// No seeds is a normal empty result (an FTS miss), not a query to run.
+	if len(seeds) == 0 || limit <= 0 {
+		return nil, nil
+	}
+	seedPH := strings.TrimSuffix(strings.Repeat("?,", len(seeds)), ",")
+	relPH := strings.TrimSuffix(strings.Repeat("?,", len(wikiWalkRelations)), ",")
+
+	// Args are positional, so they are appended in the exact order the
+	// placeholders appear: the CTE's out-subquery, its in-subquery, then the
+	// seed exclusion, then the optional scope, then the limit.
+	var args []any
+	for i := 0; i < 2; i++ {
+		for _, s := range seeds {
+			args = append(args, s)
+		}
+		for _, r := range wikiWalkRelations {
+			args = append(args, r)
+		}
+	}
+	for _, s := range seeds {
+		args = append(args, s)
+	}
+
+	q := `WITH walk(id) AS (
+		SELECT to_page_id FROM page_links
+		 WHERE from_page_id IN (` + seedPH + `) AND relation IN (` + relPH + `)
+		UNION
+		SELECT from_page_id FROM page_links
+		 WHERE to_page_id IN (` + seedPH + `) AND relation IN (` + relPH + `)
+	)
+	SELECT ` + pageColumns + `,
+	       (SELECT COUNT(*) FROM page_links il WHERE il.to_page_id = p.id) AS inlinks
+	  FROM wiki_pages p
+	 WHERE p.status = '` + WikiStatusApproved + `'
+	   AND p.id IN (SELECT id FROM walk)
+	   AND p.id NOT IN (` + seedPH + `)`
+	if projectID > 0 {
+		q += `
+	   AND (p.project_id = ? OR COALESCE(p.project_id, 0) = 0)`
+		args = append(args, projectID)
+	}
+	q += `
+	 ORDER BY inlinks DESC, p.slug LIMIT ?`
+	args = append(args, limit)
+
+	rows, err := db.Query(q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("db: wiki neighbors: %w", err)
+	}
+	defer rows.Close()
+	var out []WikiNeighbor
+	for rows.Next() {
+		var (
+			p    WikiPage
+			rank float64
+		)
+		if err := scanPageFieldsWithRank(rows, &p, &rank); err != nil {
+			return nil, err
+		}
+		out = append(out, WikiNeighbor{Page: p, Inlinks: int(rank)})
+	}
+	return out, rows.Err()
+}
+
+// WikiEdge is one directed page_links row in walkable shape: endpoints only.
+// The relation is deliberately dropped — the walk already decided it may
+// traverse this edge, and re-reading it downstream would invite a second,
+// divergent whitelist.
+type WikiEdge struct {
+	From int64 `json:"from"`
+	To   int64 `json:"to"`
+}
+
+// WikiWalkEdges returns the walkable edges whose BOTH endpoints are in ids,
+// one row per edge (parallel relations between the same pair arrive
+// separately — multiplicity is the only weight the PPR walk has).
+//
+// This is the edge half of graph-aware evidence (ADR-0018 lane 2): where
+// WikiNeighbors picks the candidates, this hands the ranking walk the
+// subgraph induced on them. Edges leaving the set are excluded on purpose —
+// the walk's view of the graph is the candidate set, and mass that would
+// flow out becomes dangling inside the induced subgraph instead.
+//
+// Approved-ness is the caller's contract: pass only vetted ids (the evidence
+// path passes FTS hits plus WikiNeighbors output, both approved-only), the
+// same way WikiNeighbors' gates are pinned by its own tests.
+func WikiWalkEdges(db *sql.DB, ids []int64) ([]WikiEdge, error) {
+	// An empty id set is an empty subgraph, not a query to run.
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	idPH := strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")
+	relPH := strings.TrimSuffix(strings.Repeat("?,", len(wikiWalkRelations)), ",")
+
+	var args []any
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	for _, r := range wikiWalkRelations {
+		args = append(args, r)
+	}
+
+	rows, err := db.Query(
+		`SELECT from_page_id, to_page_id FROM page_links
+		  WHERE from_page_id IN (`+idPH+`) AND to_page_id IN (`+idPH+`)
+		    AND relation IN (`+relPH+`)`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("db: wiki walk edges: %w", err)
+	}
+	defer rows.Close()
+	var out []WikiEdge
+	for rows.Next() {
+		var e WikiEdge
+		if err := rows.Scan(&e.From, &e.To); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 // AttachNoteToPage / DetachNoteToPage link a raw note to a compiled page, so a
 // page can always cite the notes it was compiled from (and a note can show which
 // pages depend on it before it is edited or deleted).

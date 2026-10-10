@@ -3,10 +3,12 @@ package service
 import (
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
 	"repo-nest/internal/db"
+	"repo-nest/internal/graph"
 )
 
 // Evidence gathering for AI Q&A (ADR-0014 决策 3 / TODO M6-W2).
@@ -160,6 +162,14 @@ func (e *Evidence) tryAdd(item EvidenceItem, prefix string, budget EvidenceBudge
 }
 
 // evidencePages ranks wiki pages, keeping project-owned plus global pages.
+//
+// With wiki_graph_search on, the FTS hits become the seed set and the graph
+// takes over the ORDER (ADR-0018 lane 2, ADR-0018 待决 3: bm25 degrades to
+// seed recall): one-hop neighbours join the candidates (db.WikiNeighbors),
+// a personalised PageRank walks the subgraph they induce (db.WikiWalkEdges +
+// graph.PPR), and a page everything relevant points at can lead even though
+// its body never mentions the query. With the gate off (the default) this is
+// the pre-graph FTS ranking exactly.
 func (s *Service) evidencePages(query string, projectID int64, limit int, budget time.Duration) []EvidenceItem {
 	if budget <= 0 {
 		return nil
@@ -169,16 +179,114 @@ func (s *Service) evidencePages(query string, projectID int64, limit int, budget
 		return nil
 	}
 	out := make([]EvidenceItem, 0, len(found))
+	seeds := make([]int64, 0, len(found))
 	for i, p := range found {
 		if projectID > 0 && p.ProjectID != 0 && p.ProjectID != projectID {
 			continue // another project's page: correct to skip, not to hide
 		}
+		seeds = append(seeds, p.ID)
 		out = append(out, EvidenceItem{
 			Type: "page", ID: p.ID, Title: p.Title, Slug: p.Slug, Kind: p.Kind,
 			Snippet: clipRunes(p.Content, 600), Rank: i + 1,
 		})
 	}
+	if s.wikiGraphSearchEnabled() {
+		out = s.rankWithGraph(out, seeds, projectID, limit)
+	}
 	return out
+}
+
+// wikiGraphSearchKey gates the graph-aware half of evidence retrieval
+// (ADR-0018 lane 2). Off by default and deliberately absent from the seeded
+// defaults: a missing row is the safe state, and with it off evidencePages is
+// the pre-graph FTS ranking, byte for byte.
+const wikiGraphSearchKey = "wiki_graph_search"
+
+func (s *Service) wikiGraphSearchEnabled() bool {
+	v, err := db.GetConfig(s.db, wikiGraphSearchKey)
+	return err == nil && v == "1"
+}
+
+// rankWithGraph is the gate-on half of evidencePages (ADR-0018 lane 2).
+//
+// The FTS hits stay the seed set — bm25 decides what is recalled, the graph
+// decides what leads (ADR-0018 待决 3) — their one-hop neighbours join as
+// candidates under the same gates WikiNeighbors pins, and a personalised
+// PageRank over the walkable subgraph induced on that candidate set sets the
+// final order. The reset vector is uniform over the seeds: relevance picked
+// them, so none of them gets a head start the graph would then have to
+// argue against.
+//
+// Two properties keep this safe to default off:
+//   - ties break on the pre-walk position, so a graph with nothing to say
+//     (no edges at all) returns exactly the FTS-then-in-degree order;
+//   - any failure — the walk, the edge query — degrades to that same
+//     pre-walk order instead of failing the answer.
+func (s *Service) rankWithGraph(out []EvidenceItem, seeds []int64, projectID int64, limit int) []EvidenceItem {
+	neighbors, err := db.WikiNeighbors(s.db, seeds, projectID, limit)
+	if err != nil {
+		log.Printf("wiki: graph evidence walk failed: %v", err)
+		return out
+	}
+	// Candidates in pre-walk order: FTS hits first, then neighbours by
+	// in-degree. The position survives as the tie-break.
+	type candidate struct {
+		item EvidenceItem
+		pre  int
+	}
+	cand := make([]candidate, 0, len(out)+len(neighbors))
+	for _, it := range out {
+		cand = append(cand, candidate{item: it, pre: len(cand)})
+	}
+	for _, n := range neighbors {
+		cand = append(cand, candidate{
+			item: EvidenceItem{
+				Type: "page", ID: n.Page.ID, Title: n.Page.Title, Slug: n.Page.Slug, Kind: n.Page.Kind,
+				Snippet: clipRunes(n.Page.Content, 600),
+			},
+			pre: len(cand),
+		})
+	}
+	if len(cand) < 2 {
+		return out // one candidate has nothing to be ranked against
+	}
+
+	ids := make([]int64, len(cand))
+	for i, c := range cand {
+		ids[i] = c.item.ID
+	}
+	edges, err := db.WikiWalkEdges(s.db, ids)
+	if err != nil {
+		log.Printf("wiki: graph evidence edges failed: %v", err)
+		return out
+	}
+	adj := map[int64][]int64{}
+	for _, e := range edges {
+		adj[e.From] = append(adj[e.From], e.To)
+	}
+	reset := map[int64]float64{}
+	for _, id := range seeds {
+		reset[id] = 1
+	}
+	scores := graph.PPR(adj, reset)
+
+	sort.Slice(cand, func(i, j int) bool {
+		si, sj := scores[cand[i].item.ID], scores[cand[j].item.ID]
+		if si != sj {
+			return si > sj
+		}
+		return cand[i].pre < cand[j].pre
+	})
+	if len(cand) > limit {
+		cand = cand[:limit]
+	}
+	ranked := make([]EvidenceItem, len(cand))
+	for i, c := range cand {
+		item := c.item
+		item.Rank = i + 1
+		ranked[i] = item
+	}
+	return ranked
 }
 
 // evidenceNotes ranks notes through the existing search path, which already

@@ -363,6 +363,334 @@ func TestWikiPages_ProjectDeleteCascades(t *testing.T) {
 	}
 }
 
+// ADR-0018 lane 2: the one-hop walk evidence retrieval performs. The closed
+// set of walkable relations, the approved-only gate, and the scope rule are
+// all load-bearing: contradicts is the exclusion that matters most, because a
+// conflict is something to show the user, not to blend into the same evidence
+// block as the claim it conflicts with.
+func TestWikiNeighbors_OneHopBothDirections(t *testing.T) {
+	db := setupTestDB(t)
+	pid := createTestProject(t, db, "neigh")
+
+	seed, err := CreateWikiPage(db, WikiKindEntity, "seed", "Seed", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	outN, err := CreateWikiPage(db, WikiKindEntity, "out-neighbor", "Out Neighbor", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inN, err := CreateWikiPage(db, WikiKindEntity, "in-neighbor", "In Neighbor", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	far, err := CreateWikiPage(db, WikiKindEntity, "two-hops", "Two Hops", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := LinkWikiPages(db, seed.ID, outN.ID, RelationRef); err != nil {
+		t.Fatal(err)
+	}
+	if err := LinkWikiPages(db, inN.ID, seed.ID, RelationRef); err != nil {
+		t.Fatal(err)
+	}
+	if err := LinkWikiPages(db, outN.ID, far.ID, RelationRef); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := WikiNeighbors(db, []int64{seed.ID}, pid, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := map[int64]bool{}
+	for _, n := range got {
+		ids[n.Page.ID] = true
+	}
+	if !ids[outN.ID] || !ids[inN.ID] {
+		t.Errorf("neighbors = %v, want both the outbound and the inbound page", ids)
+	}
+	if ids[seed.ID] {
+		t.Error("a seed was returned as its own neighbor")
+	}
+	if ids[far.ID] {
+		t.Error("a page two hops away was returned; the walk must stop at one hop")
+	}
+
+	// A second relation between the same pair is a different edge but the same
+	// neighbor: one row per page, never one per edge.
+	if err := LinkWikiPages(db, seed.ID, outN.ID, RelationPartOf); err != nil {
+		t.Fatal(err)
+	}
+	again, err := WikiNeighbors(db, []int64{seed.ID}, pid, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(again) != len(got) {
+		t.Errorf("after adding a parallel edge: %d neighbors, want still %d", len(again), len(got))
+	}
+}
+
+func TestWikiNeighbors_TraversalWhitelist(t *testing.T) {
+	db := setupTestDB(t)
+	pid := createTestProject(t, db, "whitelist")
+
+	seed, err := CreateWikiPage(db, WikiKindEntity, "seed", "Seed", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// One target per relation, so the result set names exactly the walkable set.
+	byRelation := map[string]string{
+		RelationRef:         "by-ref",
+		RelationPartOf:      "by-part-of",
+		RelationDocuments:   "by-documents",
+		RelationDepends:     "by-depends",
+		RelationImplements:  "by-implements",
+		RelationSupersedes:  "by-supersedes",
+		RelationContradicts: "by-contradicts",
+		RelationMentions:    "by-mentions",
+	}
+	for rel, slug := range byRelation {
+		p, err := CreateWikiPage(db, WikiKindEntity, slug, "T "+slug, pid, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := LinkWikiPages(db, seed.ID, p.ID, rel); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got, err := WikiNeighbors(db, []int64{seed.ID}, pid, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slugs := map[string]bool{}
+	for _, n := range got {
+		slugs[n.Page.Slug] = true
+	}
+	for _, want := range []string{"by-ref", "by-part-of", "by-documents"} {
+		if !slugs[want] {
+			t.Errorf("walkable relation target %q missing from %v", want, slugs)
+		}
+	}
+	for _, forbidden := range []string{
+		"by-depends", "by-implements", "by-supersedes", "by-contradicts", "by-mentions",
+	} {
+		if slugs[forbidden] {
+			t.Errorf("%q reached evidence through a non-walkable relation", forbidden)
+		}
+	}
+}
+
+func TestWikiNeighbors_OnlyApprovedAndScoped(t *testing.T) {
+	db := setupTestDB(t)
+	home := createTestProject(t, db, "home")
+	other := createTestProject(t, db, "other")
+
+	seed, err := CreateWikiPage(db, WikiKindEntity, "seed", "Seed", home, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending, err := CreateWikiPageAs(db, WikiKindEntity, "pending-n", "Pending", home, "",
+		WikiStatusPending, "wiki-compile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rejected, err := CreateWikiPageAs(db, WikiKindEntity, "rejected-n", "Rejected", home, "",
+		WikiStatusRejected, "wiki-compile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign, err := CreateWikiPage(db, WikiKindEntity, "foreign-n", "Foreign", other, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	global, err := CreateWikiPage(db, WikiKindConcept, "global-n", "Global", 0, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []*WikiPage{pending, rejected, foreign, global} {
+		if err := LinkWikiPages(db, seed.ID, p.ID, RelationRef); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got, err := WikiNeighbors(db, []int64{seed.ID}, home, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range got {
+		switch n.Page.ID {
+		case pending.ID, rejected.ID:
+			t.Errorf("%s page entered the neighbor set; only approved pages may answer", n.Page.Status)
+		case foreign.ID:
+			t.Error("another project's page entered a project-scoped walk")
+		}
+	}
+	var sawGlobal bool
+	for _, n := range got {
+		if n.Page.ID == global.ID {
+			sawGlobal = true
+		}
+	}
+	if !sawGlobal {
+		t.Error("a global page was excluded from the walk; global pages belong everywhere")
+	}
+}
+
+func TestWikiNeighbors_InlinksAndLimit(t *testing.T) {
+	db := setupTestDB(t)
+	pid := createTestProject(t, db, "inlinks")
+
+	seed, err := CreateWikiPage(db, WikiKindEntity, "seed", "Seed", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	popular, err := CreateWikiPage(db, WikiKindEntity, "popular", "Popular", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	quiet, err := CreateWikiPage(db, WikiKindEntity, "quiet", "Quiet", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Both are one hop from the seed; popular also carries three inbound edges
+	// from consumer pages that are NOT themselves neighbors of the seed. The
+	// tally is the page's full in-degree, so the seed's own edge counts too:
+	// popular has 4, quiet has 1.
+	for i := 0; i < 3; i++ {
+		c, err := CreateWikiPage(db, WikiKindConcept, "consumer-"+string(rune('a'+i)), "C", pid, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := LinkWikiPages(db, c.ID, popular.ID, RelationRef); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := LinkWikiPages(db, seed.ID, popular.ID, RelationRef); err != nil {
+		t.Fatal(err)
+	}
+	if err := LinkWikiPages(db, seed.ID, quiet.ID, RelationRef); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := WikiNeighbors(db, []int64{seed.ID}, pid, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("neighbors = %d, want 2", len(got))
+	}
+	if got[0].Page.ID != popular.ID {
+		t.Errorf("first neighbor = %d, want the higher in-degree page %d", got[0].Page.ID, popular.ID)
+	}
+	if got[0].Inlinks != 4 || got[1].Inlinks != 1 {
+		t.Errorf("inlinks = %d/%d, want 4/1", got[0].Inlinks, got[1].Inlinks)
+	}
+
+	one, err := WikiNeighbors(db, []int64{seed.ID}, pid, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(one) != 1 || one[0].Page.ID != popular.ID {
+		t.Errorf("limit 1 returned %+v, want just the popular page", one)
+	}
+	// No seeds is not an error: an empty FTS result must not become a query.
+	none, err := WikiNeighbors(db, nil, pid, 10)
+	if err != nil || len(none) != 0 {
+		t.Errorf("empty seeds = (%v, %v), want (nil, nil)", none, err)
+	}
+}
+
+// WikiWalkEdges is the edge half of the PPR walk (ADR-0018 lane 2): the
+// walkable edges with BOTH endpoints inside the candidate set, one row per
+// edge. Edges leaving the set are not the walk's business — their mass
+// becomes dangling inside the induced subgraph — and a relation outside the
+// whitelist is never walked, contradicts above all.
+func TestWikiWalkEdges_WhitelistAndBothEndpoints(t *testing.T) {
+	db := setupTestDB(t)
+	pid := createTestProject(t, db, "walk-edges")
+
+	a, err := CreateWikiPage(db, WikiKindEntity, "a", "A", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := CreateWikiPage(db, WikiKindEntity, "b", "B", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := CreateWikiPage(db, WikiKindEntity, "c", "C", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside, err := CreateWikiPage(db, WikiKindEntity, "outside", "Outside", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range []struct {
+		from, to int64
+		relation string
+	}{
+		{a.ID, b.ID, RelationRef},
+		{b.ID, c.ID, RelationPartOf},
+		{a.ID, c.ID, RelationContradicts},
+		{c.ID, outside.ID, RelationDocuments},
+	} {
+		if err := LinkWikiPages(db, e.from, e.to, e.relation); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got, err := WikiWalkEdges(db, []int64{a.ID, b.ID, c.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	type edge struct{ from, to int64 }
+	set := map[edge]int{}
+	for _, e := range got {
+		set[edge{e.From, e.To}]++
+	}
+	if set[edge{a.ID, b.ID}] != 1 || set[edge{b.ID, c.ID}] != 1 {
+		t.Errorf("walk edges = %v, want a->b and b->c exactly once each", set)
+	}
+	if set[edge{a.ID, c.ID}] != 0 {
+		t.Error("a contradicts edge was returned; the whitelist must hold in SQL too")
+	}
+	if set[edge{c.ID, outside.ID}] != 0 {
+		t.Error("an edge leaving the candidate set was returned; both endpoints must be inside")
+	}
+}
+
+// Two walkable relations between the same pair are two edges: multiplicity is
+// the only weight the walk has, and collapsing them here would silently
+// reweight the graph.
+func TestWikiWalkEdges_ParallelRelationsCountSeparately(t *testing.T) {
+	db := setupTestDB(t)
+	pid := createTestProject(t, db, "walk-parallel")
+
+	a, err := CreateWikiPage(db, WikiKindEntity, "a", "A", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := CreateWikiPage(db, WikiKindEntity, "b", "B", pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := LinkWikiPages(db, a.ID, b.ID, RelationRef); err != nil {
+		t.Fatal(err)
+	}
+	if err := LinkWikiPages(db, a.ID, b.ID, RelationDocuments); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := WikiWalkEdges(db, []int64{a.ID, b.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Errorf("walk edges = %+v, want the parallel pair as two rows", got)
+	}
+}
+
 // ADR-0018 lane 1: the relation CHECK is live, and NormalizeRelation is the
 // single gate every writer passes through.
 func TestRelationVocabulary_CheckIsEnforced(t *testing.T) {

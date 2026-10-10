@@ -138,6 +138,17 @@ Edges grow from three places: the **compiler** creates `pending` edges using the
 
 lint also runs three **structural checks** along relation type (all pure SQL/in-memory, no model, no cost): whether a `supersedes` edge is inverted (the superseder is older than what it supersedes), whether `part-of`/`depends` form a cycle, and whether a `contradicts` is one-sided (a contradiction should be symmetric). Like every other check, they **only write project todos for a human to read — lint never auto-edits a page or deletes an edge**.
 
+### Graph-aware evidence retrieval (optional, off by default)
+
+Q&A evidence used to be full-text search only: whichever pages the question's words appear in, those are the pages. But pages are **wired together by edges** — a page whose body never mentions the question's words may be exactly the one every relevant page points at. Once v21 made edges queryable, evidence retrieval could walk the graph for the first time: the full-text hits become seeds, and a **one-hop** walk along `ref` / `part-of` / `documents` adds their neighbours to the candidates.
+
+- **One hop only**: a neighbour's neighbour is not a neighbour, so the walk cannot snowball through a hub page.
+- **Relation whitelist**: `depends` / `implements` / `supersedes` are claims about build order and recency, `mentions` is the compiler's cheap body-scan echo — none of them mean "reading this page helps answer a question about that one". `contradicts` above all must not be walked: a contradiction is something to show the user, not to blend into the same evidence block as the claim it conflicts with.
+- **Approved pages only**, and a project-scoped walk keeps that project's pages plus global ones (a page with an empty `project_id` counts everywhere).
+- **PPR sets the order**: the candidates (full-text hits + one-hop neighbours) run a personalised PageRank on the walkable subgraph they induce — the reset vector sits uniformly on the full-text hits, transitions follow the whitelist only, and a node with no outgoing edge teleports its mass back into the reset. So "the page both hits point at" leads even when its body never mentions a single word of the question. Ties fall back to the pre-walk order (FTS bm25 first, then neighbours by in-degree), so an edgeless graph cannot scramble a pure text ranking. The whole walk is pure SQL + in-memory Go: tens of candidates, milliseconds, far inside the 3-second deadline.
+
+Off by default, controlled by the config key `wiki_graph_search` (like every other boolean gate: set it to `1` to enable, absent means off). **With it off, evidence retrieval behaves exactly as before** — the walk does not run at all. With it on, the full-text hits degrade to seed recall (bm25 decides what is recalled, the graph decides what leads), the same triple budget (items / characters / deadline) still applies, and any failure is logged and falls back to the pre-walk order rather than failing the answer.
+
 ### Pending and approved (the one most often mistaken for a bug)
 
 Pages have a status, and status decides whether a page may answer anything:

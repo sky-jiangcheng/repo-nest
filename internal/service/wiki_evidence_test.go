@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"repo-nest/internal/db"
 	"repo-nest/internal/search/abeval"
@@ -401,4 +402,179 @@ func TestFileAnswerAsPageClosesTheLoop(t *testing.T) {
 		t.Errorf("invented refs resolved to %d items, want 0", len(items))
 	}
 	_ = pageIDs
+}
+
+// ADR-0018 lane 2: evidence reads the page graph, but only behind its gate.
+//
+// The zero-regression contract is the point of the first half: with
+// wiki_graph_search unset (the default) the result must be exactly what FTS
+// ranking produced before the graph existed — a page reachable only through a
+// link stays invisible. The second half proves the walk adds one-hop
+// neighbours (their bodies share no word with the query, so text search
+// cannot reach them) while the relation whitelist and the approved-only gate
+// still hold, and the budget still caps the combined list.
+func TestEvidencePages_GraphSearchGate(t *testing.T) {
+	svc, _ := setupService(t)
+	pid := seedProject(t, svc.db, "graph-gate", "/tmp/graph-gate")
+
+	hub, err := db.CreateWikiPage(svc.db, db.WikiKindEntity, "alpha-hub", "Alpha Hub", pid,
+		"alpha routing rules live here and nowhere else in this fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	detail, err := db.CreateWikiPage(svc.db, db.WikiKindEntity, "omega-detail", "Omega Detail", pid,
+		"omega downstream specifics written in a disjoint vocabulary")
+	if err != nil {
+		t.Fatal(err)
+	}
+	conflict, err := db.CreateWikiPage(svc.db, db.WikiKindEntity, "omega-conflict", "Omega Conflict", pid,
+		"omega disputes the hub claim outright")
+	if err != nil {
+		t.Fatal(err)
+	}
+	draft, err := db.CreateWikiPageAs(svc.db, db.WikiKindEntity, "omega-draft", "Omega Draft", pid,
+		"omega draft nobody has reviewed yet", db.WikiStatusPending, "wiki-compile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range []struct {
+		to       int64
+		relation string
+	}{
+		{detail.ID, db.RelationRef},
+		{conflict.ID, db.RelationContradicts},
+		{draft.ID, db.RelationRef},
+	} {
+		if err := db.LinkWikiPages(svc.db, hub.ID, e.to, e.relation); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	query := "alpha routing rules"
+	pagesOf := func(items []EvidenceItem) []EvidenceItem {
+		var out []EvidenceItem
+		for _, it := range items {
+			if it.Type == "page" {
+				out = append(out, it)
+			}
+		}
+		return out
+	}
+
+	// OFF (the default): the pre-graph result, exactly — one page, the FTS hit.
+	off := pagesOf(svc.evidencePages(query, pid, 10, time.Second))
+	if len(off) != 1 || off[0].ID != hub.ID {
+		t.Fatalf("gate off: pages = %+v, want just the FTS hit %d", off, hub.ID)
+	}
+
+	// ON: the neighbour enters after the seed; the contradicts target and the
+	// pending draft stay out (whitelist and approved-only hold at the service
+	// layer too), and the budget still caps the combined list.
+	if err := db.SetConfig(svc.db, "wiki_graph_search", "1"); err != nil {
+		t.Fatal(err)
+	}
+	on := pagesOf(svc.evidencePages(query, pid, 10, time.Second))
+	if len(on) != 2 || on[0].ID != hub.ID || on[1].ID != detail.ID {
+		t.Fatalf("gate on: pages = %+v, want [hub %d, detail %d]", on, hub.ID, detail.ID)
+	}
+	for _, it := range on {
+		if it.ID == conflict.ID || it.ID == draft.ID {
+			t.Errorf("gate on: %q entered evidence; contradicts targets and pending pages must stay out", it.Title)
+		}
+	}
+	if capped := pagesOf(svc.evidencePages(query, pid, 1, time.Second)); len(capped) != 1 || capped[0].ID != hub.ID {
+		t.Errorf("gate on with limit 1: pages = %+v, want just the FTS hit", capped)
+	}
+}
+
+// ADR-0018 lane 2, second slice: with the gate on, the graph decides the
+// ORDER, not just the membership — bm25 degrades to seed recall (ADR-0018
+// 待决 3). The fixture makes the three orderings distinguishable:
+//   - canonical is endorsed by BOTH FTS hits while its body shares no term
+//     with the query — it must lead, which is the entire point of reading
+//     the graph;
+//   - solo is endorsed by only one seed — it must trail the seeds;
+//   - the two seeds tie, so they keep their FTS order — a graph with nothing
+//     to say between two candidates must not scramble the text ranking.
+func TestEvidencePages_GraphRankingEndorsesConsensus(t *testing.T) {
+	svc, _ := setupService(t)
+	pid := seedProject(t, svc.db, "graph-rank", "/tmp/graph-rank")
+
+	seedA, err := db.CreateWikiPage(svc.db, db.WikiKindEntity, "alpha-seed-a", "Alpha Seed A", pid,
+		"alpha routing rules as the first seed page knows them")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedB, err := db.CreateWikiPage(svc.db, db.WikiKindEntity, "alpha-seed-b", "Alpha Seed B", pid,
+		"alpha routing rules restated by a second seed page")
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := db.CreateWikiPage(svc.db, db.WikiKindEntity, "omega-canonical", "Omega Canonical", pid,
+		"omega canonical wording shares no term with the query at all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	solo, err := db.CreateWikiPage(svc.db, db.WikiKindEntity, "omega-solo", "Omega Solo", pid,
+		"omega solo wording is likewise disjoint from the query")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range []struct{ from, to int64 }{
+		{seedA.ID, canonical.ID},
+		{seedB.ID, canonical.ID},
+		{seedA.ID, solo.ID},
+	} {
+		if err := db.LinkWikiPages(svc.db, e.from, e.to, db.RelationRef); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	query := "alpha routing rules"
+	pagesOf := func(items []EvidenceItem) []EvidenceItem {
+		var out []EvidenceItem
+		for _, it := range items {
+			if it.Type == "page" {
+				out = append(out, it)
+			}
+		}
+		return out
+	}
+
+	// OFF: exactly the two FTS hits — the graph-only pages stay invisible.
+	off := pagesOf(svc.evidencePages(query, pid, 10, time.Second))
+	if len(off) != 2 {
+		t.Fatalf("gate off: pages = %+v, want just the two FTS hits", off)
+	}
+	ftsOrder := []int64{off[0].ID, off[1].ID}
+
+	// ON: PPR orders all four candidates.
+	if err := db.SetConfig(svc.db, "wiki_graph_search", "1"); err != nil {
+		t.Fatal(err)
+	}
+	on := pagesOf(svc.evidencePages(query, pid, 10, time.Second))
+	if len(on) != 4 {
+		t.Fatalf("gate on: pages = %+v, want the 2 seeds plus 2 neighbours", on)
+	}
+	if on[0].ID != canonical.ID {
+		t.Errorf("first page = %d (%s), want the doubly-endorsed page %d", on[0].ID, on[0].Title, canonical.ID)
+	}
+	if on[3].ID != solo.ID {
+		t.Errorf("last page = %d (%s), want the singly-endorsed page %d", on[3].ID, on[3].Title, solo.ID)
+	}
+	if on[1].ID != ftsOrder[0] || on[2].ID != ftsOrder[1] {
+		t.Errorf("tied seeds reordered: got [%d %d], want FTS order %v", on[1].ID, on[2].ID, ftsOrder)
+	}
+	for i, it := range on {
+		if it.Rank != i+1 {
+			t.Errorf("item %d carries Rank %d, want the position it was ranked into", it.ID, it.Rank)
+		}
+	}
+
+	// The budget still caps the ranked list, and the cap keeps the ranking
+	// rather than reverting to the FTS prefix.
+	capped := pagesOf(svc.evidencePages(query, pid, 2, time.Second))
+	if len(capped) != 2 || capped[0].ID != canonical.ID || capped[1].ID != ftsOrder[0] {
+		t.Errorf("gate on with limit 2: pages = %+v, want [canonical, first FTS hit]", capped)
+	}
 }

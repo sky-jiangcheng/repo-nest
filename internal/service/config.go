@@ -56,11 +56,15 @@ var allowedConfigKeys = map[string]bool{
 	// layer. Off by default, independent of semantic_search (that sends text out
 	// to get a vector back; this sends text out to get stored content back) and
 	// independent of wiki_lint_llm (which only reads).
-	"wiki_compile":     true,
-	"wiki_lint_llm":    true,
-	"ai_chat_base_url": true,
-	"ai_chat_model":    true,
-	"ai_chat_api_key":  true,
+	"wiki_compile":  true,
+	"wiki_lint_llm": true,
+	// ADR-0018 lane 2: gates the graph-aware half of evidence retrieval — the
+	// one-hop walk over page_links that widens recall beyond what FTS matches.
+	// Off by default; with it off, evidence is the pre-graph FTS ranking.
+	"wiki_graph_search": true,
+	"ai_chat_base_url":  true,
+	"ai_chat_model":     true,
+	"ai_chat_api_key":   true,
 }
 
 // stringConfigKeys are exempt from the numeric-value check: they carry free-text
