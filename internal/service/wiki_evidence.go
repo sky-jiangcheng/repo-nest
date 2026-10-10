@@ -289,7 +289,9 @@ func (s *Service) wireEvidenceLinks(pageID int64, ev []EvidenceItem) {
 	for _, it := range ev {
 		switch it.Type {
 		case "page":
-			if err := db.LinkWikiPages(s.db, pageID, it.ID, "cites"); err != nil {
+			// A query page pointing at its evidence pages is a plain reference; the
+			// old free-text "cites" is folded onto ref by the v21 vocabulary.
+			if err := db.LinkWikiPages(s.db, pageID, it.ID, db.RelationRef); err != nil {
 				log.Printf("wiki: could not link query page %d -> %d: %v", pageID, it.ID, err)
 			}
 		case "note":

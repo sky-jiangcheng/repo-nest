@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -171,15 +172,15 @@ func TestWikiLinks_AreBidirectionalAndIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := LinkWikiPages(db, b.ID, a.ID, "explains"); err != nil {
+	if err := LinkWikiPages(db, b.ID, a.ID, RelationImplements); err != nil {
 		t.Fatal(err)
 	}
 	// Same triple twice: a re-run of the same ingest must not stack edges.
-	if err := LinkWikiPages(db, b.ID, a.ID, "explains"); err != nil {
+	if err := LinkWikiPages(db, b.ID, a.ID, RelationImplements); err != nil {
 		t.Fatalf("re-link was rejected: %v", err)
 	}
 	// A different relation between the same pair IS a different edge.
-	if err := LinkWikiPages(db, b.ID, a.ID, "depends-on"); err != nil {
+	if err := LinkWikiPages(db, b.ID, a.ID, RelationDepends); err != nil {
 		t.Fatal(err)
 	}
 
@@ -206,15 +207,15 @@ func TestWikiLinks_AreBidirectionalAndIdempotent(t *testing.T) {
 		}
 	}
 
-	if err := UnlinkWikiPages(db, b.ID, a.ID, "explains"); err != nil {
+	if err := UnlinkWikiPages(db, b.ID, a.ID, RelationImplements); err != nil {
 		t.Fatal(err)
 	}
 	after, err := WikiEdgesTo(db, a.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(after) != 1 || after[0].Relation != "depends-on" {
-		t.Errorf("after unlink: %+v, want only depends-on", after)
+	if len(after) != 1 || after[0].Relation != RelationDepends {
+		t.Errorf("after unlink: %+v, want only %s", after, RelationDepends)
 	}
 }
 
@@ -360,4 +361,179 @@ func TestWikiPages_ProjectDeleteCascades(t *testing.T) {
 	if n != 0 {
 		t.Errorf("%d page(s) survived deleting their project", n)
 	}
+}
+
+// ADR-0018 lane 1: the relation CHECK is live, and NormalizeRelation is the
+// single gate every writer passes through.
+func TestRelationVocabulary_CheckIsEnforced(t *testing.T) {
+	db := setupTestDB(t)
+	a, err := CreateWikiPage(db, WikiKindEntity, "a", "A", 0, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := CreateWikiPage(db, WikiKindConcept, "b", "B", 0, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A raw insert that bypasses the Go gate must be refused by the CHECK — that
+	// is the whole point of v21: no writer can plant an off-vocabulary relation.
+	if _, err := db.Exec(
+		`INSERT INTO page_links(from_page_id, to_page_id, relation) VALUES (?,?,?)`,
+		a.ID, b.ID, "nonsense"); err == nil {
+		t.Fatal("CHECK accepted an off-vocabulary relation")
+	}
+	if err := LinkWikiPages(db, a.ID, b.ID, RelationDepends); err != nil {
+		t.Fatalf("LinkWikiPages(valid) rejected: %v", err)
+	}
+	// The API gate maps a legacy string onto the vocabulary instead of erroring,
+	// so a mislabelled edge degrades to ref rather than blocking a good write.
+	if err := LinkWikiPages(db, a.ID, b.ID, "compiled-from"); err != nil {
+		t.Fatalf("LinkWikiPages(alias) rejected: %v", err)
+	}
+	var got []string
+	rows, err := db.Query(
+		`SELECT relation FROM page_links WHERE from_page_id=? AND to_page_id=? ORDER BY relation`, a.ID, b.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var r string
+		if err := rows.Scan(&r); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, r)
+	}
+	if len(got) != 2 || got[0] != RelationDepends || got[1] != RelationRef {
+		t.Errorf("edges = %v, want [%s %s]", got, RelationDepends, RelationRef)
+	}
+}
+
+func TestNormalizeRelation(t *testing.T) {
+	cases := map[string]string{
+		"":               RelationRef,
+		"ref":            RelationRef,
+		"REF":            RelationRef,
+		"  depends ":     RelationDepends,
+		"depends-on":     RelationDepends, // legacy spelling alias
+		"compiled-from":  RelationRef,     // old compiler default
+		"cites":          RelationRef,     // old filing default
+		"part_of":        RelationPartOf,
+		"contradicts":    RelationContradicts,
+		"total-nonsense": RelationRef, // unknown → ref
+		"mentions":       RelationMentions,
+	}
+	for in, want := range cases {
+		if got := NormalizeRelation(in); got != want {
+			t.Errorf("NormalizeRelation(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// The CHECK is rendered from wikiRelations, but guard against silent drift: parse
+// the IN-list out of the DDL and require it to match the Go set exactly.
+func TestRelationVocabulary_CheckDDLMatchesGoSet(t *testing.T) {
+	start := strings.Index(pageLinksTableDDL, "relation IN (")
+	if start < 0 {
+		t.Fatal("pageLinksTableDDL lost the relation IN-list")
+	}
+	list := pageLinksTableDDL[start+len("relation IN ("):]
+	list = list[:strings.Index(list, ")")]
+	seen := map[string]bool{}
+	for _, tok := range strings.Split(list, ",") {
+		tok = strings.Trim(strings.TrimSpace(tok), "'")
+		if tok == "" {
+			continue
+		}
+		seen[tok] = true
+		if !ValidRelation(tok) {
+			t.Errorf("CHECK allows %q but ValidRelation rejects it", tok)
+		}
+	}
+	if len(seen) != len(wikiRelations) {
+		t.Errorf("CHECK lists %d relations, Go set has %d", len(seen), len(wikiRelations))
+	}
+}
+
+// v21 must upgrade a PRE-v21 page_links (free-text relation) to the constrained
+// one: normalize legacy values, collapse parallel edges that become duplicates,
+// keep legal ones, refuse an off-vocabulary insert afterwards, and no-op on replay.
+func TestWikiRelationVocabulary_MigratesLegacyTable(t *testing.T) {
+	db := setupTestDB(t)
+	if _, err := db.Exec(`DROP TABLE page_links`); err != nil {
+		t.Fatal(err)
+	}
+	const oldDDL = `CREATE TABLE page_links (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		from_page_id INTEGER NOT NULL,
+		to_page_id INTEGER NOT NULL,
+		relation TEXT NOT NULL DEFAULT 'ref',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		CHECK (from_page_id <> to_page_id),
+		UNIQUE (from_page_id, to_page_id, relation),
+		FOREIGN KEY (from_page_id) REFERENCES wiki_pages(id) ON DELETE CASCADE,
+		FOREIGN KEY (to_page_id) REFERENCES wiki_pages(id) ON DELETE CASCADE
+	)`
+	if _, err := db.Exec(oldDDL); err != nil {
+		t.Fatal(err)
+	}
+	a, _ := CreateWikiPage(db, WikiKindEntity, "a", "A", 0, "")
+	b, _ := CreateWikiPage(db, WikiKindEntity, "b", "B", 0, "")
+	c, _ := CreateWikiPage(db, WikiKindEntity, "c", "C", 0, "")
+	seed := []struct {
+		f, t int64
+		rel  string
+	}{
+		{a.ID, b.ID, "cites"},         // alias → ref
+		{a.ID, b.ID, "compiled-from"}, // alias → ref, collides with the row above
+		{a.ID, c.ID, "wildcard"},      // unknown → ref
+		{b.ID, c.ID, "depends"},       // canonical → kept
+	}
+	for _, s := range seed {
+		if _, err := db.Exec(
+			`INSERT INTO page_links(from_page_id,to_page_id,relation) VALUES(?,?,?)`, s.f, s.t, s.rel); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := EnsureWikiRelationVocabulary(db); err != nil {
+		t.Fatalf("v21: %v", err)
+	}
+	var ddl string
+	if err := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name='page_links'`).Scan(&ddl); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(ddl, "relation IN (") {
+		t.Fatal("migration did not add the relation CHECK")
+	}
+	// 4 seeds → 3 after the two a→b edges collapse to one ref.
+	if n := countPageLinks(t, db); n != 3 {
+		t.Errorf("edges after v21 = %d, want 3 (two a->b collapsed to one ref)", n)
+	}
+	var rel string
+	if err := db.QueryRow(`SELECT relation FROM page_links WHERE from_page_id=? AND to_page_id=?`, b.ID, c.ID).Scan(&rel); err != nil {
+		t.Fatal(err)
+	}
+	if rel != RelationDepends {
+		t.Errorf("canonical 'depends' became %q; migration must preserve legal values", rel)
+	}
+	if _, err := db.Exec(`INSERT INTO page_links(from_page_id,to_page_id,relation) VALUES(?,?,?)`, a.ID, b.ID, "nope"); err == nil {
+		t.Error("CHECK not enforced after migration")
+	}
+	before := countPageLinks(t, db)
+	if err := EnsureWikiRelationVocabulary(db); err != nil {
+		t.Fatalf("v21 replay: %v", err)
+	}
+	if after := countPageLinks(t, db); after != before {
+		t.Errorf("replay changed edge count %d -> %d", before, after)
+	}
+}
+
+func countPageLinks(t *testing.T, db *sql.DB) int {
+	t.Helper()
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM page_links`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
 }

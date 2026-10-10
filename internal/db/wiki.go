@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -58,21 +59,13 @@ var wikiSchemaStatements = []string{
 	`CREATE INDEX IF NOT EXISTS idx_wiki_pages_project ON wiki_pages(project_id)`,
 	`CREATE INDEX IF NOT EXISTS idx_wiki_pages_kind ON wiki_pages(kind)`,
 	`CREATE INDEX IF NOT EXISTS idx_wiki_pages_status ON wiki_pages(status)`,
-	`CREATE TABLE IF NOT EXISTS page_links (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		from_page_id INTEGER NOT NULL,
-		to_page_id INTEGER NOT NULL,
-		relation TEXT NOT NULL DEFAULT 'ref',
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		CHECK (from_page_id <> to_page_id),
-		UNIQUE (from_page_id, to_page_id, relation),
-		FOREIGN KEY (from_page_id) REFERENCES wiki_pages(id) ON DELETE CASCADE,
-		FOREIGN KEY (to_page_id) REFERENCES wiki_pages(id) ON DELETE CASCADE
-	)`,
+	// page_links is defined once (pageLinksTableDDL) so the v21 rebuild and a fresh
+	// create cannot drift; see the relation-vocabulary block below.
+	pageLinksTableDDL,
 	// The backlink direction is the one that is impossible without this index:
 	// scanning page_links for "who points at me" is the whole point of a wiki.
-	`CREATE INDEX IF NOT EXISTS idx_page_links_to ON page_links(to_page_id)`,
-	`CREATE INDEX IF NOT EXISTS idx_page_links_from ON page_links(from_page_id)`,
+	pageLinksIdxToDDL,
+	pageLinksIdxFromDDL,
 	`CREATE TABLE IF NOT EXISTS note_pages (
 		note_id INTEGER NOT NULL,
 		page_id INTEGER NOT NULL,
@@ -99,6 +92,117 @@ const (
 	WikiKindSource    = "source"
 	WikiKindSynthesis = "synthesis"
 	WikiKindQuery     = "query"
+)
+
+// ---- Relation vocabulary (ADR-0018 lane 1, schema v21) --------------------
+//
+// Before this, page_links.relation was free text: the compiler wrote whatever the
+// model emitted (defaulting to "compiled-from"), answer-filing wrote "cites", and
+// nothing constrained the value — so the graph could not be queried by relation
+// ("give me every depends edge" was meaningless when nobody guaranteed the word
+// was spelled alike). ADR-0018 freezes an eight-type ontology. The canonical list
+// is defined ONCE (wikiRelations) and the SQLite CHECK is rendered from it
+// (relationCheckSQL), so the DDL and ValidRelation can never disagree — this is
+// the same anti-drift idea as pairing kind's CHECK with ValidWikiKind, only
+// derived instead of duplicated-and-tested.
+var wikiRelations = []string{
+	"ref", "part-of", "depends", "implements",
+	"documents", "supersedes", "contradicts", "mentions",
+}
+
+// Relation values. These are the spellings callers use; NormalizeRelation is the
+// gate that folds everything else (legacy values, model coinages, aliases) onto
+// one of these before it reaches the CHECK.
+const (
+	RelationRef         = "ref"
+	RelationPartOf      = "part-of"
+	RelationDepends     = "depends"
+	RelationImplements  = "implements"
+	RelationDocuments   = "documents"
+	RelationSupersedes  = "supersedes"
+	RelationContradicts = "contradicts"
+	RelationMentions    = "mentions"
+)
+
+var validRelationSet = buildRelationSet()
+
+func buildRelationSet() map[string]bool {
+	m := make(map[string]bool, len(wikiRelations))
+	for _, r := range wikiRelations {
+		m[r] = true
+	}
+	return m
+}
+
+// ValidRelation reports whether r is already a canonical member (no aliasing).
+func ValidRelation(r string) bool { return validRelationSet[r] }
+
+// relationAlias folds the spellings that predate the vocabulary, plus a handful
+// of phrasings models reach for, onto a canonical member. Keeping "cites" and
+// "compiled-from" as aliases (rather than dropping them into ref blindly by
+// accident) means the intent survives: an existing "cites" edge still lands in
+// ref because a citation IS a reference, not because the system gave up on it.
+var relationAlias = map[string]string{
+	"compiled-from": RelationRef,
+	"cites":         RelationRef,
+	"references":    RelationRef,
+	"related":       RelationRef,
+	"related-to":    RelationRef,
+	"see-also":      RelationRef,
+	"depends-on":    RelationDepends,
+	"part_of":       RelationPartOf,
+	"replaces":      RelationSupersedes,
+	"conflicts":     RelationContradicts,
+	"conflicts-with": RelationContradicts,
+}
+
+// NormalizeRelation is the single entry point that turns any caller-supplied
+// string into a value the CHECK accepts: trim + lowercase, then canonical, then
+// alias, else the generic ref. An unknown value never errors — a dirty relation
+// must not abort a write (the compiler and the model are untrusted here); it
+// just loses its label to ref.
+func NormalizeRelation(r string) string {
+	r = strings.ToLower(strings.TrimSpace(r))
+	if r == "" {
+		return RelationRef
+	}
+	if validRelationSet[r] {
+		return r
+	}
+	if a, ok := relationAlias[r]; ok {
+		return a
+	}
+	return RelationRef
+}
+
+// relationCheckSQL renders the CHECK's IN-list straight from wikiRelations, so
+// there is one source of truth for the allowed set.
+func relationCheckSQL() string {
+	quoted := make([]string, len(wikiRelations))
+	for i, r := range wikiRelations {
+		quoted[i] = "'" + r + "'"
+	}
+	return "CHECK (relation IN (" + strings.Join(quoted, ", ") + "))"
+}
+
+// page_links is defined here (not inline in wikiSchemaStatements) because the v21
+// rebuild must execute the exact same DDL text as a fresh create, otherwise the
+// stored sqlite_master.sql would differ between the two paths and the wiki
+// layer's byte-for-byte reversibility contract would break.
+var (
+	pageLinksTableDDL = "CREATE TABLE IF NOT EXISTS page_links (\n" +
+		"\t\tid INTEGER PRIMARY KEY AUTOINCREMENT,\n" +
+		"\t\tfrom_page_id INTEGER NOT NULL,\n" +
+		"\t\tto_page_id INTEGER NOT NULL,\n" +
+		"\t\trelation TEXT NOT NULL DEFAULT 'ref' " + relationCheckSQL() + ",\n" +
+		"\t\tcreated_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n" +
+		"\t\tCHECK (from_page_id <> to_page_id),\n" +
+		"\t\tUNIQUE (from_page_id, to_page_id, relation),\n" +
+		"\t\tFOREIGN KEY (from_page_id) REFERENCES wiki_pages(id) ON DELETE CASCADE,\n" +
+		"\t\tFOREIGN KEY (to_page_id) REFERENCES wiki_pages(id) ON DELETE CASCADE\n" +
+		"\t)"
+	pageLinksIdxFromDDL = `CREATE INDEX IF NOT EXISTS idx_page_links_from ON page_links(from_page_id)`
+	pageLinksIdxToDDL   = `CREATE INDEX IF NOT EXISTS idx_page_links_to ON page_links(to_page_id)`
 )
 
 // WikiPage is one page of the compiled layer.
@@ -183,6 +287,138 @@ func EnsureWikiReviewColumns(db *sql.DB) error {
 		}
 	}
 	return nil
+}
+
+// EnsureWikiRelationVocabulary is migration v21 (ADR-0018 lane 1): it rebuilds
+// page_links so relation carries a CHECK over the eight-type vocabulary, and
+// normalizes every existing row whose relation was free text onto that set.
+//
+// Why a rebuild and not an ALTER: SQLite cannot add or change a column-level
+// CHECK in place, so the standard recipe is create-new / copy / drop / rename.
+// The copy normalizes relation via NormalizeRelation (legacy "compiled-from" and
+// "cites" fold onto ref by their alias, not by the unknown-value fallback), and
+// INSERT OR IGNORE collapses the (from,to) pairs whose two formerly-distinct
+// relations both normalize to the same value — a genuine merge of parallel edges,
+// not a loss, because those two edges meant the same thing under the new model.
+//
+// page_links is a child table (nothing references it), so the drop/rename needs
+// no foreign_keys dance: wiki_pages stays put and every preserved endpoint still
+// exists. The whole thing is one transaction, so a mid-way crash leaves the old
+// table intact and the migration reruns cleanly.
+//
+// It is migration-only (not re-asserted from InitDB): a fresh database gets the
+// CHECK straight from wikiSchemaStatements (which references the same
+// pageLinksTableDDL), and DropWikiSchema→EnsureWikiSchema restores the same text.
+// The "already carries the CHECK" guard makes a replay a no-op.
+func EnsureWikiRelationVocabulary(db *sql.DB) error {
+	var ddl string
+	err := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name='page_links'`).Scan(&ddl)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		// No table yet: create it canonically (indexes included, since this can be
+		// reached without the InitDB re-assert sequence).
+		for _, stmt := range []string{pageLinksTableDDL, pageLinksIdxToDDL, pageLinksIdxFromDDL} {
+			if _, e := db.Exec(stmt); e != nil && !isAlreadyExistsErr(e) {
+				return fmt.Errorf("db: v21 create page_links: %w", e)
+			}
+		}
+		return nil
+	case err != nil:
+		return fmt.Errorf("db: v21 inspect page_links: %w", err)
+	}
+	if strings.Contains(ddl, "relation IN (") {
+		return nil // already migrated (fresh DB, or a replay)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	type oldEdge struct {
+		id, from, to int64
+		relation     string
+		createdAt    string
+	}
+	var edges []oldEdge
+	rows, err := tx.Query(`SELECT id, from_page_id, to_page_id, relation, COALESCE(created_at, '') FROM page_links`)
+	if err != nil {
+		return fmt.Errorf("db: v21 read page_links: %w", err)
+	}
+	for rows.Next() {
+		var e oldEdge
+		if err := rows.Scan(&e.id, &e.from, &e.to, &e.relation, &e.createdAt); err != nil {
+			rows.Close()
+			return err
+		}
+		e.relation = NormalizeRelation(e.relation)
+		edges = append(edges, e)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+
+	if _, err := tx.Exec(`DROP TABLE page_links`); err != nil {
+		return fmt.Errorf("db: v21 drop page_links: %w", err)
+	}
+	for _, stmt := range []string{pageLinksTableDDL, pageLinksIdxToDDL, pageLinksIdxFromDDL} {
+		if _, err := tx.Exec(stmt); err != nil {
+			return fmt.Errorf("db: v21 recreate page_links: %w", err)
+		}
+	}
+	for _, e := range edges {
+		if _, err := tx.Exec(
+			`INSERT OR IGNORE INTO page_links(id, from_page_id, to_page_id, relation, created_at)
+			 VALUES (?,?,?,?,NULLIF(?, ''))`,
+			e.id, e.from, e.to, e.relation, e.createdAt); err != nil {
+			return fmt.Errorf("db: v21 reinsert edge %d->%d: %w", e.from, e.to, err)
+		}
+	}
+	return tx.Commit()
+}
+
+// ListPageLinks returns every edge joined against BOTH endpoints, so a relation
+// check can read the target's kind and updated_at without an O(1) query per edge
+// (the same prefetch lesson lintMissingRefs learned the hard way). Used by the
+// lint's relation-shape pass.
+type PageLinkRow struct {
+	FromID        int64  `json:"from_id"`
+	FromSlug      string `json:"from_slug"`
+	FromKind      string `json:"from_kind"`
+	FromProjectID int64  `json:"from_project_id"`
+	FromUpdatedAt string `json:"from_updated_at"`
+	ToID          int64  `json:"to_id"`
+	ToSlug        string `json:"to_slug"`
+	ToKind        string `json:"to_kind"`
+	ToUpdatedAt   string `json:"to_updated_at"`
+	Relation      string `json:"relation"`
+}
+
+func ListPageLinks(db *sql.DB) ([]PageLinkRow, error) {
+	rows, err := db.Query(
+		`SELECT f.id, f.slug, f.kind, COALESCE(f.project_id, 0), COALESCE(f.updated_at, ''),
+		        t.id, t.slug, t.kind, COALESCE(t.updated_at, ''), l.relation
+		   FROM page_links l
+		   JOIN wiki_pages f ON f.id = l.from_page_id
+		   JOIN wiki_pages t ON t.id = l.to_page_id
+		  ORDER BY l.relation, f.slug, t.slug`)
+	if err != nil {
+		return nil, fmt.Errorf("db: list page links: %w", err)
+	}
+	defer rows.Close()
+	var out []PageLinkRow
+	for rows.Next() {
+		var r PageLinkRow
+		if err := rows.Scan(&r.FromID, &r.FromSlug, &r.FromKind, &r.FromProjectID, &r.FromUpdatedAt,
+			&r.ToID, &r.ToSlug, &r.ToKind, &r.ToUpdatedAt, &r.Relation); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
 
 // ListWikiPagesByStatus is the review surface's query: pending pages are precisely
@@ -489,9 +725,9 @@ func LinkWikiPages(db *sql.DB, fromID, toID int64, relation string) error {
 	if fromID == toID {
 		return fmt.Errorf("db: refusing a self-link on page %d", fromID)
 	}
-	if strings.TrimSpace(relation) == "" {
-		relation = "ref"
-	}
+	// Normalize before insert so the relation CHECK (v21) always passes and no
+	// caller — the untrusted compiler included — can create a mislabelled edge.
+	relation = NormalizeRelation(relation)
 	_, err := db.Exec(
 		`INSERT INTO page_links(from_page_id, to_page_id, relation) VALUES (?,?,?)
 		 ON CONFLICT(from_page_id, to_page_id, relation) DO NOTHING`,
@@ -506,9 +742,7 @@ func LinkWikiPages(db *sql.DB, fromID, toID int64, relation string) error {
 
 // UnlinkWikiPages removes one directed edge.
 func UnlinkWikiPages(db *sql.DB, fromID, toID int64, relation string) error {
-	if strings.TrimSpace(relation) == "" {
-		relation = "ref"
-	}
+	relation = NormalizeRelation(relation)
 	if _, err := db.Exec(
 		`DELETE FROM page_links WHERE from_page_id = ? AND to_page_id = ? AND relation = ?`,
 		fromID, toID, relation); err != nil {

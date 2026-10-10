@@ -117,6 +117,27 @@ Notes are the **raw record**; pages are the **compiled artifact**. The same fact
 
 The page layer is a **derived cache**: notes remain the source of truth, the whole layer can be dropped and rebuilt (`DropWikiSchema`), and if it is dropped it grows back on the next open.
 
+### Edges between pages: a controlled relation vocabulary (schema v21)
+
+Pages are wired into a graph by **directed links**, and every link carries a **relation type**. Early on that type was free text (the compiler wrote `compiled-from`, a filed answer wrote `cites`, and the model wrote whatever it liked), so "what are all the dependency links in this graph" was unanswerable. v21 ([ADR-0018](../adr/0018-knowledge-graph-foundation.md), first half) freezes it into eight enumerated values, enforced by a database `CHECK`:
+
+| Relation | Meaning |
+|----------|---------|
+| `ref` | generic reference (the default; reach for it when unsure) |
+| `part-of` | composition: A is part of B |
+| `depends` | dependency: A depends on B |
+| `implements` | A implements a concept/interface B |
+| `documents` | A describes B |
+| `supersedes` | A replaces an older B |
+| `contradicts` | A and B conflict |
+| `mentions` | A's body links to B |
+
+Edges grow from three places: the **compiler** creates `pending` edges using the vocabulary above; **answer filing** points a query page at the evidence pages it used (`ref`); and when you **approve a page**, the system resolves the `[[wikilinks]]` in its body into `mentions` edges — linking only to pages that actually exist, so a link to a missing page stays a "dangling link" for lint rather than fabricating a node. None of the three needs a model, so they can run automatically while keeping the human in the loop: the approve action itself is the signal that "these links are trustworthy".
+
+> When migrating to v21, the assorted historical relation values in an old store are **normalized** into these eight (for example, legacy `compiled-from` and `cites` fold into `ref`, `depends-on` into `depends`). This relabels only; it never drops an edge, and parallel edges between the same pair that collapse to one value are merged.
+
+lint also runs three **structural checks** along relation type (all pure SQL/in-memory, no model, no cost): whether a `supersedes` edge is inverted (the superseder is older than what it supersedes), whether `part-of`/`depends` form a cycle, and whether a `contradicts` is one-sided (a contradiction should be symmetric). Like every other check, they **only write project todos for a human to read — lint never auto-edits a page or deletes an edge**.
+
 ### Pending and approved (the one most often mistaken for a bug)
 
 Pages have a status, and status decides whether a page may answer anything:

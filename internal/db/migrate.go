@@ -309,6 +309,14 @@ func upgradeSchema(db *sql.DB) error {
 		// machine. Additive: one discriminator column, and pre-existing rows are all
 		// compile jobs because lint jobs could not be written before it existed.
 		{id: 20, fn: EnsureCompileJobQueue},
+		// v21: the relation vocabulary (ADR-0018 lane 1). page_links.relation was
+		// free text — the compiler wrote "compiled-from", filing wrote "cites", the
+		// model could invent anything — so the graph could not be queried by relation
+		// at all. This rebuilds the table with a CHECK over eight canonical types and
+		// folds existing values onto them. A rebuild (not an ALTER) because SQLite
+		// cannot attach a CHECK to an existing column; done in one transaction;
+		// reversible by the same DropWikiSchema/EnsureWikiSchema pair the layer uses.
+		{id: 21, fn: EnsureWikiRelationVocabulary},
 	}
 
 	for _, m := range migrations {

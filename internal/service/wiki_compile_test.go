@@ -375,7 +375,7 @@ func TestWikiCompile_RejectPreservesInboundLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.LinkWikiPages(svc.db, src.ID, target.ID, "cites"); err != nil {
+	if err := db.LinkWikiPages(svc.db, src.ID, target.ID, db.RelationRef); err != nil {
 		t.Fatal(err)
 	}
 	if err := svc.RejectWikiPage(target.ID); err != nil {

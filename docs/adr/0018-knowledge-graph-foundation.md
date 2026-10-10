@@ -1,6 +1,6 @@
 # ADR-0018: 知识图谱底座——受控关系词表让图可查，图感知取证让图被读
 
-- 状态：Proposed（分两半独立晋升：lane 1 = 关系词表 + Wikilink 抽取 + 结构 lint，**schema v21，本文 MVP**；lane 2 = 页面向量空间 + 图感知取证，**schema v22**，晋升前置 = lane 1 Accepted + Phase 0 标注 delta 达标。见末尾两组晋升条件）
+- 状态：Proposed（**lane 1 代码与契约测试已落地**：schema v21 关系词表（CHECK 由 `wikiRelations` 派生，Go/DDL 单一事实源）+ 编译器选词 + approve 抽取 `mentions` + `lintRelationShape` 三查，`go test ./internal/db ./internal/service ./internal/integrity` 全绿。**唯一未勾的晋升条件是 lane 1 条件 1「真库副本演练 + 旧边只读导出」**——它要在你的实际 `dashboard.db` 副本上跑，agent 不代跑，故 lane 1 暂不晋升为 Accepted。lane 2（页面向量 + 图感知取证，schema v22）前置 = lane 1 Accepted + Phase 0 delta 达标，尚未开工）
 - 日期：2026-10-09
 - 关联：[ADR-0014](0014-llm-wiki-knowledge-compiler.md)（本文兑现其"先补结构"承诺的下半段——结构有了但要能查询；并兑现其决策 5 lint"数据缺口"一查的具体形状、并收口其待决"语义融合是否扩到 wiki_pages"）、[ADR-0015](0015-w3-minimal-compile-loop.md)（本文不违反其"编译器永不修改已批准页"——新增只发生在边/待审面）、[ADR-0016](0016-async-batch-jobs.md)（lane 2 若慢，复用一表两内核）、[ADR-0012](0012-semantic-search.md)（RRF 语义融合）、[ADR-0013](0013-vector-database-selection.md)（零 CGO 向量存储）、[ADR-0010](0010-session-auto-capture.md)（敏感能力默认关的纪律）；TODO **M6** 的收口 + 新增 **M7**；起点 schema v20
 - 配套实施计划：`RepoNest-知识图谱实施计划-2026-10-09.md`（本 ADR = 其 Phase 1 + Phase 2；Phase 3 实体消歧、Phase 4 社区摘要与时态图各自单开 ADR-0019/0020/0021）
@@ -33,7 +33,9 @@ ADR-0014 的第一条决策是"先补结构，再让 LLM 写"，理由是"没有
 
 **4. 正文 `[[wikilink]]` 在 approve 时抽取为 `mentions` 边。** 导出已在解析正文链接并统计 `dangling`（`wiki_export.go:50,243`）。反向补一刀：对**能解析到已存在页**的正文链接，`LinkWikiPages(…, 'mentions')`——`UNIQUE(from,to,relation)` + `ON CONFLICT DO NOTHING` 天然幂等。解析不到的维持"只报不建"（dangling 语义不变）。**触发点在 approve**（人批准的页才进图），复用 `ApproveWikiPage` 路径，不单开 job、不进编译器的自动写面。
 
-**5. 关系词表的结构体检进 lint。** `wiki_lint.go` `RunWikiLint`（:125）加 `lintRelationShape`，**照 `lintMissingRefs` 的"预取边集避免 O(n²) 查询"写法**（:192-202）。检查项：`supersedes` 时间倒挂（指向 `updated_at` 更新的页）、`part-of` 成环（一条递归 CTE 判环）、`documents` 的 target kind 非 source。**产出仍只进 `project_todos`**（`fileFindings :389`），不破"lint 不改页"红线。
+**5. 关系词表的结构体检进 lint。** `wiki_lint.go` `RunWikiLint`（:125）加 `lintRelationShape`，**照 `lintMissingRefs` 的"预取边集避免 O(n²) 查询"写法**（:192-202），并按被审项目作用域过滤边。检查项（落地时定稿的三条，均无歧义可判）：**`supersedes` 时间倒挂**（取代方 `updated_at` 早于被取代方）、**`part-of`/`depends` 成环**（组成与依赖应无环，着色 DFS 找回边）、**`contradicts` 单向**（冲突本应对称，缺反向即提示）。**产出仍只进 `project_todos`**（`fileFindings :389`），不破"lint 不改页"红线。
+
+> **实现时对本条做了一处替换**：草案原列第三查为「`documents` 指向非 source」，落地时发现它要么恒真、要么依赖一套没敲定的 kind↔relation 全矩阵（ADR 待决 #1 已明确词表先不定矩阵），是个判不准的伪检查。换成 **`contradicts` 对称性**——它不依赖任何跨字段约定、纯图内可判，且真能抓出"只标了一半的冲突"。三条检查都不引入 kind↔relation 约束，保持"先只定边型"的承诺。
 
 **Lane 1 明确不做**：锁死 kind↔relation 全矩阵（先只定边型，矩阵留待有真实数据再收）、批量重写既有边的 relation（迁移只归一非法值，合法旧边不动）、给边加权重/属性（属 lane 2）。
 
@@ -90,7 +92,7 @@ Phase 0——真实标注 query 集 + `abeval` delta（`cmd/queryset`/`cmd/abeva
 1. v21 迁移可逆——rebuild 前后 `sqlite_master` 快照 + 边多重集相等，且合法 relation 不被改写、非法值确定性归一入 `ref`；真库副本演练一次并留存旧边清单；
 2. 契约测试：`LinkWikiPages` 对未知 relation 降级不报错；编译器产物 100% 落在 8 型枚举内；
 3. approve 抽取 `mentions` 边幂等（重跑不增边），且**只碰已批准页**（pending 页正文链接不进图）；
-4. `lintRelationShape` 三查（倒挂/环/错类）各一例触发且**只写 `project_todos`、逐字段不改页**（并入 `TestWikiLint_NeverMutatesPages` 的不变量）；
+4. `lintRelationShape` 三查（倒挂/环/单向冲突）各一例触发且**只写 `project_todos`、逐字段不改页**（并入 `TestWikiLint_NeverMutatesPages` 的不变量）；
 5. 词表定稿 + 双语文档（`docs/features/knowledge.md` 中英"边类型"节）+ 本 ADR 状态行更新。
 
 **Lane 2（→ lane 2 Accepted，前置 = lane 1 已 Accepted）**：

@@ -4,6 +4,20 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [Unreleased]
+
+### 新增
+
+- **知识图谱底座 · lane 1（[ADR-0018](docs/adr/0018-knowledge-graph-foundation.md)，schema v21）**：给页面之间的链接加了一层受控关系词表——`ref / part-of / depends / implements / documents / supersedes / contradicts / mentions` 八个枚举值，数据库层用 `CHECK` 硬约束（`page_links.relation` 不再是自由文本）。该 `CHECK` 由 Go 侧的关系清单派生生成，两者不会各说各话。目的：让这张图第一次可以按语义查询（"所有 depends 边"），并为 ADR-0018 lane 2 的图感知取证铺路。
+  - **批准页面时自动抽取正文 `[[wikilink]]` 为 `mentions` 边**：只连到真实存在的页、不连自己、幂等；不依赖模型，故可自动执行而不破坏人在环——"批准"这个动作本身就是"这些链接可信"的信号。
+  - **lint 新增三条结构体检**（纯 SQL/内存判定，不开模型、不改页面）：`supersedes` 时间倒挂、`part-of`/`depends` 成环、`contradicts` 缺反向。与其余检查一样只写 `[lint]` 项目待办。
+- **`db.ListPageLinks`**：一次查询返回每条边连同两端的 kind / updated_at / project，供 lint 的关系体检免 N+1 地遍历，按被审项目作用域过滤。
+
+### 变更
+
+- **编译器的 `add_link` 关系改为从八型枚举里选**（prompt 契约同步更新），产物默认关系由 `compiled-from` 改为 `ref`；回档问答指向证据页的链接由 `cites` 归一为 `ref`。任何未知值或旧拼写在入库前经 `db.NormalizeRelation` 折叠到词表（如 `depends-on`→`depends`、`compiled-from` / `cites`→`ref`），未知值降级为 `ref` 而非报错打断一次本来合格的写入。
+- **迁移 v21 重建 `page_links` 表**（SQLite 不能给已有列补 `CHECK`）：既有边的 relation 被规范化进词表，同一对页面因归一而产生的重复边被合并——**只改标签、不删边**。**破坏性提示**：升级前建议在真库副本上演练并留一份旧边只读导出；ADR-0018 lane 1 的晋升条件「真库副本演练」未完成前，该 ADR 仍为 Proposed。
+
 ## [1.16.2] - 2026-10-09
 
 ### 变更

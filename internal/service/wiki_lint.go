@@ -125,6 +125,11 @@ func (s *Service) RunWikiLint(projectID int64, wantLLM bool) (*WikiLintReport, e
 	report.Findings = append(report.Findings, s.lintLinkShape(pages)...)
 	report.Findings = append(report.Findings, s.lintContent(pages)...)
 	report.Findings = append(report.Findings, s.lintCoverage(pages)...)
+	// ADR-0018 lane 1: relation-shape checks are structural too (SQL over the edge
+	// table, no model), and they only became expressible once relation was a
+	// controlled vocabulary — you cannot ask "is this contradicts edge symmetric?"
+	// when nobody agreed how "contradicts" is spelled.
+	report.Findings = append(report.Findings, s.lintRelationShape(pages)...)
 
 	if wantLLM {
 		findings, note := s.runWikiLintLLM(pages)
@@ -270,6 +275,126 @@ func (s *Service) lintCoverage(pages []db.WikiPage) []WikiFinding {
 		}}
 	}
 	return nil
+}
+
+// lintRelationShape checks the graph's edges against the relation vocabulary
+// (ADR-0018 lane 1). Like the other structural checks it is pure SQL + memory,
+// never a model, and it only files todos — an edge that looks wrong is a hint a
+// human weighs, not something lint fixes by rewriting a page or unlinking.
+//
+// It is scoped to the pages being linted (edges whose source is one of them), so
+// a per-project pass does not file findings about unrelated projects' edges.
+//
+// Three decidable checks:
+//   - supersedes inversion: A claims to supersede B, but B was updated later, so
+//     the buried claim is the newer one;
+//   - relation-cycle: part-of / depends chains that loop back on themselves
+//     (composition and dependency are meant to be acyclic);
+//   - contradicts one-sided: A contradicts B without B contradicting A — a
+//     contradiction is symmetric by nature, so the mirror is usually just missing.
+func (s *Service) lintRelationShape(pages []db.WikiPage) []WikiFinding {
+	edges, err := db.ListPageLinks(s.db)
+	if err != nil || len(edges) == 0 {
+		return nil
+	}
+	inSet := make(map[int64]bool, len(pages))
+	for _, p := range pages {
+		inSet[p.ID] = true
+	}
+	scoped := edges[:0]
+	for _, e := range edges {
+		if inSet[e.FromID] {
+			scoped = append(scoped, e)
+		}
+	}
+	edges = scoped
+
+	var out []WikiFinding
+
+	for _, e := range edges {
+		if e.Relation == db.RelationSupersedes && e.FromUpdatedAt != "" && e.ToUpdatedAt != "" &&
+			e.FromUpdatedAt < e.ToUpdatedAt {
+			out = append(out, WikiFinding{
+				Check: "relation-supersedes-inverted", Severity: "warn",
+				ProjectID: e.FromProjectID, PageID: e.FromID,
+				Detail: fmt.Sprintf("[[%s]] 声称取代 [[%s]]，但被取代页更新更晚（%s > %s），取代方向可能反了",
+					e.FromSlug, e.ToSlug, e.ToUpdatedAt, e.FromUpdatedAt),
+			})
+		}
+	}
+
+	out = append(out, lintRelationCycles(edges, map[string]bool{
+		db.RelationPartOf: true, db.RelationDepends: true,
+	})...)
+
+	contradict := map[[2]int64]bool{}
+	for _, e := range edges {
+		if e.Relation == db.RelationContradicts {
+			contradict[[2]int64{e.FromID, e.ToID}] = true
+		}
+	}
+	sawFrom := map[int64]bool{}
+	for _, e := range edges {
+		if e.Relation != db.RelationContradicts || contradict[[2]int64{e.ToID, e.FromID}] || sawFrom[e.FromID] {
+			continue
+		}
+		sawFrom[e.FromID] = true
+		out = append(out, WikiFinding{
+			Check: "relation-contradicts-one-sided", Severity: "info",
+			ProjectID: e.FromProjectID, PageID: e.FromID,
+			Detail: fmt.Sprintf("[[%s]] 标记与 [[%s]] 冲突，但只有单向：冲突本应对称，考虑补一条反向链接",
+				e.FromSlug, e.ToSlug),
+		})
+	}
+	return out
+}
+
+// lintRelationCycles runs a colored DFS over the whitelisted relations and
+// reports each node that closes a back edge (a cycle). It reports the closing
+// node once, not the whole cycle membership — enough for a human to go look.
+func lintRelationCycles(edges []db.PageLinkRow, allow map[string]bool) []WikiFinding {
+	adj := map[int64][]int64{}
+	slug := map[int64]string{}
+	proj := map[int64]int64{}
+	for _, e := range edges {
+		if !allow[e.Relation] {
+			continue
+		}
+		adj[e.FromID] = append(adj[e.FromID], e.ToID)
+		slug[e.FromID], slug[e.ToID] = e.FromSlug, e.ToSlug
+		proj[e.FromID] = e.FromProjectID
+	}
+	const white, gray, black = 0, 1, 2
+	color := map[int64]int{}
+	reported := map[int64]bool{}
+	var out []WikiFinding
+
+	var visit func(int64)
+	visit = func(u int64) {
+		color[u] = gray
+		for _, v := range adj[u] {
+			switch color[v] {
+			case gray:
+				if !reported[u] {
+					reported[u] = true
+					out = append(out, WikiFinding{
+						Check: "relation-cycle", Severity: "warn",
+						ProjectID: proj[u], PageID: u,
+						Detail: fmt.Sprintf("[[%s]] 在 part-of/depends 关系里成环（有向边指回自身），组成与依赖应无环", slug[u]),
+					})
+				}
+			case white:
+				visit(v)
+			}
+		}
+		color[u] = black
+	}
+	for id := range adj {
+		if color[id] == white {
+			visit(id)
+		}
+	}
+	return out
 }
 
 // runWikiLintLLM is the model-backed half: contradictions and stale claims. Gated

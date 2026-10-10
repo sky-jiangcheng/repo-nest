@@ -311,6 +311,21 @@
 
 ---
 
+## 🟢 知识图谱路线（ADR-0018 后续）
+
+> ADR-0014 把「结构」补齐了（wiki_pages / page_links），但那张图**写而不读**：relation 是自由串、`GatherEvidence` 从不走边、页面没有向量。M7 分两半把它用起来。实施计划见 `RepoNest-知识图谱实施计划-2026-10-09.md`（Phase 1..4），设计依据 [ADR-0018](docs/adr/0018-knowledge-graph-foundation.md)。
+
+### M7: 知识图谱底座 → [ADR-0018](docs/adr/0018-knowledge-graph-foundation.md)
+
+- [x] **Lane 1 代码 + 契约测试已落地（schema v21）**：受控关系词表八型（`ref/part-of/depends/implements/documents/supersedes/contradicts/mentions`），`page_links.relation` 的 `CHECK` 由 Go 侧 `wikiRelations` 派生（DDL 与枚举单一事实源，`TestRelationVocabulary_CheckDDLMatchesGoSet` 钉住不漂移）；统一入口 `db.NormalizeRelation`（未知→`ref`，旧拼写 `compiled-from`/`cites`→`ref`、`depends-on`→`depends` 走别名表）；`LinkWikiPages`/`UnlinkWikiPages` 入库前一律归一，脏值降级不报错。编译器 `add_link` prompt 从枚举选词、产物默认关系 `compiled-from`→`ref`；回档问答证据边 `cites`→`ref`。`ApproveWikiPage` 抽取正文 `[[wikilink]]` 为幂等 `mentions` 边（只连真实存在页 / 不连自己 / 仅批准时触发，模型无关故可自动跑）。`lintRelationShape` 三查（`supersedes` 时间倒挂 / `part-of`·`depends` 成环 / `contradicts` 缺反向）按项目作用域预取边集、只写 `[lint]` 待办、逐字段不改页。迁移 v21 重建 `page_links`（SQLite 不能给已有列加 CHECK）：归一非法 relation、合并归一后重复边、只改标签不删边、幂等重放。**测试**：`internal/db/wiki_test.go`（CHECK 强制 / NormalizeRelation 表驱动 / DDL-Go 集对齐 / v21 旧库迁移与幂等 / 边双向性改用枚举值）+ `internal/service/wiki_graph_test.go`（approve 抽取幂等且仅已批准、三查各触发）；`go test ./internal/db ./internal/service ./internal/integrity` 全绿，`ExpectedSchemaVersion` 20→21。
+- [ ] **Lane 1 晋升条件 1（用户动作）：真库副本演练 + 旧边只读导出**——v21 会动 `page_links`，须在真实 `dashboard.db` 副本上跑一遍确认「不丢边 + 归一结果符合预期」，之后 ADR-0018 lane 1 才升 Accepted。agent 不代跑用户的库。
+- [ ] **Lane 2（schema v22，ADR-0018 第二半）：页面独立向量空间 + 图感知取证**——`page_embeddings`（vec0，仅 approved 页，物理独立于 `note_embeddings` 以避 `FuseRRF` 串号）+ `WITH RECURSIVE` 一跳扩召回 + 纯 Go PPR 排序，注入点 `internal/service/wiki_evidence.go:evidencePages`，新门 `wiki_graph_search` 默认关。**前置 = lane 1 Accepted + Phase 0（真实标注 query 集 + `abeval` delta，见 M6-W2 与本文件遗留项）达标**——机制正确不等于收益真实，这条不过关不 Accept。
+- [ ] **后续（各自单开 ADR，暂不实现）**：ADR-0019 实体消歧合并（治「概念分裂」，建议只产 `[lint] merge` 待办、人点采纳、合并时重指向边不删页以守 `reject≠delete`）；ADR-0020 社区摘要（Label Propagation 填 synthesis 空层，触及 `compile_jobs.kind` 的 CHECK 需整表重建，与未来批量任务一并做那次 rebuild）；ADR-0021 时态图（`page_versions` 快照，是「允许编译器安全修订既有结论」的前置）。
+
+> **M7 刻意不做**：外部图库（Neo4j/Memgraph/KuzuDB）、RDF/OWL/SPARQL、GNN——违背 local-first + 单 SQLite + 零 CGO（ADR-0014 决策 2、ADR-0017）。纯 SQL 递归 + Go 侧 PPR 在几万页以内足够；真要上外部图库，套用 `vectordb` 那套「可插拔 + 不可达退回 local」的接缝即可，属另立 ADR。
+
+---
+
 ## 📋 遗留项
 
 - [x] **性能（M3-A 审核发现）已落地**：`service.vectorStore()` 改为 memo。原实现每次解析都要 4 次 `db.GetConfig`，而远程后端还要在 `vectordb.Open` 的工厂里做一次 HTTP 可达性探测——配了 Qdrant/Weaviate 时**每次语义检索都多一个网络往返**，这才是真正贵的部分（本地默认只贵那几次 SELECT）。失效点两处：`UpdateConfig` 命中 `vector_store*` 前缀即丢 memo（否则在设置页改了端点要到重启才生效），以及任何一次 store 报错即丢 memo（远程中途挂掉时下一轮重新解析并退回 local，而不是抱着死句柄不放——缓存之前这个是"意外自愈"的，加了缓存必须显式做）。查询路径顺带补了此前静默的向量检索失败日志。回归：`internal/service/vector_store_cache_test.go` 4 例（memo 生效 / 四个 vector_store* 键各自失效且 `embedding_model` 不误伤 / 死 store 在 fuse 与 rebuild 两条路径都被丢弃且错误如实上抛）

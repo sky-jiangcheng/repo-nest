@@ -331,14 +331,14 @@ func TestFileAnswerAsPageClosesTheLoop(t *testing.T) {
 	if len(out) == 0 {
 		t.Fatal("a filed answer has no citation edges; the loop did not close")
 	}
-	var sawCites bool
+	var sawRef bool
 	for _, e := range out {
-		if e.Relation == "cites" {
-			sawCites = true
+		if e.Relation == db.RelationRef {
+			sawRef = true
 		}
 	}
-	if !sawCites {
-		t.Errorf("filed answer edges = %+v, want at least one 'cites' edge", out)
+	if !sawRef {
+		t.Errorf("filed answer edges = %+v, want at least one ref edge to a cited page", out)
 	}
 
 	// Filing the same question twice is a re-run: it updates rather than erroring
