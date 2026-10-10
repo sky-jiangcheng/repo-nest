@@ -24,8 +24,11 @@
 //
 //	reponest-queryset -db path/to/dashboard.db -seed > notes.tsv
 //	# edit notes.tsv: for each query line, list the note numbers that answer it
+//	#   (and, when the database has approved wiki pages, the page numbers under
+//	#   relevant_pages — the same numbers the 页面清单 section printed)
 //	reponest-queryset -db path/to/dashboard.db -emit notes.tsv -out queries.jsonl
 //	reponest-abeval -cases queries.jsonl -k 10 -min-recall 0.05
+//	reponest-abeval -pages -cases queries.jsonl -k 10 -min-recall 0.05
 package main
 
 import (
@@ -41,7 +44,6 @@ import (
 
 	"repo-nest/internal/db"
 	"repo-nest/internal/platform"
-	"repo-nest/internal/search/abeval"
 )
 
 func main() {
@@ -98,6 +100,15 @@ func dumpWorksheet(database *sql.DB) error {
 		names[p.ID] = p.Name
 	}
 
+	// Approved pages only: evidence can never retrieve a pending page, so
+	// listing one would invite the user to spend judgment on a label the page
+	// arm can never use.
+	pages, err := db.ListWikiPagesByStatus(database, db.WikiStatusApproved, 0)
+	if err != nil {
+		return fmt.Errorf("list pages: %w", err)
+	}
+	hasPages := len(pages) > 0
+
 	w := bufio.NewWriter(os.Stdout)
 	defer w.Flush()
 
@@ -107,6 +118,9 @@ func dumpWorksheet(database *sql.DB) error {
 	fmt.Fprintln(w, "#         已有的问题比编造的更真实；只写你真会问的。")
 	fmt.Fprintln(w, "# 步骤 2：对每个问题，在 relevant= 里填能真正回答它的笔记行号。")
 	fmt.Fprintln(w, "#         填 1-3 条即可。凑数会把门禁的结论变成噪音。")
+	if hasPages {
+		fmt.Fprintln(w, "#         若下面的页面清单里有能回答它的 wiki 页，把页行号填进 relevant_pages=。")
+	}
 	fmt.Fprintln(w, "# 步骤 3：保存后运行 reponest-queryset -emit <本文件> -out queries.jsonl")
 	fmt.Fprintln(w, "#")
 	fmt.Fprintln(w, "# ---- 笔记清单 ----")
@@ -128,16 +142,39 @@ func dumpWorksheet(database *sql.DB) error {
 		fmt.Fprintf(w, "# %d\t%s\t%s\t(id=%d)\n", r.num, r.project, r.title, r.id)
 	}
 
+	if hasPages {
+		fmt.Fprintln(w, "#")
+		fmt.Fprintln(w, "# ---- 页面清单（abeval -pages 用；只列已批准页，pending 页不能作证据）----")
+		for i, p := range pages {
+			proj := "全局"
+			if p.ProjectID != 0 {
+				proj = names[p.ProjectID]
+				if proj == "" {
+					proj = fmt.Sprintf("项目%d", p.ProjectID)
+				}
+			}
+			fmt.Fprintf(w, "# %d\t%s\t%s\t%s\t(id=%d)\n", i+1, proj, p.Slug, p.Title, p.ID)
+		}
+	}
+
 	fmt.Fprintln(w, "#")
 	fmt.Fprintln(w, "# ---- 待标注 ----")
-	fmt.Fprintln(w, `# {"query": "", "relevant": []}`)
-	fmt.Fprintln(w, "# 逐行复制上面那条模板并填写；query 不能为空，relevant 至少一个行号。")
+	if hasPages {
+		fmt.Fprintln(w, `# {"query": "", "relevant": [], "relevant_pages": []}`)
+		fmt.Fprintln(w, "# 逐行复制上面那条模板并填写；query 不能为空，relevant 与 relevant_pages 至少填一个")
+		fmt.Fprintln(w, "# （relevant= 笔记清单行号，relevant_pages= 页面清单行号——两个清单都从 1 开始）。")
+	} else {
+		fmt.Fprintln(w, `# {"query": "", "relevant": []}`)
+		fmt.Fprintln(w, "# 逐行复制上面那条模板并填写；query 不能为空，relevant 至少一个行号。")
+	}
 	return nil
 }
 
-// convert reads the worksheet back and writes queries.jsonl. Note numbers are
-// resolved to real ids here, so the user's edit is a number and never a raw id
-// they could mistype.
+// convert reads the worksheet back and writes queries.jsonl. Note and page
+// numbers are resolved to real ids here, so the user's edit is a number and
+// never a raw id they could mistype. Each case carries whichever of
+// relevant (notes) / relevant_pages (wiki pages) was labeled; a line with
+// neither is refused.
 func convert(in, out string) error {
 	f, err := os.Open(in)
 	if err != nil {
@@ -145,12 +182,17 @@ func convert(in, out string) error {
 	}
 	defer f.Close()
 
-	noteIDs, err := worksheetIDs(in)
+	noteIDs, pageIDs, err := worksheetLists(in)
 	if err != nil {
 		return err
 	}
 
-	var cases []abeval.Case
+	type emitted struct {
+		query string
+		notes []int64
+		pages []int64
+	}
+	var cases []emitted
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 4<<20)
 	lineNo := 0
@@ -161,8 +203,9 @@ func convert(in, out string) error {
 			continue
 		}
 		var c struct {
-			Query    string `json:"query"`
-			Relevant []int  `json:"relevant"`
+			Query         string `json:"query"`
+			Relevant      []int  `json:"relevant"`
+			RelevantPages []int  `json:"relevant_pages"`
 		}
 		if err := json.Unmarshal([]byte(line), &c); err != nil {
 			return fmt.Errorf("line %d is not valid JSON: %w", lineNo, err)
@@ -170,21 +213,28 @@ func convert(in, out string) error {
 		if strings.TrimSpace(c.Query) == "" {
 			return fmt.Errorf("line %d has an empty query", lineNo)
 		}
-		if len(c.Relevant) == 0 {
+		if len(c.Relevant) == 0 && len(c.RelevantPages) == 0 {
 			// A case with no labels is skipped by the scorers, so accepting it
 			// silently would produce a report whose n= does not match the
 			// worksheet — which reads as a bug in the tool.
-			return fmt.Errorf("line %d (%q) has no relevant notes; drop the line or label it", lineNo, c.Query)
+			return fmt.Errorf("line %d (%q) has no labels (relevant / relevant_pages); drop the line or label it", lineNo, c.Query)
 		}
-		relevant := make([]int64, 0, len(c.Relevant))
+		e := emitted{query: strings.TrimSpace(c.Query)}
 		for _, num := range c.Relevant {
 			id, ok := noteIDs[num]
 			if !ok {
 				return fmt.Errorf("line %d references note number %d, which is not in this database's list", lineNo, num)
 			}
-			relevant = append(relevant, id)
+			e.notes = append(e.notes, id)
 		}
-		cases = append(cases, abeval.Case{Query: strings.TrimSpace(c.Query), Relevant: relevant})
+		for _, num := range c.RelevantPages {
+			id, ok := pageIDs[num]
+			if !ok {
+				return fmt.Errorf("line %d references page number %d, which is not in this database's page list", lineNo, num)
+			}
+			e.pages = append(e.pages, id)
+		}
+		cases = append(cases, e)
 	}
 	if err := sc.Err(); err != nil {
 		return err
@@ -208,13 +258,15 @@ func convert(in, out string) error {
 	// abeval.Case has no json tags, so encoding it directly would emit
 	// {"Query":...,"Relevant":...} — which cmd/abeval's labeledCase cannot read
 	// back (it wants "query"/"relevant"), so the file would silently score zero
-	// cases. Encode the wire shape explicitly.
+	// cases. Encode the wire shape explicitly; omitempty keeps a note-only set
+	// byte-identical to the pre-page format.
 	enc := json.NewEncoder(w)
 	for _, c := range cases {
 		if err := enc.Encode(struct {
-			Query    string  `json:"query"`
-			Relevant []int64 `json:"relevant"`
-		}{Query: c.Query, Relevant: c.Relevant}); err != nil {
+			Query         string  `json:"query"`
+			Relevant      []int64 `json:"relevant,omitempty"`
+			RelevantPages []int64 `json:"relevant_pages,omitempty"`
+		}{Query: c.query, Relevant: c.notes, RelevantPages: c.pages}); err != nil {
 			return err
 		}
 	}
@@ -232,22 +284,36 @@ func convert(in, out string) error {
 	return nil
 }
 
-// worksheetIDs re-reads the note list from the worksheet itself. Taking the
-// numbers from the same file the user edited is what makes them line up; looking
-// them up again from the database would silently re-index if the db changed
-// between the two steps.
-func worksheetIDs(path string) (map[int]int64, error) {
+// worksheetLists re-reads the note list AND the page list from the worksheet
+// itself. Taking the numbers from the same file the user edited is what makes
+// them line up; looking them up again from the database would silently
+// re-index if the db changed between the two steps. The two lists both start
+// at 1, so which one a number belongs to is decided by the section header the
+// line sits under — a worksheet without a 页面清单 section simply yields an
+// empty page map (and page labels would then be refused as unknown numbers,
+// not silently resolved against the note list).
+func worksheetLists(path string) (noteIDs, pageIDs map[int]int64, err error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer f.Close()
-	ids := map[int]int64{}
+	noteIDs = map[int]int64{}
+	pageIDs = map[int]int64{}
+	section := ""
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 4<<20)
 	for sc.Scan() {
 		line := sc.Text()
-		if !strings.HasPrefix(line, "# ") {
+		switch {
+		case strings.Contains(line, "---- 笔记清单"):
+			section = "notes"
+			continue
+		case strings.Contains(line, "---- 页面清单"):
+			section = "pages"
+			continue
+		}
+		if section == "" || !strings.HasPrefix(line, "# ") {
 			continue
 		}
 		rest := strings.TrimPrefix(line, "# ")
@@ -267,7 +333,11 @@ func worksheetIDs(path string) (map[int]int64, error) {
 		if err != nil {
 			continue
 		}
-		ids[num] = id
+		if section == "pages" {
+			pageIDs[num] = id
+		} else {
+			noteIDs[num] = id
+		}
 	}
-	return ids, sc.Err()
+	return noteIDs, pageIDs, sc.Err()
 }

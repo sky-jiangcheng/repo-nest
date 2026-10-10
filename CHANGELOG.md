@@ -14,7 +14,7 @@
 - **`db.ListPageLinks`**：一次查询返回每条边连同两端的 kind / updated_at / project，供 lint 的关系体检免 N+1 地遍历，按被审项目作用域过滤。
 - **`cmd/wiki-rehearse`（v21 真库演练 harness，ADR-0018 lane 1 晋升条件 1）**：一条命令在**一次性副本**上安全演练 v21 迁移并判定「不丢边 + 归一正确」。以 `mode=ro` 打开源库、只跑 `VACUUM INTO` 出副本、在副本上执行真实的 `db.InitDB`（含 v21）、只读导出迁移前后 `page_links`，再校验不变量（normalize 前的每条边都在结果里、无凭空边、结果 relation 全在词表内），退出码 0 即通过；源库永不写入。产物：`rehearse-copy.db` / `page_links.{before,after}.jsonl` / `report.json`。真实 `dashboard.db` 的演练由用户亲自执行（agent 只在临时库验证），故 lane 1 仍待此演练通过才升 Accepted。
 - **图感知取证（[ADR-0018](docs/adr/0018-knowledge-graph-foundation.md) lane 2 第一/二片，零 schema 改动，配置键 `wiki_graph_search`，默认关）**：AI 问答的页面证据第一次会「读图」。全文命中的页作为种子沿 `ref` / `part-of` / `documents` 走**一跳**扩召回（只收已批准页、项目作用域含全局页、种子自身排除、不沿 `contradicts`——矛盾是摊给用户看的，不与冲突主张拌进同一份证据），候选用纯 Go 个性化 PageRank 定序（reset 均匀落在种子上；悬挂节点质量 teleport 回 reset；平行边以重数计权；排序遍历保确定性）。于是「两个命中都指向、而正文从不出现问题词」的那一页会排到证据最前面——这正是纯全文搜索给不了的。**默认关闭，关闭时取证行为与从前逐字一致**（走查一行不跑）；开启后 bm25 退居种子召回、同分退回走查前顺序，三重预算（条数/字符/截止时间）与「任何失败只记日志、不打断问答」的降级口径不变。
-- **`abeval` 页臂（`-pages`）**：在同一份标注 query 集上量化 PPR 对页证据的 Recall@k / NDCG@k delta——图感知取证值不值得常开、要不要投入页向量，凭这条实测说话。两臂 = `wiki_graph_search` 关（纯 FTS）vs 开（一跳邻居 + PPR），逐调用翻转、退出时还原；标注文件用 `relevant_pages` 写 wiki 页 id（`-project` 圈项目作用域）。请在真库**副本**上运行。
+- **`abeval` 页臂（`-pages`）与标注闭环**：在同一份标注 query 集上量化 PPR 对页证据的 Recall@k / NDCG@k delta——图感知取证值不值得常开、要不要投入页向量，凭这条实测说话。两臂 = `wiki_graph_search` 关（纯 FTS）vs 开（一跳邻居 + PPR），逐调用翻转、退出时还原；`queryset` 工作表新增「页面清单」段（只列已批准页），标注时把页行号填进 `relevant_pages=`、`-emit` 自动换算成页 id（`-project` 圈项目作用域）。请在真库**副本**上运行。
 
 ### 变更
 

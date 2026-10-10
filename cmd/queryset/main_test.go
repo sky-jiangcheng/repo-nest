@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -177,9 +178,10 @@ func TestQuerysetEmitRefusesUnlabeledOrBadInput(t *testing.T) {
 		line string
 		want string
 	}{
-		{"empty relevant", `{"query": "问题", "relevant": []}`, "no relevant notes"},
+		{"empty relevant", `{"query": "问题", "relevant": []}`, "no labels"},
 		{"empty query", `{"query": "", "relevant": [1]}`, "empty query"},
 		{"unknown note number", `{"query": "问题", "relevant": [99]}`, "not in this database"},
+		{"unknown page number", `{"query": "问题", "relevant": [1], "relevant_pages": [99]}`, "page number"},
 		{"not json", `这行不是 JSON`, "not valid JSON"},
 	}
 	for _, tc := range cases {
@@ -294,4 +296,118 @@ func readCases(t *testing.T, path string) []map[string]any {
 		out = append(out, m)
 	}
 	return out
+}
+
+// The page arm (abeval -pages) labels wiki_page ids under "relevant_pages" on
+// the same worksheet. Seed must list the approved pages as numbered candidates
+// — approved only, because a pending page can never be retrieved as evidence
+// and labeling one would be wasted judgment — and the template must carry the
+// second key.
+func TestQuerysetSeedListsApprovedPagesForThePageArm(t *testing.T) {
+	database := setupDB(t)
+	pid := makeProject(t, database, "qs")
+	if _, err := db.CreateNoteEx(database, pid, "重试策略", "正文", "", "knowledge", "manual"); err != nil {
+		t.Fatal(err)
+	}
+	approved, err := db.CreateWikiPage(database, db.WikiKindEntity, "alpha-hub", "Alpha Hub", pid, "正文")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending, err := db.CreateWikiPageAs(database, db.WikiKindEntity, "omega-draft", "Omega Draft", pid,
+		"草稿", db.WikiStatusPending, "wiki-compile")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ws := captureStdout(t, func() {
+		if err := dumpWorksheet(database); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(ws, "页面清单") {
+		t.Fatalf("worksheet has no page list:\n%s", ws)
+	}
+	if !strings.Contains(ws, `"relevant_pages"`) {
+		t.Errorf("template line does not mention relevant_pages")
+	}
+	if !strings.Contains(ws, fmt.Sprintf("(id=%d)", approved.ID)) {
+		t.Errorf("approved page id=%d not listed as a candidate", approved.ID)
+	}
+	if strings.Contains(ws, fmt.Sprintf("(id=%d)", pending.ID)) {
+		t.Error("a pending page was listed; evidence can never retrieve it")
+	}
+}
+
+// Page numbers resolve through the PAGE list, not the note list — both lists
+// start at 1, so this is exactly the collision the section split exists for.
+// A page-only line (no relevant) is legal: the note arm skips unlabeled cases
+// and the page arm needs this to measure without note labels.
+func TestQuerysetEmitResolvesPageNumbersToRelevantPages(t *testing.T) {
+	database := setupDB(t)
+	pid := makeProject(t, database, "qs")
+	note, err := db.CreateNoteEx(database, pid, "重试策略", "正文", "", "knowledge", "manual")
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := db.CreateWikiPage(database, db.WikiKindEntity, "alpha-hub", "Alpha Hub", pid, "正文")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ws := captureStdout(t, func() {
+		if err := dumpWorksheet(database); err != nil {
+			t.Fatal(err)
+		}
+	})
+	edited := ws + "\n" +
+		`{"query": "两臂都标", "relevant": [1], "relevant_pages": [1]}` + "\n" +
+		`{"query": "只标页", "relevant_pages": [1]}` + "\n"
+	path := filepath.Join(t.TempDir(), "ws.tsv")
+	if err := os.WriteFile(path, []byte(edited), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "queries.jsonl")
+	if err := convert(path, out); err != nil {
+		t.Fatalf("emit: %v", err)
+	}
+
+	cases := readCases(t, out)
+	if len(cases) != 2 {
+		t.Fatalf("emitted %d cases, want 2", len(cases))
+	}
+	rp := cases[0]["relevant_pages"].([]any)
+	if len(rp) != 1 || int64(rp[0].(float64)) != page.ID {
+		t.Errorf("relevant_pages = %v, want [%d] (page number 1, not the note)", rp, page.ID)
+	}
+	r := cases[0]["relevant"].([]any)
+	if len(r) != 1 || int64(r[0].(float64)) != note.ID {
+		t.Errorf("relevant = %v, want [%d]", r, note.ID)
+	}
+	rp1 := cases[1]["relevant_pages"].([]any)
+	if len(rp1) != 1 || int64(rp1[0].(float64)) != page.ID {
+		t.Errorf("page-only case relevant_pages = %v, want [%d]", rp1, page.ID)
+	}
+	if v, ok := cases[1]["relevant"]; ok {
+		if arr, isArr := v.([]any); !isArr || len(arr) != 0 {
+			t.Errorf("page-only case emitted relevant = %v, want the key absent or empty", v)
+		}
+	}
+}
+
+// A note-only database keeps the old worksheet shape: no page list, no
+// relevant_pages in the template — emit stays byte-identical to before.
+func TestQuerysetSeedWithoutPagesKeepsTheOldShape(t *testing.T) {
+	database := setupDB(t)
+	pid := makeProject(t, database, "qs")
+	if _, err := db.CreateNoteEx(database, pid, "重试策略", "正文", "", "knowledge", "manual"); err != nil {
+		t.Fatal(err)
+	}
+	ws := captureStdout(t, func() {
+		if err := dumpWorksheet(database); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if strings.Contains(ws, "页面清单") || strings.Contains(ws, "relevant_pages") {
+		t.Errorf("page machinery leaked into a page-less worksheet:\n%s", ws)
+	}
 }
