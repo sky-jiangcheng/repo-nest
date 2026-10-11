@@ -5,7 +5,7 @@ order: 8
 
 # 数据与备份
 
-RepoNest 是本地优先应用：没有云服务与账号体系，全部知识数据（笔记、待办、项目元数据、统计）只存在于本机一个 SQLite 数据库中。AI（如 Claude Code）通过 MCP 读取的也是这份本机数据。因此**备份 = 复制一个目录，迁移 = 搬运一个目录**。
+RepoNest 是本地优先应用：没有云服务与账号体系，全部知识数据（笔记、待办、知识库页面、项目元数据、统计）只存在于本机一个 SQLite 数据库中。AI（如 Claude Code）通过 MCP 读取的也是这份本机数据。因此**备份 = 复制一个目录，迁移 = 搬运一个目录**。
 
 ```mermaid
 flowchart TB
@@ -24,7 +24,7 @@ flowchart TB
 
 | 内容 | 位置 |
 |------|------|
-| 数据库（含笔记、待办、版本历史、统计、扫描根配置） | 见下表「数据目录」中的 `dashboard.db` |
+| 数据库（含笔记、待办、知识库页面与关系边、版本历史、统计、扫描根配置） | 见下表「数据目录」中的 `dashboard.db` |
 | 插件 | 数据目录下 `plugins/` |
 | 日志 | 平台日志目录（见[故障排查](troubleshooting.md#日志文件位置)） |
 
@@ -66,9 +66,11 @@ rm -rf ~/Library/Application\ Support/reponest
 
 ## 卸载
 
-1. 删除二进制（安装脚本装在 `/usr/local/bin/reponest`；Windows 为 `%LOCALAPPDATA%\RepoNest\reponest.exe`，或你手动放置的位置）
-2. 删除数据目录（见上表）与日志（`~/Library/Logs/reponest.log` 等平台日志路径）
-3. 如安装过 PWA：在系统/浏览器的应用列表中移除 RepoNest
+桌面安装路径唯一——Releases 分发的平台包（自 ADR-0008 起不再提供 PWA 安装入口）。按安装方式对应删除：
+
+1. **脚本安装**：删除二进制——macOS 为 `/Applications/RepoNest.app`，Linux 为 `/usr/local/bin/reponest`，Windows 为 `%LOCALAPPDATA%\RepoNest\reponest.exe`（或你手动放置的位置）。安装脚本还会装 MCP 服务器 `reponest-mcp`（macOS / Linux 在 `/usr/local/bin`，Windows 在 `%LOCALAPPDATA%\RepoNest\`），一并删除
+2. **包管理器安装**：`brew uninstall --cask reponest reponest-mcp`（macOS）/ `brew uninstall reponest-mcp`（Linux MCP）/ `scoop uninstall reponest reponest-mcp`（Windows）
+3. 删除数据目录（见上表）与日志（`~/Library/Logs/reponest.log` 等平台日志路径）
 
 ## 相关页面
 

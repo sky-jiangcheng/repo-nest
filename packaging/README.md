@@ -94,7 +94,7 @@ Both are safe to run in CI on every change.
 ```bash
 # 1. Bump the version (SSOT is wails.json; this syncs package.json,
 #    package-lock.json, version.go and every manifest below).
-./scripts/bump-version.sh 1.8.0
+./scripts/bump-version.sh 1.16.2
 
 # 2. Build what this host can build — the MCP server for all four targets.
 #    The Wails desktop shell is skipped with a printed reason: it needs GTK on
@@ -102,14 +102,14 @@ Both are safe to run in CI on every change.
 ./scripts/build-release-assets.sh
 
 # 3. sha256 is filled automatically: after CI publishes the release, the
-#    fill-sha256 job commits `chore(packaging): fill sha256 for v1.8.0` to
+#    fill-sha256 job commits `chore(packaging): fill sha256 for v1.16.2` to
 #    master. To fill locally instead:
 #      ./scripts/update-manifests.sh --fill-sha256 --from-api
 
 # 4. Commit, tag, push. The tag is what makes release.yml run on the native
 #    runners and produce the desktop artifacts.
-git add -A && git commit -m "chore: release 1.8.0"
-git tag -a v1.8.0 -m "Release v1.8.0"
+git add -A && git commit -m "chore: release 1.16.2"
+git tag -a v1.16.2 -m "Release v1.16.2"
 git push github master --tags
 
 # 5. After CI publishes the desktop artifacts, the fill-sha256 job closes the
@@ -118,8 +118,10 @@ git push github master --tags
 #    a stale digest.
 ```
 
-For v1.8.0 all eight digests are filled in and match what the release
-actually serves. A manifest still holding `__FILL_SHA256_*__` is one Homebrew
+For v1.16.2 every manifest digest is filled in and matches what the release
+actually serves (9 digest fields across the 5 manifests, covering the 7
+manifest-carried assets; the Linux desktop tarball is manual-only and carries
+no manifest). A manifest still holding `__FILL_SHA256_*__` is one Homebrew
 and Scoop will refuse to install from — deliberate, since a missing digest
 should fail loudly rather than silently install an unverified binary.
 
@@ -132,7 +134,7 @@ release asset, or download the assets and run `sha256sum` on them.
 ## Pruning old releases
 
 `scripts/prune-releases.sh` removes historical releases and their assets
-(~40 releases, >1 GB as of 1.8.0). It is dry-run by default, always keeps the
+(43 releases as of 1.16.2, counted from CHANGELOG; >1 GB of assets). It is dry-run by default, always keeps the
 newest `--keep` releases, and leaves git tags alone unless `--delete-tags` is
 passed. It needs `gh` and an authenticated session.
 

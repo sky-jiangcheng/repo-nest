@@ -15,7 +15,7 @@ flowchart TB
     SNAP --> DIFF["LCS<br/>line-level diff"]
     DIFF --> BACK["One-click<br/>restore"]
     ED --> IDX[("FTS5 index<br/>trigram · trigger-synced")]
-    IDX --> SEARCH["Search / ask<br/>snippet highlights"]
+    IDX --> SEARCH["Search<br/>snippet highlights"]
         classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
         classDef read fill:#f0fdf4,stroke:#22c55e,color:#14532d
     class IDX store
@@ -53,7 +53,7 @@ highlight.js code highlighting, Mermaid diagrams, KaTeX math formulas, GFM callo
 
 ## Search
 
-- The home page search box is auto-focused; "Ask the knowledge base" mode returns answer snippets ranked by relevance
+- The home page search box is auto-focused and searches as you type (300ms debounce); AI Q&A is not on this page — it lives in the floating capture ball as a project-scoped ask panel
 - FTS5 trigram + bm25 ranking, with snippets highlighting matched terms; short CJK queries automatically fall back to LIKE
 - Covers notes and todos; the `⌘/Ctrl+K` command palette works from anywhere
 

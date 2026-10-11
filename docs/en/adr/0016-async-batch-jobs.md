@@ -1,6 +1,6 @@
 # ADR-0016: Async long-running batch jobs — submit returns, progress is queryable, results survive
 
-- Status: Proposed (the async job and a standalone Review tab are both implemented: approve / mark-unqualified / delete-permanently for pending pages, plus job submission and polled progress in the UI. Still open: folding model-backed lint into the same job table (open question 1), and making interactive Q&A async (still a synchronous 90s call) — async covers batch compilation only; do not conflate the two).
+- Status: Accepted (the async job and a standalone Review tab are both implemented: approve / mark-unqualified / delete-permanently for pending pages, plus job submission and polled progress in the UI. **Open question ① landed**: model-backed lint shares the same job table — schema v20 adds a `kind` discriminator plus a `findings` counter, one queue with two kernels. **Open questions ② ③ remain decisions**: a crashed `running` job is still marked failed rather than re-queued, single worker unchanged. Interactive Q&A is **intentionally synchronous** — it has exactly one waiter, so turning it into a job would only add a polling loop without shortening the wait by one second; what actually needed fixing was its timeout ceiling, raised from 90 seconds to 5 minutes, see the revision below).
 - Date: 2026-10-08
 - Relates to: [ADR-0015](0015-w3-minimal-compile-loop.md) (compilation), [ADR-0014](0014-llm-wiki-knowledge-compiler.md) (W3/W5), TODO M6
 
@@ -37,9 +37,21 @@ Positive: long jobs stop depending on timeout numbers accidentally lining up; pr
 
 ## Open questions
 
-1. Should the same table carry model-backed lint (equally long)? Leaning **yes**: one job table, one polling surface.
+1. Should the same table carry model-backed lint (equally long)? → **Decided: yes** (schema v20, see the revision below): one job table, one polling surface.
 2. Crash handling for `running` jobs: re-queue or mark failed?
 3. Do we ever need concurrent jobs (default single worker unless users compile several projects at once)?
+
+> **Post-implementation revision (same day)**: acceptance ②'s "disconnect drill" **changed object** in the async shape — killing the client no longer matters (submission returns in milliseconds; the work is already in the database). What the tests pin instead are two things: when the worker sees `ctx.Done()` (app exit) the job lands in `canceled`, and on restart a stuck `running` job is explicitly marked `failed` and never re-claimed.
+> One more rule the ADR text never wrote but would have bitten: **a late progress write must not resurrect an already-canceled job** (`WHERE ... AND status <> 'canceled'`).
+> The compile core really was reused with zero changes — the job loop calls the existing single-note compile entry, so acceptance ① holds.
+> The synchronous path stays, and shares the **same "which notes" function** with the job path (`compileNoteTargets`, changed to newest-first); otherwise the same "compile this project" would cover different notes on the two paths.
+
+> **Open question ① landed (same day, schema v20)**: `compile_jobs` gains `kind` (`'compile'` / `'lint'`, CHECK-guarded, defaulting to `'compile'` — pre-existing rows were compile jobs) plus a `findings` counter; the migration `EnsureCompileJobQueue` uses ALTER rather than a new table, so a user's compile history survives. `runNextCompileJob` dispatches on `kind` to the two existing synchronous entries (`CompileNote` / `RunWikiLint`), **with no second implementation** — that is exactly this ADR's boundary test.
+> Two decisions worth recording that differ from the original sketch:
+> - **A lint job must carry a project** (`db.CreateLintJob` rejects project=0). `project_id` is `NOT NULL` with a foreign key to `projects(id)`, and the "all pages" scope has **no representation in the database**; inventing a sentinel project would pollute the user's project list. So scheduled full-corpus lint still takes its original synchronous path; what enters the queue is the panel-triggered per-project model check.
+> - **The structural checks did not join the job table**. They are pure SQL, millisecond-scale; making a user poll a job row for them is theatre, not engineering. Only the two model-backed checks — the ones that can run for minutes — enter the queue.
+
+> **Why interactive Q&A is not async**: this one contradicts the ADR's original assumption, and the reason is payload, not preference. The evidence path sends layered context (L3 1200 + L2 1600 chars) plus up to 12 retrieved items (~4000 chars) — the same order of magnitude as one compile request, and compilation measured 173 seconds on a local 27B. Catching that with the 90-second `aiChatTimeout` would report "the model is still thinking" as "failed" — the same class of error as the original too-short batch ceiling, in the other direction. So the thing to fix was the ceiling: `aiAskTimeout = 5 minutes` (no larger than `DefaultBatchChatTimeout`, since the HTTP write deadline derives from the latter). Synchronous stays: there is exactly one caller and the panel already has a pending state; making it a job would only add a polling loop while the wait stays identical. Streaming — which would change the wait itself — remains outside this ADR.
 
 ## Promotion criteria (Proposed -> Accepted)
 

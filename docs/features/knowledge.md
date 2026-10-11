@@ -15,7 +15,7 @@ flowchart TB
     SNAP --> DIFF["LCS<br/>行级 diff"]
     DIFF --> BACK["一键恢复<br/>任意版本"]
     ED --> IDX[("FTS5 索引<br/>trigram · 触发器同步")]
-    IDX --> SEARCH["搜索 / 询问<br/>snippet 高亮"]
+    IDX --> SEARCH["搜索<br/>snippet 高亮"]
         classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
         classDef read fill:#f0fdf4,stroke:#22c55e,color:#14532d
     class IDX store
@@ -53,7 +53,7 @@ highlight.js 代码高亮、Mermaid 图、KaTeX 数学公式、GFM Callout 与�
 
 ## 搜索
 
-- 首页搜索框自动聚焦；「询问知识库」模式返回带相关性的答案片段
+- 首页搜索框自动聚焦，输入即搜（300ms 防抖）；AI 问答不在本页，而是悬浮收录球内的项目级问答
 - FTS5 trigram + bm25 排序，snippet 高亮匹配词；短 CJK 查询自动降级 LIKE
 - 覆盖笔记与待办；`⌘/Ctrl+K` 命令面板随时可用
 

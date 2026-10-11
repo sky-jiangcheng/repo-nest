@@ -9,11 +9,11 @@ DeepSeek Harness (`dsh`) 插件：把 RepoNest 本地的 git 分析能力暴露�
 ```
 RepoNest 桌面 App  ─┐
                     ├─→ internal/service（单一事实源）
-dsh-plugin-reponest ─┴─→ Headless HTTP 服务 (reponest server) ─→ SQLite/FTS5
+dsh-plugin-reponest ─┴─→ Headless HTTP 服务 (reponest-server) ─→ SQLite/FTS5
 ```
 
 - 桌面 App：保持独立，走 Wails 绑定，完全不动。
-- `reponest server`：Go 编写的 headless HTTP 服务，复用 `internal/service`。
+- `reponest-server`：Go 编写的 headless HTTP 服务，复用 `internal/service`。
 - 本插件：注册 3 个 Tool，调用 localhost 上的 headless 服务；可自启并托管其生命周期。
 
 ## 提供的工具

@@ -16,9 +16,11 @@ RepoNest's external interface is the **Wails binding surface**: Go methods are e
 
 ---
 
-## Headless HTTP server (`reponest server`)
+## Headless HTTP server (`reponest-server`)
 
 A JSON API for external runtimes such as the DeepSeek Harness dsh-plugin. It shares the same `internal/service` implementation and the same SQLite database as the desktop app, CLI, and MCP.
+
+Build and run: `go build -o reponest-server ./cmd/server && ./reponest-server --port 18765` (or `REPONEST_HTTP_PORT`). The root `reponest` binary is a Wails app with **no subcommand dispatch at all** — there is no `reponest server` command; don't type it just because older docs did.
 
 | Endpoint | Method | Description |
 |------|------|------|

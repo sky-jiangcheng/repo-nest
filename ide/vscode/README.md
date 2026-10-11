@@ -12,13 +12,13 @@ One VSIX covers the whole fork family — **VS Code, Cursor and Windsurf**.
 | Command `RepoNest: Write Session Handoff` | Prompts for summary / changes / next steps, then records a structured handoff (`reponest_handoff`) — the next session, yours or any agent's, starts from it |
 | Command `RepoNest: Search Knowledge` | Full-text search (FTS5) across every note you captured; hits render in the sidebar and open read-only |
 | Sidebar "Knowledge Search" | Tree view bound to the search results |
-| Status bar `⌒ RepoNest` | Click = load context; tooltip shows headless-service reachability |
+| Status bar `⌒ RepoNest` | Click = load context; the tooltip shows the latest session handoff (title + time, refreshed every minute) |
 | Command `RepoNest: Register MCP Server` | Runs `reponest-init --with-hook` in a terminal: registers the MCP server for Claude Code / Cursor / VS Code / Windsurf and installs the SessionEnd hook |
 
 ## Requirements
 
 - The [`reponest-mcp`](https://github.com/sky-jiangcheng/repo-nest#quick-start) binary on your PATH — install it via Homebrew, Scoop or the GitHub Releases page. The desktop app is optional; the MCP server alone is enough.
-- Optional: a running `reponest server` for the status-bar health check (set `reponest.serverUrl` if you changed the port).
+- Optional: a running `reponest-server` (build it with `go build -o reponest-server ./cmd/server`) for the status-bar health check (set `reponest.serverUrl` if you changed the port).
 
 ## Settings
 

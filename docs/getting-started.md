@@ -119,7 +119,7 @@ flowchart TB
 
 ## 从源码构建
 
-**前置要求**：Go 1.25+、Node.js 20+；开发调试可选 [Wails CLI](https://wails.io) v2.13+。
+**前置要求**：Go 1.26+、Node.js 20+；开发调试可选 [Wails CLI](https://wails.io) v2.13+。
 
 ```bash
 # 前端依赖与构建（产物被 go:embed 进二进制）

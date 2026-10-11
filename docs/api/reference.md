@@ -16,9 +16,11 @@ RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 
 ---
 
-## Headless HTTP 服务（`reponest server`）
+## Headless HTTP 服务（`reponest-server`）
 
 面向 DeepSeek Harness dsh-plugin 等外部运行时的 JSON API，与桌面应用、CLI、MCP 共用同一 `internal/service` 实现和同一个 SQLite 数据库。
+
+构建与启动：`go build -o reponest-server ./cmd/server && ./reponest-server --port 18765`（或 `REPONEST_HTTP_PORT`）。根 `reponest` 是 Wails 应用、**没有任何子命令派发**——不存在 `reponest server` 这条命令，别照旧文档敲。
 
 | 端点 | 方法 | 说明 |
 |------|------|------|

@@ -42,7 +42,7 @@ RepoNest 在开发中遵循以下安全原则：
 
 ### HTTP 安全响应头
 
-应用内嵌 HTTP 服务器（端口 18731）在所有响应中注入以下安全头：
+桌面应用内嵌的 Wails AssetServer（[main.go](../main.go) 的中间件）在所有响应中注入以下安全头。无头 API（`cmd/server`，浏览器开发用，默认端口 18731）只返回 JSON / SSE、不渲染页面，因此不注入 CSP：
 
 | 响应头 | 值 | 用途 |
 |--------|-----|------|
@@ -52,7 +52,7 @@ RepoNest 在开发中遵循以下安全原则：
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | 控制 Referrer 泄露 |
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), acceleration=()` | 禁用敏感权限 |
 
-> `unsafe-inline` 仅用于 `style-src`，以支持 CSS-in-JS 与 Tailwind 工具类。无 `unsafe-eval`，不执行动态代码。
+> `unsafe-inline` 仅保留在 `style-src`：Mermaid / KaTeX / Chart.js 在运行时注入 inline `<style>`，剔除会让图表与公式静默丢样式。`script-src` 刻意既无 `unsafe-inline` 也无 `unsafe-eval`——不执行动态代码。
 
 ## 依赖安全
 
@@ -60,7 +60,7 @@ RepoNest 在开发中遵循以下安全原则：
 
 ### 远程访问安全
 
-开发模式（`wails dev`）与远程访问模式监听 `localhost:18731`，默认仅本机可访问。如需通过局域网访问，建议：
+浏览器开发模式（`bash scripts/dev.sh`）会把无头 API 起在 `localhost:18731`（只绑 127.0.0.1）。如需通过局域网访问，建议：
 
 - 在防火墙层限制端口访问范围
 - 或使用 SSH 隧道：`ssh -L 18731:localhost:18731 user@remote-host`

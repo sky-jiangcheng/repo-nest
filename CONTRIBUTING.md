@@ -6,7 +6,7 @@ RepoNest（仓库与包标识 `repo-nest`）是本地优先的 Git 知识库桌�
 
 | 依赖 | 版本 | 用途 |
 |------|------|------|
-| Go | 1.25+ | 后端（零 CGO，内嵌 SQLite） |
+| Go | 1.26+ | 后端（零 CGO，内嵌 SQLite） |
 | Node.js | 20+ | 前端构建与测试 |
 | Wails CLI | v2.13+（可选） | `wails dev` 开发模式 |
 
@@ -60,7 +60,7 @@ cd web && npm run build  # tsc 严格检查（ESLint 现状见 TODO.md）
 - [ ] `go test ./...`、`npm test`、`npm run build` 全绿
 - [ ] 不触碰范围冻结与冻结标识（或已在 Issue/ADR 中说明理由）
 - [ ] 绑定面变更已同步 API 参考；用户可见变更已更新手册与 CHANGELOG
-- [ ] 新增依赖有明确理由（本项目依赖极简：wails、mcp-go、yaegi、modernc sqlite）
+- [ ] 新增依赖有明确理由（本项目依赖极简：wails、mcp-go、chromem-go、yaegi、modernc sqlite）
 
 ## 报告问题
 

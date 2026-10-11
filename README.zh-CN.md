@@ -101,12 +101,12 @@ flowchart TB
 | `reponest_handoff` | 会话结束结构化交接：summary / changes / decisions / gotchas / next_steps 渲染为统一模板落库，下一个会话（任何 agent）自动读到 |
 | llms.txt | `GenerateLLMsTxt` 生成面向 LLM 的知识库总览 Markdown |
 | 笔记导出 | 任意笔记导出为带 YAML frontmatter 的 `.md` |
-| Claude 记忆导入 | 一键将 `~/.claude/projects/*/memory/*.md` 幂等导入为知识笔记（**支持**） |
+| agent 记忆导入 | 内置 6 个源一键幂等导入为知识笔记：**claude** 记忆文件（随启动自动导入，默认关）与 **codex** / **opencode** / **cursor** 会话转录、**openclaw** 工作区 / **hermes**（Nous）记忆文件（手动触发；后两者无项目线索，需在设置里指定目标项目）。幂等键 `(project_id, source, title)`（**支持**） |
 | 数据可信度审计 | `reponest_integrity` 6 项只读检查：FTS 索引漂移、孤儿行、schema 形状 vs 版本戳、扫描覆盖率、知识缓存新鲜度、版本快照孤儿。索引漂移会让搜索**静默漏结果**且无任何机制发现，这是唯一能发现它的手段 |
 
 ### 仪表盘与统计（支持）
 
-> 仪表盘与统计服务于核心闭环的可理解性，不作为产品主入口；前端默认页为「知识库」，导航顺序为 知识库 → 仪表盘 → 设置（见 [ADR-0006](docs/adr/0006-scope-freeze.md)）。
+> 仪表盘与统计服务于核心闭环的可理解性，不作为产品主入口；前端默认页为「知识库」，导航顺序为 知识库 → 仪表盘 → 审核 → 设置（见 [ADR-0006](docs/adr/0006-scope-freeze.md)）。
 
 | 特性 | 说明 |
 |------|------|
@@ -122,7 +122,7 @@ flowchart TB
 
 | 特性 | 说明 |
 |------|------|
-| 插件系统 | yaegi 进程内 Go 脚本 + 知识源导入器（[知识源导入](docs/plugins/overview.md)；**实验性**，暂停平台基础设施扩展） |
+| 插件系统 | yaegi 进程内 Go 脚本（[知识源导入](docs/plugins/overview.md)；**实验性**，暂停平台基础设施扩展）；内置 6 个知识源是普通 Go 实现，不经 yaegi |
 | i18n | 中文 / English 一键切换（react-i18next，zh-CN + en） |
 | 单文件跨平台 | Go 编译单二进制，无运行时依赖 |
 
@@ -250,7 +250,7 @@ npx @vscode/vsce package --no-dependencies   # → reponest-vscode-0.1.0.vsix
 
 ## 从源码构建
 
-环境要求：**Go 1.25+**、**Node.js 20+**（前端构建）、可选 [Wails CLI](https://wails.io) v2.13+。
+环境要求：**Go 1.26+**、**Node.js 20+**（前端构建）、可选 [Wails CLI](https://wails.io) v2.13+。
 
 ```bash
 # 前端依赖与构建（web/dist 会被 go:embed 进二进制）
@@ -347,7 +347,7 @@ web/src/
 
 开发环境与提交规范详见 [CONTRIBUTING.md](CONTRIBUTING.md)。快速上手：
 
-开发环境：**Go 1.25+**、**Node.js 20+**、Git。
+开发环境：**Go 1.26+**、**Node.js 20+**、Git。
 
 ```bash
 cd web && npm install && npm run build && cd ..  # 前端构建

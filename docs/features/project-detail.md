@@ -34,7 +34,7 @@ flowchart TB
 | 内容 | 说明 |
 |------|------|
 | README 摘录 | 最多 200 行 / 8KB |
-| 技术栈 | 20+ manifest 识别（package.json / go.mod / Cargo.toml / pom.xml / Dockerfile …） |
+| 技术栈 | 17 种 manifest 识别（package.json / go.mod / Cargo.toml / pom.xml / Dockerfile …） |
 | 语言占比 | 按代码行数统计的 Top 语言条形图 |
 | 依赖清单 | npm / go.mod（含块状 require）/ Cargo 直接依赖 |
 | Top 贡献者 | `git shortlog -sn` Top 5 |

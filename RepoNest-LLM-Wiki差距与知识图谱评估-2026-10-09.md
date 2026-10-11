@@ -5,6 +5,8 @@
 - 方法：逐项对照 ADR-0014/0015/0016/0017、TODO.md M6、CHANGELOG 与 `internal/db/wiki*.go` / `internal/service/wiki_*.go` / `internal/db/vecindex.go` 的真实实现，并对纯 Go 包做了离线 `go build` + `go vet`（均 rc=0）
 - schema 版本：`ExpectedSchemaVersion = 20`（v16 页面层 / v18 status+source / v19 compile_jobs / v20 kind 判别列）
 
+> **2026-10-11 审计注**：本文是 2026-10-09 时点评估，其后 M7 知识图谱工作已按本文第四节的档位陆续落地，文中若干「技术根因」断言已被推翻或部分推翻——①「边类型是野字符串、没有受控词表」（第三节）已不成立：v21 落地八型受控关系词表 + `db.NormalizeRelation` + CHECK 由 Go 集派生（ADR-0018 lane 1，2026-10-10/11）；②「没有任何图算法，grep 零命中」已不成立：`WITH RECURSIVE` 一跳扩召回 + 纯 Go PPR 已注入 `internal/service/wiki_evidence.go`，新门 `wiki_graph_search` 于 2026-10-10 翻默认开（走查半片实测 +0.037 后被用户裁决接受）；③「检索不看图」已不成立：取证默认走图感知扩召回，页臂 recall 不低于纯 FTS（零回退性质是默认开决策的核心证据）；④「schema = 20」已过期：现为 v21，`page_embeddings`（v22）暂冻结待真实库更大标注集复测；⑤ W2「真实收益证据缺失」已部分补齐：agent 侧模拟库 12 标注查询 recall@10 delta +0.569、逐查询零回退，真实知识库人工标注仍是用户动作；⑥第三节「页面没有向量」仍然成立（v22 未解冻）。ADR-0014 晋升与 lane 2 Accept 的当前状态以 `docs/adr/0018` 与 `TODO.md` 为准，本文保留作时点记录。
+
 ---
 
 ## 一、结论先行

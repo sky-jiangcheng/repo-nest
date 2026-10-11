@@ -34,7 +34,7 @@ Extracted automatically from the repository working tree and cached in `repo_met
 | Item | Description |
 |------|------|
 | README excerpt | up to 200 lines / 8KB |
-| Tech stack | 20+ manifests recognized (package.json / go.mod / Cargo.toml / pom.xml / Dockerfile …) |
+| Tech stack | 17 manifests recognized (package.json / go.mod / Cargo.toml / pom.xml / Dockerfile …) |
 | Language share | bar chart of top languages by lines of code |
 | Dependencies | npm / go.mod (including block require) / Cargo direct dependencies |
 | Top contributors | top 5 from `git shortlog -sn` |

@@ -107,7 +107,7 @@ The project detail page auto-extracts: README summary, tech stack list (20+ mani
 | `reponest_handoff` | Structured handoff at session end: summary / changes / decisions / gotchas / next_steps rendered into a unified template and stored; the next session (any agent) reads it automatically |
 | llms.txt | `GenerateLLMsTxt` emits an LLM-oriented knowledge base overview in Markdown |
 | Note export | Export any note as `.md` with YAML frontmatter |
-| Knowledge importers | Bring other agents' memory in: **Claude** memory files auto-imported on startup; **Codex** / **OpenCode** sessions and **OpenClaw** / **Hermes** (Nous) global memory as **opt-in, manually-triggered** sources (allowlist-scoped; global-memory sources attach to a project you pick in Settings). Idempotent upsert. |
+| Knowledge importers | Bring other agents' memory in via six built-in sources: **claude** memory files (auto-imported at startup, default off) and **codex** / **opencode** / **cursor** sessions plus **openclaw** workspace / **hermes** (Nous) memory files as **opt-in, manually-triggered** sources (sources without project clues — openclaw / hermes — attach to a project you pick in Settings). Idempotent upsert on `(project_id, source, title)` |
 | Session auto-capture (M1) | On-demand capture of a project's latest Claude Code session transcript into a handoff note; a `reponest-capture` CLI covers the B-end SessionEnd-hook automation. **Off by default** (`claude_session_capture`), privacy-gated. |
 | Semantic search (M3) | Optional hybrid FTS5 + vector recall (RRF-fused) with a **pluggable vector store**: local **sqlite-vec** (default, pure-Go/zero-CGO) or remote **Qdrant** / **Weaviate** (auto-falls-back to local if unreachable). **Off by default**, gated behind an A/B eval (`cmd/abeval`). See [ADR-0012](docs/adr/0012-semantic-search.md) / [ADR-0013](docs/adr/0013-vector-database-selection.md). |
 | Portable memory export | `ExportMemoryJSON` emits the knowledge base as [Open Memory Protocol](https://github.com/SMJAI/open-memory-protocol)-style memory objects (provisional; OMP is pre-1.0). |
@@ -116,7 +116,7 @@ The project detail page auto-extracts: README summary, tech stack list (20+ mani
 
 ### Dashboard & Stats (Support)
 
-> The dashboard and stats serve the legibility of the core loop and are not the product's front door; the frontend default page is the knowledge base, with nav order knowledge base → dashboard → settings (see [ADR-0006](docs/adr/0006-scope-freeze.md), Chinese).
+> The dashboard and stats serve the legibility of the core loop and are not the product's front door; the frontend default page is the knowledge base, with nav order knowledge base → dashboard → review → settings (see [ADR-0006](docs/en/adr/0006-scope-freeze.md), Chinese).
 
 | Feature | Description |
 |---------|-------------|
@@ -132,7 +132,7 @@ The project detail page auto-extracts: README summary, tech stack list (20+ mani
 
 | Feature | Description |
 |---------|-------------|
-| Plugin system | In-process Go scripts via yaegi + knowledge source importers ([knowledge sources](docs/en/plugins/overview.md); **Experimental**, platform infrastructure work paused) |
+| Plugin system | In-process Go scripts via yaegi (**Experimental**, platform infrastructure work paused); the six built-in knowledge sources are plain Go implementations, not yaegi (see [knowledge sources](docs/en/plugins/overview.md)) |
 | i18n | One-click Chinese / English switch (react-i18next, zh-CN + en) |
 | Single-file cross-platform | A single Go binary, no runtime dependencies |
 
@@ -262,7 +262,7 @@ The extension is a thin client: commands call `reponest-mcp` over stdio (install
 
 ## Building from Source
 
-Requirements: **Go 1.25+**, **Node.js 20+** (frontend build), optional [Wails CLI](https://wails.io) v2.13+.
+Requirements: **Go 1.26+**, **Node.js 20+** (frontend build), optional [Wails CLI](https://wails.io) v2.13+.
 
 ```bash
 # Frontend deps & build (web/dist is go:embed-ed into the binary)
@@ -361,7 +361,7 @@ English pages are the default; the [Chinese manual](https://sky-jiangcheng.githu
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) (Chinese) for the dev environment and commit conventions. Quick start:
 
-Requirements: **Go 1.25+**, **Node.js 20+**, Git.
+Requirements: **Go 1.26+**, **Node.js 20+**, Git.
 
 ```bash
 cd web && npm install && npm run build && cd ..  # frontend build

@@ -36,7 +36,9 @@ README、文档站、发布说明的主叙事切到「agent 记忆层」（三�
 
 ### 5. 发布分拆（沿用现状，明确原则）
 
-`mcp` 二进制、`reponest-server`、桌面安装包、VS Code 扩展各自独立发布、独立下载，但共享同一版本号与同一 CHANGELOG；headless 路径（`node scripts/reponest-init/index.mjs --with-hook`）是文档站与 README 的第一安装路径。
+`mcp` 二进制、桌面安装包、VS Code 扩展各自独立发布、独立下载，但共享同一版本号与同一 CHANGELOG；`reponest-server` 是 build-from-source 的 headless 二进制，**不随版本分发**——release.yml 从不构建它，需自行 `go build -o reponest-server ./cmd/server`（见 [api/reference](../api/reference.md) 与 [features/ai-integration](../features/ai-integration.md) 的发布资产说明）；headless 路径（`node scripts/reponest-init/index.mjs --with-hook`）是文档站与 README 的第一安装路径。
+
+> **2026-10-11 审计注**：本条原稿把 `reponest-server` 与上述三者并列为「各自独立发布、独立下载」，与发布现状不符——`.github/workflows/release.yml` 只构建桌面四平台、`reponest-mcp` 四平台与 VSIX（`files:` 通配里的 `*.AppImage`/`*.deb`/`*.msi` 无对应产物），全仓工作流无 `cmd/server` 构建；api/reference 与 ai-integration 两页早已写明它「需自行 go build、未随版本分发」。ADR 的「一个内核」判断不受影响（`reponest-server` 仍复用同一 `internal/service`，见背景第 1 条），仅发布清单勘误。
 
 ## 后果
 

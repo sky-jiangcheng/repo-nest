@@ -5,7 +5,7 @@ order: 8
 
 # Data and Backup
 
-RepoNest is a local-first app: there are no cloud services or accounts, and all knowledge data (notes, todos, project metadata, statistics) lives only in a single SQLite database on your machine. AI clients such as Claude Code read that same local data over MCP. That means **backing up = copying one directory, and migrating = moving one directory**.
+RepoNest is a local-first app: there are no cloud services or accounts, and all knowledge data (notes, todos, wiki pages, project metadata, statistics) lives only in a single SQLite database on your machine. AI clients such as Claude Code read that same local data over MCP. That means **backing up = copying one directory, and migrating = moving one directory**.
 
 ```mermaid
 flowchart TB
@@ -24,7 +24,7 @@ How to read it: the box in the middle is the **single source of truth** — the 
 
 | Item | Location |
 |------|------|
-| Database (notes, todos, version history, statistics, scan root configuration) | `dashboard.db` inside the data directory in the table below |
+| Database (notes, todos, wiki pages and relation edges, version history, statistics, scan root configuration) | `dashboard.db` inside the data directory in the table below |
 | Plugins | `plugins/` under the data directory |
 | Logs | Platform log directory (see [Troubleshooting](troubleshooting.md#log-file-locations)) |
 
@@ -66,9 +66,11 @@ There is no built-in switch to clear statistics while keeping notes. If you need
 
 ## Uninstall
 
-1. Remove the binary (the install script puts it at `/usr/local/bin/reponest`; on Windows it is `%LOCALAPPDATA%\RepoNest\reponest.exe`, or wherever you placed it manually)
-2. Delete the data directory (see the table above) and the logs (`~/Library/Logs/reponest.log` and the other platform log paths)
-3. If you installed the PWA: remove RepoNest from the system or browser app list
+The desktop install path is singular — platform packages distributed via Releases (since ADR-0008 there is no PWA install entry point). Remove according to how you installed:
+
+1. **Install script**: delete the binaries — on macOS `/Applications/RepoNest.app`, on Linux `/usr/local/bin/reponest`, on Windows `%LOCALAPPDATA%\RepoNest\reponest.exe` (or wherever you placed it manually). The install script also installs the MCP server `reponest-mcp` (in `/usr/local/bin` on macOS / Linux, in `%LOCALAPPDATA%\RepoNest\` on Windows) — remove that too
+2. **Package manager**: `brew uninstall --cask reponest reponest-mcp` (macOS) / `brew uninstall reponest-mcp` (Linux MCP) / `scoop uninstall reponest reponest-mcp` (Windows)
+3. Delete the data directory (see the table above) and the logs (`~/Library/Logs/reponest.log` and the other platform log paths)
 
 ## Related Pages
 

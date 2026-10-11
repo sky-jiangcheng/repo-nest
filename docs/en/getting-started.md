@@ -119,7 +119,7 @@ The schema migrates automatically on upgrade; no manual data handling is needed.
 
 ## Build from Source
 
-**Prerequisites**: Go 1.25+, Node.js 20+; the [Wails CLI](https://wails.io) v2.13+ is optional for development and debugging.
+**Prerequisites**: Go 1.26+, Node.js 20+; the [Wails CLI](https://wails.io) v2.13+ is optional for development and debugging.
 
 ```bash
 # Install frontend dependencies and build (the output is embedded into the binary via go:embed)

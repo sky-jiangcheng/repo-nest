@@ -36,7 +36,9 @@ The first screen presents "memory-loop entry + project-state overview" side by s
 
 ### 5. Release split (formalize what already exists)
 
-The `mcp` binary, `reponest-server`, desktop installer and VS Code extension ship and download independently, but share one version number and one CHANGELOG; the headless path (`node scripts/reponest-init/index.mjs --with-hook`) is the first install path in both the docs site and README.
+The `mcp` binary, desktop installer and VS Code extension ship and download independently, but share one version number and one CHANGELOG; `reponest-server` is a build-from-source headless binary and is **not distributed with releases** — release.yml never builds it, so build it yourself with `go build -o reponest-server ./cmd/server` (see the release-asset notes in [api/reference](../api/reference.md) and [features/ai-integration](../features/ai-integration.md)); the headless path (`node scripts/reponest-init/index.mjs --with-hook`) is the first install path in both the docs site and README.
+
+> **2026-10-11 audit note**: the original text listed `reponest-server` alongside the three above as "ship and download independently", which does not match how releases actually work — `.github/workflows/release.yml` builds only the four desktop platforms, the four `reponest-mcp` platforms and the VSIX (the `*.AppImage` / `*.deb` / `*.msi` globs in `files:` match nothing), and no workflow builds `cmd/server`; api/reference and ai-integration have long stated it "must be built yourself, not distributed with releases". The ADR's "one kernel" judgement is unaffected (`reponest-server` still shares the same `internal/service`, see Context item 1) — this is a release-manifest erratum only.
 
 ## Consequences
 
