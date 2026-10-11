@@ -5,12 +5,14 @@
 - 关联：[ADR-0014](0014-llm-wiki-knowledge-compiler.md)（本文兑现其"先补结构"承诺的下半段——结构有了但要能查询；并兑现其决策 5 lint"数据缺口"一查的具体形状、并收口其待决"语义融合是否扩到 wiki_pages"）、[ADR-0015](0015-w3-minimal-compile-loop.md)（本文不违反其"编译器永不修改已批准页"——新增只发生在边/待审面）、[ADR-0016](0016-async-batch-jobs.md)（lane 2 若慢，复用一表两内核）、[ADR-0012](0012-semantic-search.md)（RRF 语义融合）、[ADR-0013](0013-vector-database-selection.md)（零 CGO 向量存储）、[ADR-0010](0010-session-auto-capture.md)（敏感能力默认关的纪律）；TODO **M6** 的收口 + 新增 **M7**；起点 schema v20
 - 配套实施计划：`RepoNest-知识图谱实施计划-2026-10-09.md`（本 ADR = 其 Phase 1 + Phase 2；Phase 3 实体消歧、Phase 4 社区摘要与时态图各自单开 ADR-0019/0020/0021）
 
+> **2026-10-11 锚点审计**：本文 17 处代码引用已逐项 grep 复核——4 处仍准确（`wiki_compile.go:227-228`、`wiki_export.go:50,243`、`search_semantic.go:71`、`vecindex.go` 函数名），13 处按现状修正：`RunWikiLint` :125→:112、`lintMissingRefs` :192-202→:191、`fileFindings` :389→:514、`GatherEvidence` :91→:93、`evidencePages` :163-182→:184、FuseRRF 串号注 :104-108→:106-110（两处）、`LinkWikiPages` wiki.go:488→:724、`ownedByCompile` :403→:408；背景节三处 v21 前快照已就地标注现址。Phase 3/4 落码前以此为复扫入口。
+
 ## 背景
 
 ADR-0014 的第一条决策是"先补结构，再让 LLM 写"，理由是"没有这张图，一次 ingest 触碰 10-15 页在数据结构上就不成立"。这张图现在建成了（`wiki_pages` + `page_links` + `note_pages`，schema v16 起），但**建成 ≠ 能用**。三处代码级证据说明它目前是"写而不读"的：
 
-1. **关系是野字符串**。`page_links.relation` 是自由文本，默认 `'ref'`（`internal/db/wiki.go:61-70`，无 `CHECK`）。编译器写边时把模型给的字符串原样落库，为空则填 `"compiled-from"`（`internal/service/wiki_compile.go:377`），问答存页写 `"cites"`（`wiki_evidence.go:292`）。**没有任何一处代码约束 relation 的取值**，所以这张"图"没法按语义查询——你无法问"所有 `depends` 关系"，因为没人保证这个词被统一拼写。
-2. **取证根本不读图**。`GatherEvidence`（`wiki_evidence.go:91`）只调 `db.SearchWikiPages`（FTS）和 `s.SearchNotes`，**从不调 `WikiEdgesFrom`/`WikiEdgesTo`**。边目前只被三处一跳读取：导出渲染反链、lint 结构检查、编译 prompt 附带上下文。用户在 Obsidian graph view 里能看到图，但 AskAI 回答时**把图当不存在**。
+1. **关系是野字符串**。`page_links.relation` 曾是自由文本，默认 `'ref'`、无 `CHECK`（v21 前快照：DDL 原在 `internal/db/wiki.go:61-70`；现表定义在 :193-203，`CHECK` 由 `relationCheckSQL()` 从 Go 词表现生，:178-180）。编译器曾把模型给的字符串原样落库、为空填 `"compiled-from"`（原 `internal/service/wiki_compile.go:377`；现由 `db.NormalizeRelation` 折叠，调用点 :378-382），问答存页曾写 `"cites"`（原 `wiki_evidence.go:292`；现折叠为 `ref`，见 :426-427 注）。**v21 前没有任何一处代码约束 relation 的取值**，所以这张"图"没法按语义查询——你无法问"所有 `depends` 关系"，因为没人保证这个词被统一拼写。
+2. **取证根本不读图**。`GatherEvidence`（`wiki_evidence.go:93`）只调 `db.SearchWikiPages`（FTS）和 `s.SearchNotes`，**从不调 `WikiEdgesFrom`/`WikiEdgesTo`**。边目前只被三处一跳读取：导出渲染反链、lint 结构检查、编译 prompt 附带上下文。用户在 Obsidian graph view 里能看到图，但 AskAI 回答时**把图当不存在**。
 3. **页面没有向量**。`internal/db/vecindex.go` 的 vec0 索引 `note_embeddings` 是 **notes-only**（`KnnNoteIDs`、`PutNoteEmbedding` 全部 keyed by note rowid）。`wiki_pages` 没有对等的向量面，所以 ADR-0014 待决里"语义融合扩到 wiki_pages"那半条至今未做。全仓 grep `WITH RECURSIVE|pagerank|leiden|louvain|community|betweenness|transitive`——**零命中**。
 
 结论：Wiki 的"知识网"目前只有**节点**能用（FTS 检索页面），**边**和**向量**两条腿都没接上。这与 ADR-0014 的愿景（"可导航、可取证"）之间，差的不是数据模型，是把模型用起来的那层。本 ADR 就是那层，且大部分零新依赖、纯 SQLite + Go 可做。
@@ -29,11 +31,11 @@ ADR-0014 的第一条决策是"先补结构，再让 LLM 写"，理由是"没有
 
 **2. `page_links` 加 `CHECK` 需要整表重建。** SQLite 不能 `ALTER` 列级 `CHECK`（红线），故 v21 = 建带 `CHECK` 的新表 → `INSERT … SELECT` 时把**既有非法 relation 规范化进 `ref`**（不丢边、只改标签）→ drop 旧表 → rename。全程幂等，且**可逆测试要求** drop/rebuild 前后 `sqlite_master` 逐字节 + 边多重集相等。迁移前须能只读导出一份旧边供回看（见"后果·负面"）。
 
-**3. 编译器产出边时从枚举里选词。** 改 `wiki_compile.go:227-228` 的 JSON 契约 literal，把 `"relation":"…"` 写成封闭枚举 + 附定义与示例；默认串 `:377` 从 `"compiled-from"` 改 `"ref"`；`LinkWikiPages`（`wiki.go:488`）对未知 relation **降级为 `ref` 并记日志而非报错**（脏值不得打断写入）。既有守卫全不动：`add_link` 至少一端为本轮产物（`ownedByCompile :403`）、预算、只写 pending、永不改批准页。
+**3. 编译器产出边时从枚举里选词。** 改 `wiki_compile.go:227-228` 的 JSON 契约 literal，把 `"relation":"…"` 写成封闭枚举 + 附定义与示例；未知/旧值 relation 由 `db.NormalizeRelation`（`db/wiki.go:164`，旧值映射 :146-151）折叠到 `"ref"`，编译侧调用点 `wiki_compile.go:378-382`；`LinkWikiPages`（`wiki.go:724`）入口同样先折叠（:730）**而非报错**（脏值不得打断写入）。既有守卫全不动：`add_link` 至少一端为本轮产物（`ownedByCompile :408`，调用点 :374）、预算、只写 pending、永不改批准页。
 
 **4. 正文 `[[wikilink]]` 在 approve 时抽取为 `mentions` 边。** 导出已在解析正文链接并统计 `dangling`（`wiki_export.go:50,243`）。反向补一刀：对**能解析到已存在页**的正文链接，`LinkWikiPages(…, 'mentions')`——`UNIQUE(from,to,relation)` + `ON CONFLICT DO NOTHING` 天然幂等。解析不到的维持"只报不建"（dangling 语义不变）。**触发点在 approve**（人批准的页才进图），复用 `ApproveWikiPage` 路径，不单开 job、不进编译器的自动写面。
 
-**5. 关系词表的结构体检进 lint。** `wiki_lint.go` `RunWikiLint`（:125）加 `lintRelationShape`，**照 `lintMissingRefs` 的"预取边集避免 O(n²) 查询"写法**（:192-202），并按被审项目作用域过滤边。检查项（落地时定稿的三条，均无歧义可判）：**`supersedes` 时间倒挂**（取代方 `updated_at` 早于被取代方）、**`part-of`/`depends` 成环**（组成与依赖应无环，着色 DFS 找回边）、**`contradicts` 单向**（冲突本应对称，缺反向即提示）。**产出仍只进 `project_todos`**（`fileFindings :389`），不破"lint 不改页"红线。
+**5. 关系词表的结构体检进 lint。** `wiki_lint.go` `RunWikiLint`（:112）加 `lintRelationShape`（函数 :295，调用点 :132），**照 `lintMissingRefs` 的"预取边集避免 O(n²) 查询"写法**（函数 :191，预取段 :196-207），并按被审项目作用域过滤边。检查项（落地时定稿的三条，均无歧义可判）：**`supersedes` 时间倒挂**（取代方 `updated_at` 早于被取代方）、**`part-of`/`depends` 成环**（组成与依赖应无环，着色 DFS 找回边）、**`contradicts` 单向**（冲突本应对称，缺反向即提示）。**产出仍只进 `project_todos`**（`fileFindings :514`），不破"lint 不改页"红线。
 
 > **实现时对本条做了一处替换**：草案原列第三查为「`documents` 指向非 source」，落地时发现它要么恒真、要么依赖一套没敲定的 kind↔relation 全矩阵（ADR 待决 #1 已明确词表先不定矩阵），是个判不准的伪检查。换成 **`contradicts` 对称性**——它不依赖任何跨字段约定、纯图内可判，且真能抓出"只标了一半的冲突"。三条检查都不引入 kind↔relation 约束，保持"先只定边型"的承诺。
 
@@ -41,9 +43,9 @@ ADR-0014 的第一条决策是"先补结构，再让 LLM 写"，理由是"没有
 
 ### Lane 2（schema v22，晋升前置见末尾）：让取证读图
 
-**6. 页面独立向量空间。** 仿 `note_embeddings`，新增 `page_embeddings`（vec0，keyed by `wiki_pages.id`，**只嵌 approved 页**）+ `page_embeddings_meta`。**必须独立表**——`wiki_evidence.go:104-108` 已记 `FuseRRF` 对 note/page 混合 id 会串号（`hybrid.FuseRRF` 返回的是裸 int64 列表，page#7 与 note#7 无法区分）。增量仿 v14：`page_embed_dirty` 队列 + 触发器（正文真变 / status 迁入 approved 置脏、迁出删向量）。**门控挂在既有 `semantic_search` 之后**（那是用户同意把文本发端的授权），不新设嵌入开关，避免"主开关开、页嵌关"留陈旧索引。store 走 `vectordb.Store` 注册表（local=sqlite-vec 默认，远程不可达退 local）。⚠️ `vectorStore()` 有 memo（`search_semantic.go:71`），改 `vector_store*`/`embedding_*` 或报错必须 `invalidateVectorStore()`，否则页嵌静默用旧端点。
+**6. 页面独立向量空间。** 仿 `note_embeddings`，新增 `page_embeddings`（vec0，keyed by `wiki_pages.id`，**只嵌 approved 页**）+ `page_embeddings_meta`。**必须独立表**——`wiki_evidence.go:106-110` 已记 `FuseRRF` 对 note/page 混合 id 会串号（`hybrid.FuseRRF` 返回的是裸 int64 列表，page#7 与 note#7 无法区分）。增量仿 v14：`page_embed_dirty` 队列 + 触发器（正文真变 / status 迁入 approved 置脏、迁出删向量）。**门控挂在既有 `semantic_search` 之后**（那是用户同意把文本发端的授权），不新设嵌入开关，避免"主开关开、页嵌关"留陈旧索引。store 走 `vectordb.Store` 注册表（local=sqlite-vec 默认，远程不可达退 local）。⚠️ `vectorStore()` 有 memo（`search_semantic.go:71`），改 `vector_store*`/`embedding_*` 或报错必须 `invalidateVectorStore()`，否则页嵌静默用旧端点。
 
-**7. 取证读图 = 一跳/二跳扩召回 + PPR 排序。** 注入点是唯一且已预留的：`wiki_evidence.go` `evidencePages`（:163-182），其注释（:104-108）明说"position interleaving 用到页有自己的向量空间为止"——正是此处。
+**7. 取证读图 = 一跳/二跳扩召回 + PPR 排序。** 注入点是唯一且已预留的：`wiki_evidence.go` `evidencePages`（:184），其注释（:106-110）明说"position interleaving 用到页有自己的向量空间为止"——正是此处。
 - **扩召回**：以 FTS/页向量命中的 seed 页为起点，`WITH RECURSIVE` 沿 **relation 白名单**（`ref`/`part-of`/`documents`；**不沿 `contradicts`**，矛盾是给用户看的、不是喂进同一份证据的）取 1-2 跳邻居入候选。
 - **排序**：纯 Go 在有向 `page_links` 子图上做带 reset 的随机游走（PPR）。reset 向量 = 检索命中页 +（笔记命中经 `note_pages` 投影到其所属页）。转移按 relation 白名单与边权。几百~几千页毫秒级收敛（~15 轮），远在 `EvidenceBudget.Deadline = 3s` 内。用它替掉现在的 bm25 顺序。
 - **融合**：notes 侧沿用 `SearchNotes`→语义 RRF；页面向量命中与页 FTS 命中在**页专属 id 空间**做 `hybrid.FuseRRF`，再与笔记结果**按类型分列交织**（不跨类型塞进同一次 RRF，破串号）。

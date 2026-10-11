@@ -4,6 +4,8 @@
 - Date: 2026-10-03
 - Relates to: ADR-0002 (in-process plugin runtime), ADR-0007, ADR-0010, TODO M2. (Chinese original: `docs/adr/0011-*.md`.)
 
+> **2026-10-11 anchor audit note**: every code anchor in this record is a pre-decision snapshot as of 2026-10-02 (much changed after the importer framework and sources landed); it stands as a historical record of motivation and is not updated as code drifts.
+
 ## Background
 
 RepoNest already has a clean pipeline: a `plugin.KnowledgeImporter` yields `[]plugin.ImportDoc` → registered via `Runtime.RegisterSource` → `upsertDoc` idempotently upserts notes keyed by (project, source, title). Originally only Claude was implemented. M2 extends it to other agents, whose on-disk formats are undocumented and drift.

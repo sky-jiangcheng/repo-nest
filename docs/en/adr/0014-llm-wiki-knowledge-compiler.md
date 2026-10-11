@@ -4,6 +4,8 @@
 - Date: 2026-10-07
 - Relates to: ADR-0003 (FTS5), ADR-0007 (context / handoff), ADR-0011 (multi-agent memory importers), ADR-0012 (semantic search), ADR-0013 (vector store), ADR-0010 (privacy-off-by-default discipline); TODO **M6**; starting version v1.15.1. (Chinese original: `docs/adr/0014-*.md`.)
 
+> **2026-10-11 anchor audit note**: every code anchor in this record is a pre-decision snapshot as of 2026-10-07 (much changed after M6/W1-W5 landed); it stands as a historical record of motivation and is not updated as code drifts. For current locations, use ADR-0015 / ADR-0018 and the implementation plan's anchors.
+
 ## Context
 
 At v1.15.1 the knowledge layer is a note store with **rich write channels, a very thin structure, only partially fused retrieval, and a passive consumer side**. All four imbalances are evidenced:

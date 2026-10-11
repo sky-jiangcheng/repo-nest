@@ -4,6 +4,8 @@
 - 日期：2026-10-07
 - 关联：[ADR-0003](0003-fts5-search.md)（FTS5）、[ADR-0007](0007-session-memory-protocol.md)（context / handoff）、[ADR-0011](0011-multi-agent-memory-importers.md)（多 agent 记忆导入）、[ADR-0012](0012-semantic-search.md)（语义检索）、[ADR-0013](0013-vector-database-selection.md)（向量存储）、[ADR-0010](0010-session-auto-capture.md)（隐私默认关的纪律）；TODO **M6**；起点版本 v1.15.1
 
+> **2026-10-11 锚点审计注**：本文代码锚点均为 2026-10-07 决策前的现状快照（M6/W1-W5 落地后多处已变），只作历史动机记录、不随代码漂移更新；现行落点以 [ADR-0015](0015-w3-minimal-compile-loop.md)/[ADR-0018](0018-knowledge-graph-foundation.md) 及实施计划的锚点为准。
+
 ## 背景
 
 v1.15.1 的知识层是一个**写入通道丰富、结构很薄、检索局部融合、消费端被动**的笔记库。四个失衡都有明确证据：

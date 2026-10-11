@@ -4,6 +4,8 @@
 - 日期：2026-10-02
 - 关联：[ADR-0002](0002-c-end-repositioning.md)（进程内插件运行时）、[ADR-0007](0007-session-memory-protocol.md)、[ADR-0010](0010-session-auto-capture.md)、TODO 会话记忆路线 M2
 
+> **2026-10-11 锚点审计注**：本文代码锚点为 2026-10-02 决策前的现状快照（importer 框架与各源后续落地后多处已变），只作历史动机记录、不随代码漂移更新。
+
 ## 背景
 
 RepoNest 已有一条干净的「外部记忆 → 知识库笔记」管线：`plugin.KnowledgeImporter` 产出 `[]plugin.ImportDoc`（`ProjectID/Title/Content/Tags/Kind/Source`，见 `internal/core/plugin/plugin.go`），经 `Runtime.RegisterSource`（`internal/core/plugin/runtime/runtime.go`）注册为内置源，导入时由 `TriggerImport → upsertDoc` 以 `(project, source, title)` 幂等 upsert 成笔记（`internal/service/plugin.go:100` 把 Claude 源接进去）。目前只有**一个**具体源：`internal/importers/claude`（读 `~/.claude/projects/*/memory/*.md`）。
