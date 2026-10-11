@@ -18,7 +18,7 @@ flowchart TB
     ENTRY[/"Three entry points<br/>Wails · MCP · headless HTTP"/]
     MAIN["main.go · Wails entry<br/>DB init · scan seeds<br/>security headers"]
     APP["internal/app · bindings<br/>1-3 lines per method"]
-    SVC["internal/service · core<br/>notes / search / context"]
+    SVC["internal/service · core<br/>notes / search / context<br/>wiki compile · lint · graph evidence"]
     DB["internal/db<br/>SQLite"]
     GIT["internal/core/git<br/>Git Provider · CLI"]
     ENTRY --> MAIN --> APP --> SVC
@@ -28,9 +28,9 @@ flowchart TB
 
 How to read it: the arrows show call direction, and the layers **thin out** as you go down — `main.go` only does startup initialization, `internal/app` is pure delegation at 1-3 lines per method, and all logic converges in `internal/service`. Below that it splits into two data outlets: writes go to `internal/db`, git reads go through the Provider abstraction in `internal/core/git` (the local implementation is the CLI; swapping it never affects the layers above). The `Three entry points` node at the top is one entry seen from three sides — Wails desktop, MCP, and headless HTTP, none of them a special case (see below).
 
-**All three entry points — the Wails desktop app, MCP (`cmd/mcp`), and headless HTTP (`cmd/server`) — share the same service implementation**, so behavior is always consistent and every new feature is implemented only once. Two exceptions talk to db directly: `internal/core/plugin/runtime` (the upsert pipeline for plugin knowledge imports) and `internal/importers/claude` (Claude memory reads) — both are pre-existing conventions outside the service.
+**All three entry points — the Wails desktop app, MCP (`cmd/mcp`), and headless HTTP (`cmd/server`) — share the same service implementation**, so behavior is always consistent and every new feature is implemented only once. Two exceptions talk to db directly: `internal/core/plugin/runtime` (the upsert pipeline for plugin knowledge imports) and `internal/importers` (reads from the 6 built-in agent memory sources: claude / codex / opencode / openclaw / cursor / hermes) — both are pre-existing conventions outside the service.
 
-Supporting packages: `internal/domain` (cross-layer row types), `internal/version` (version SSOT), `internal/diff` (line-level note diffs), `internal/stats` (git log parsing), `internal/knowledge` (repository knowledge mining), `internal/scanner` + `internal/grouper` (scanning and grouping), `internal/platform` (OS differences), `internal/core/plugin` (plugin SPI + yaegi runtime), `internal/integrity` (data trustworthiness audit: 6 read-only checks including FTS drift, orphan rows, and cache freshness), `internal/httpapi` (headless HTTP JSON API, the HTTP shell over the service), `internal/importers/claude` (idempotent Claude memory imports).
+Supporting packages: `internal/domain` (cross-layer row types), `internal/version` (version SSOT), `internal/diff` (line-level note diffs), `internal/stats` (git log parsing), `internal/knowledge` (repository knowledge mining), `internal/scanner` + `internal/grouper` (scanning and grouping), `internal/platform` (OS differences), `internal/core/plugin` (plugin SPI + yaegi runtime), `internal/integrity` (data trustworthiness audit: 6 read-only checks including FTS drift, orphan rows, and cache freshness), `internal/httpapi` (headless HTTP JSON API, the HTTP shell over the service), `internal/importers` (the 6-source agent memory import framework: claude / codex / opencode / openclaw / cursor / hermes), `internal/graph` (one-hop graph walks and personalised PageRank over the knowledge graph).
 
 ## Key data flows
 
@@ -71,16 +71,32 @@ flowchart TB
 
 How to read it: **one write, two read paths**. When a note is persisted, triggers maintain the FTS index (the retrieval side) and the version snapshot (the history side) at the same time — the application layer has zero maintenance code, so the index cannot drift out of sync with the content unless the triggers are broken (which is exactly what `reponest_integrity` checks, see [AI integration](features/ai-integration.md#readiness-vs-data-trust)). The retrieval side reads the trigram index for relevance and snippets; the history side reads snapshots to compute the LCS diff. Details in [ADR-0003](adr/0003-fts5-search.md).
 
+### Knowledge graph (wiki, M6/M7)
+
+```mermaid
+flowchart TB
+    W["Write: ingest compile / manual page creation<br/>wiki_pages + page_links"] --> PEND["Pending<br/>LLM output invisible until approved"]
+    PEND -->|human approves| APR["Approved pages<br/>[[wikilink]] parsed on approval → mentions edges"]
+    APR --> EV["Evidence reads the graph<br/>full-text hits seed a one-hop walk, PPR sets the order"]
+    LINT["lintRelationShape<br/>read-only checks · output goes to todos"] -.->|read-only| APR
+        classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+        classDef read fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    class PEND,APR store
+    class EV read
+```
+
+How to read it: **the compiler only creates, and never edits an approved page** (the ADR-0015 red line); pages and edges always start as pending and enter the retrieval surface only once a human approves them. `page_links.relation` is a controlled 8-value vocabulary (since v21 the DDL carries a `CHECK` derived from the Go vocabulary), and unknown values fold to `ref` instead of erroring. During Q&A evidence the page arm walks one hop along `ref` / `part-of` / `documents` and ranks candidates with personalised PageRank (on by default since 2026-10-10; `wiki_graph_search=0` turns it off). Details in [ADR-0018](adr/0018-knowledge-graph-foundation.md) and [Knowledge Base and Notes](features/knowledge.md).
+
 ### Plugin runtime (ADR-0002)
 
-yaegi interprets `<config>/reponest/plugins/*/plugin.go`; event bus + knowledge source registry; the built-in `claude` importer and script plugins share the same upsert path.
+yaegi interprets `<config>/reponest/plugins/*/plugin.go`; event bus + knowledge-source registry; the 6 built-in importers (claude / codex / opencode / openclaw / cursor / hermes) and script plugins share the same upsert path.
 
 ## Frontend (web/src)
 
 ```
 api/        types + transport (Wails window.go / HTTP dual mode) + endpoints (one function per backend method)
 hooks/      useApiData (TTL cache + dedup) / useDebouncedCallback / useScanPolling / useConfirmClick
-pages/      Knowledge (home) / Dashboard / ProjectDetail / Settings; large pages are split into per-domain subcomponents
+pages/      Knowledge (home) / Dashboard / Review / ProjectDetail / Settings; large pages are split into per-domain subcomponents
 components/ ProjectCard / Heatmap / TrendChart / notes/NoteEditor / notes/VersionHistoryPanel…
 locales/    zh-CN + en (lazy-loaded via i18next)
 styles/     design system: tokens / reset / components / layouts / features
@@ -90,7 +106,7 @@ No global state library: page-level `useState` + hooks; theming via `data-theme`
 
 ## Database (internal/db)
 
-Single-file SQLite (WAL + foreign keys), 12 versioned migrations applied automatically; tables: `projects` / `repositories` / `daily_stats` / `project_notes`(+FTS) / `project_todos`(+FTS) / `note_versions` / `repo_meta` / `app_config` / `scan_roots`. Queries are split into files by domain (projects.go / notes.go / …); transactional operations such as split down / merge up (`SplitProjectDown` / `MergeProjectUp`) are covered by unit tests.
+Single-file SQLite (WAL + foreign keys), 21 versioned migrations applied automatically (current schema v21); tables: `projects` / `repositories` / `daily_stats` / `project_notes`(+FTS) / `project_todos`(+FTS) / `note_versions` / `repo_meta` / `app_config` / `scan_roots`, plus the three wiki tables `wiki_pages` / `page_links` / `compile_jobs` created idempotently by `EnsureWikiSchema` (outside the versioned migrations). Queries are split into files by domain (projects.go / notes.go / …); transactional operations such as split down / merge up (`SplitProjectDown` / `MergeProjectUp`) are covered by unit tests.
 
 ## Build and artifacts
 

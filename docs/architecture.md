@@ -18,7 +18,7 @@ flowchart TB
     ENTRY[/"三端入口<br/>Wails · MCP · headless HTTP"/]
     MAIN["main.go · Wails 入口<br/>建库 · 播种扫描根<br/>窗口与安全头"]
     APP["internal/app · 绑定层<br/>每方法 1-3 行委托"]
-    SVC["internal/service · 业务核心<br/>笔记 / 搜索 / 上下文 / 交接"]
+    SVC["internal/service · 业务核心<br/>笔记 / 搜索 / 上下文 / 交接<br/>wiki 编译 · lint · 图取证"]
     DB["internal/db<br/>SQLite"]
     GIT["internal/core/git<br/>Git Provider · CLI 实现"]
     ENTRY --> MAIN --> APP --> SVC
@@ -28,9 +28,9 @@ flowchart TB
 
 读图：箭头是调用方向，自上而下**逐层变薄**——`main.go` 只做启动期初始化，`internal/app` 每个方法 1-3 行纯委托，逻辑全部收敛到 `internal/service`；再往下分成两条数据出口，写库走 `internal/db`，读 git 走 `internal/core/git` 的 Provider 抽象（本地实现是 CLI，换成别的实现不影响上层）。最上方的 `三端入口` 是同一个入口的三个面——Wails 桌面、MCP、headless HTTP，谁都不是特例，见下段。
 
-**Wails 桌面、MCP（cmd/mcp）与 headless HTTP（cmd/server）三种入口共享同一 service 实现**——行为永远一致，新功能只需实现一次。两个例外直连 db：`internal/core/plugin/runtime`（插件知识导入的 upsert 管线）与 `internal/importers/claude`（Claude 记忆读取），均为 service 之外的既有约定。
+**Wails 桌面、MCP（cmd/mcp）与 headless HTTP（cmd/server）三种入口共享同一 service 实现**——行为永远一致，新功能只需实现一次。两个例外直连 db：`internal/core/plugin/runtime`（插件知识导入的 upsert 管线）与 `internal/importers`（6 个内置 agent 记忆源的读取：claude / codex / opencode / openclaw / cursor / hermes），均为 service 之外的既有约定。
 
-支撑包：`internal/domain`（跨层行类型）、`internal/version`（版本 SSOT）、`internal/diff`（笔记行级 diff）、`internal/stats`（git log 解析）、`internal/knowledge`（仓库知识挖掘）、`internal/scanner` + `internal/grouper`（扫描与分组）、`internal/platform`（OS 差异）、`internal/core/plugin`（插件 SPI + yaegi 运行时）、`internal/integrity`（数据可信度审计：FTS 漂移/孤儿行/缓存新鲜度等 6 项只读检查）、`internal/httpapi`（headless HTTP JSON API，service 的 HTTP 壳）、`internal/importers/claude`（Claude 记忆幂等导入）。
+支撑包：`internal/domain`（跨层行类型）、`internal/version`（版本 SSOT）、`internal/diff`（笔记行级 diff）、`internal/stats`（git log 解析）、`internal/knowledge`（仓库知识挖掘）、`internal/scanner` + `internal/grouper`（扫描与分组）、`internal/platform`（OS 差异）、`internal/core/plugin`（插件 SPI + yaegi 运行时）、`internal/integrity`（数据可信度审计：FTS 漂移/孤儿行/缓存新鲜度等 6 项只读检查）、`internal/httpapi`（headless HTTP JSON API，service 的 HTTP 壳）、`internal/importers`（6 源 agent 记忆导入框架：claude / codex / opencode / openclaw / cursor / hermes）、`internal/graph`（知识图上的一步走查与个性化 PageRank）。
 
 ## 关键数据流
 
@@ -71,16 +71,32 @@ flowchart TB
 
 读图：**写一次，读两路**。笔记落库时由触发器同时维护 FTS 索引（检索侧）与版本快照（历史侧），应用层零维护代码——索引不可能与正文失配，除非触发器被破坏（这正是 `reponest_integrity` 的检查项，见[AI 集成](features/ai-integration.md#就绪度-vs-数据可信度)）。检索侧读 trigram 索引拿相关性与 snippet，历史侧读快照算 LCS diff。细节见 [ADR-0003](adr/0003-fts5-search.md)。
 
+### 知识图谱（wiki，M6/M7）
+
+```mermaid
+flowchart TB
+    W["写：摄入编译 / 人工建页<br/>wiki_pages + page_links"] --> PEND["待审核<br/>LLM 产出批准前不可见"]
+    PEND -->|人批准| APR["已批准页<br/>批准时解析 [[wikilink]] → mentions 边"]
+    APR --> EV["取证读图<br/>全文命中当种子走一跳 + PPR 定序"]
+    LINT["lintRelationShape<br/>只读检查 · 产出进待办"] -.->|只读| APR
+        classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+        classDef read fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    class PEND,APR store
+    class EV read
+```
+
+读图：**编译器只新建、永不改批准页**（ADR-0015 红线）；页与边一律先待审核，人批准才进检索面。`page_links` 的关系是八值受控词表（v21 起 DDL 带 `CHECK`，从 Go 词表现生），未知值折叠到 `ref` 而非报错。问答取证时页面一臂沿 `ref` / `part-of` / `documents` 走一跳扩召回、个性化 PageRank 定序（2026-10-10 起默认开，`wiki_graph_search=0` 关闭）。细节见 [ADR-0018](adr/0018-knowledge-graph-foundation.md) 与[知识库与笔记](features/knowledge.md)。
+
 ### 插件运行时（ADR-0002）
 
-yaegi 解释 `<config>/reponest/plugins/*/plugin.go`；事件总线 + 知识源注册表；内置 `claude` 导入器与脚本插件同一 upsert 路径。
+yaegi 解释 `<config>/reponest/plugins/*/plugin.go`；事件总线 + 知识源注册表；内置 6 源导入器（claude / codex / opencode / openclaw / cursor / hermes）与脚本插件同一 upsert 路径。
 
 ## 前端（web/src）
 
 ```
 api/        types + transport（Wails window.go / HTTP 双模）+ endpoints（每后端方法一个函数）
 hooks/      useApiData（TTL 缓存+去重）/ useDebouncedCallback / useScanPolling / useConfirmClick
-pages/      Knowledge（首页）/ Dashboard / ProjectDetail / Settings，大页面按域拆子组件
+pages/      Knowledge（首页）/ Dashboard / Review / ProjectDetail / Settings，大页面按域拆子组件
 components/ ProjectCard / Heatmap / TrendChart / notes/NoteEditor / notes/VersionHistoryPanel…
 locales/    zh-CN + en（i18next 懒加载）
 styles/     设计系统：tokens / reset / components / layouts / features
@@ -90,7 +106,7 @@ styles/     设计系统：tokens / reset / components / layouts / features
 
 ## 数据库（internal/db）
 
-单文件 SQLite（WAL + 外键），12 个版本化迁移自动执行；表：`projects` / `repositories` / `daily_stats` / `project_notes`(+FTS) / `project_todos`(+FTS) / `note_versions` / `repo_meta` / `app_config` / `scan_roots`。查询按域拆分文件（projects.go / notes.go / …）；升降级等事务操作（`SplitProjectDown` / `MergeProjectUp`）有单测覆盖。
+单文件 SQLite（WAL + 外键），21 个版本化迁移自动执行（当前 schema v21）；表：`projects` / `repositories` / `daily_stats` / `project_notes`(+FTS) / `project_todos`(+FTS) / `note_versions` / `repo_meta` / `app_config` / `scan_roots`，另有 wiki 三表 `wiki_pages` / `page_links` / `compile_jobs` 由 `EnsureWikiSchema` 幂等建表（不走版本化迁移）。查询按域拆分文件（projects.go / notes.go / …）；升降级等事务操作（`SplitProjectDown` / `MergeProjectUp`）有单测覆盖。
 
 ## 构建与产物
 
