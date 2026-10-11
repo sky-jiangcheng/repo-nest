@@ -1,6 +1,6 @@
 # ADR-0018: 知识图谱底座——受控关系词表让图可查，图感知取证让图被读
 
-- 状态：Proposed（**lane 1 代码与契约测试已落地**：schema v21 关系词表（CHECK 由 `wikiRelations` 派生，Go/DDL 单一事实源）+ 编译器选词 + approve 抽取 `mentions` + `lintRelationShape` 三查，`go test ./internal/db ./internal/service ./internal/integrity` 全绿。**唯一未勾的晋升条件是 lane 1 条件 1「真库副本演练 + 旧边只读导出」**——它要在你的实际 `dashboard.db` 副本上跑，agent 不代跑，故 lane 1 暂不晋升为 Accepted。（`cmd/wiki-rehearse` 已把该演练做成一键只读工具：`mode=ro` 打开源库 → `VACUUM INTO` 一次性副本 → 在副本上跑真实 `InitDB`(含 v21) → 校验不丢边/归一正确 → 退出码判定；由你亲自跑。）lane 2（页面向量 + 图感知取证，schema v22）前置 = lane 1 Accepted + Phase 0 delta 达标，尚未整体开工；其中**图感知取证机制（一跳扩召回 + PPR 定序，零 schema 改动）已按 `wiki_graph_search` 默认关落地**——关时行为与从前逐字一致，开时的收益仍待 Phase 0 `abeval` 度量背书才算兑现，故 lane 2 不据此晋升）
+- 状态：Proposed（**lane 1 代码与契约测试已落地**：schema v21 关系词表（CHECK 由 `wikiRelations` 派生，Go/DDL 单一事实源）+ 编译器选词 + approve 抽取 `mentions` + `lintRelationShape` 三查，`go test ./internal/db ./internal/service ./internal/integrity` 全绿。**唯一未勾的晋升条件是 lane 1 条件 1「真库副本演练 + 旧边只读导出」**——它要在你的实际 `dashboard.db` 副本上跑，agent 不代跑，故 lane 1 暂不晋升为 Accepted。（`cmd/wiki-rehearse` 已把该演练做成一键只读工具：`mode=ro` 打开源库 → `VACUUM INTO` 一次性副本 → 在副本上跑真实 `InitDB`(含 v21) → 校验不丢边/归一正确 → 退出码判定；由你亲自跑。）lane 2（页面向量 + 图感知取证，schema v22）前置 = lane 1 Accepted + Phase 0 delta 达标，尚未整体开工；其中**图感知取证机制（一跳扩召回 + PPR 定序，零 schema 改动）已落地，并于 2026-10-10 获度量背书后随用户裁决翻为默认开**——`abeval -pages` 实测 recall@5 +0.037 / ndcg@5 +0.011、零召回回退（9 条页标注、模拟语料），谓词 `!= "0"`（显式 `0` 才关）、新库种子显式写 `"1"`。走查半片零 schema 改动、零外发，随默认开进入发布；**v22 页向量半片暂冻结**，待真实库更大标注集复测再议——lane 2 作为整体（含页向量）仍不据此晋升，维持 Proposed）
 - 日期：2026-10-09
 - 关联：[ADR-0014](0014-llm-wiki-knowledge-compiler.md)（本文兑现其"先补结构"承诺的下半段——结构有了但要能查询；并兑现其决策 5 lint"数据缺口"一查的具体形状、并收口其待决"语义融合是否扩到 wiki_pages"）、[ADR-0015](0015-w3-minimal-compile-loop.md)（本文不违反其"编译器永不修改已批准页"——新增只发生在边/待审面）、[ADR-0016](0016-async-batch-jobs.md)（lane 2 若慢，复用一表两内核）、[ADR-0012](0012-semantic-search.md)（RRF 语义融合）、[ADR-0013](0013-vector-database-selection.md)（零 CGO 向量存储）、[ADR-0010](0010-session-auto-capture.md)（敏感能力默认关的纪律）；TODO **M6** 的收口 + 新增 **M7**；起点 schema v20
 - 配套实施计划：`RepoNest-知识图谱实施计划-2026-10-09.md`（本 ADR = 其 Phase 1 + Phase 2；Phase 3 实体消歧、Phase 4 社区摘要与时态图各自单开 ADR-0019/0020/0021）
@@ -49,6 +49,8 @@ ADR-0014 的第一条决策是"先补结构，再让 LLM 写"，理由是"没有
 - **融合**：notes 侧沿用 `SearchNotes`→语义 RRF；页面向量命中与页 FTS 命中在**页专属 id 空间**做 `hybrid.FuseRRF`，再与笔记结果**按类型分列交织**（不跨类型塞进同一次 RRF，破串号）。
 - **门控** `wiki_graph_search`（新布尔键，默认关）：关时 `evidencePages` 走现有 FTS 顺序，**零行为回退风险**；开时邻居与 PPR 生效。
 
+> **2026-10-10 翻转（附度量依据，随用户裁决）**：`wiki_graph_search` 由默认关翻为**默认开**。依据是同一份标注 query 集上的实测（recall@5 +0.037 / ndcg@5 +0.011、无任何查询召回变差），且这个键的 blast radius 与 `semantic_search` / `auto_import` 相反——走查只读本库 approved 页、零网络请求，失败只记日志并退回走查前顺序。实现：谓词 `== "1"` → `!= "0"`（显式 `0` 是唯一关法，缺行即开）；`insertDefaults` 显式种子 `"1"`（缺行与 `"1"` 等价，与 `auto_import` 的「缺行=关」刻意相反）；`abeval` 页臂默认门由 0.05 下调至 0.03（笔记臂有端点外发成本维持 0.05）；设置页「AI」tab 提供开关。上文「关时行为与从前逐字一致」的回归契约原句保留、测试一字未改——它现在守护的是显式 `0` 的那条路。**v22 页向量半片不在本次翻转范围内**，维持暂缓（见状态行）。
+
 **Lane 2 明确不做**：外部图库（Neo4j/Memgraph/KuzuDB）、RDF/OWL/SPARQL、GNN——全部违背 local-first + 单 SQLite + 零 CGO（ADR-0014 决策 2、ADR-0017）。纯 SQL 递归 + Go 侧 PPR 在几万页以内足够；真要上外部图库，已有 `vectordb` 那套"可插拔 + 不可达退回 local"的接缝可套用，属另立 ADR 的决策。
 
 ### 前置（阻塞 lane 2 度量，不阻塞 lane 1 编码）
@@ -60,7 +62,7 @@ Phase 0——真实标注 query 集 + `abeval` delta（`cmd/queryset`/`cmd/abeva
 | 方案 | 与现状距离 | 价值 | 主要风险 |
 |---|---|---|---|
 | 只做 lane 1（词表+wikilink+lint），不动取证 | 最近，一个 v21 | 图立刻可查询、lint 有结构判据、零外发新面 | 边仍不参与回答，Obsidian 图与 AskAI 各看各的 |
-| **本决策：lane 1 结构 + lane 2 消费，均默认关** | 中 | 图既能查又能在回答时被读；补上 ADR-0014 收口项 | lane 2 三层同动非单 sprint；PPR 可能引入低质邻居 |
+| **本决策：lane 1 结构 + lane 2 消费**（门控原定均默认关；lane 2 走查门 2026-10-10 随实测翻默认开，见决策 7 注） | 中 | 图既能查又能在回答时被读；补上 ADR-0014 收口项 | lane 2 三层同动非单 sprint；PPR 可能引入低质邻居 |
 | 跳 lane 1 直接给页做向量 | 看似省一步 | 快 | relation 仍是野字符串，PPR 沿什么边扩散都说不清，白名单无从定义；串号风险裸奔 |
 | 照抄 GraphRAG 上 Neo4j | 远 | 团队共享、成熟算法 | 破 local-first/单库/零 CGO；几百页规模用不上；隐私面陡增 |
 | 顺手做社区摘要（Phase 4） | 中 | 填 synthesis 空层 | 触及 `compile_jobs.kind` 的 CHECK 加值 = 整表重建；应单独排期与 ADR |
@@ -96,7 +98,7 @@ Phase 0——真实标注 query 集 + `abeval` delta（`cmd/queryset`/`cmd/abeva
 5. 词表定稿 + 双语文档（`docs/features/knowledge.md` 中英"边类型"节）+ 本 ADR 状态行更新。
 
 **Lane 2（→ lane 2 Accepted，前置 = lane 1 已 Accepted）**：
-6. **Phase 0 的 `queries.jsonl` 上，evidence+graph 相对 evidence 的 Recall@k/NDCG@k delta 为正且过 `abeval` 门**——机制正确不等于收益真实，这一条不过关 lane 2 不得 Accept；
+6. **Phase 0 的 `queries.jsonl` 上，evidence+graph 相对 evidence 的 Recall@k/NDCG@k delta 为正且过 `abeval` 门**——机制正确不等于收益真实，这一条不过关 lane 2 不得 Accept。→ **走查半片已满足（2026-10-10）**：k=5 delta +0.037 / +0.011，过下调后的页臂门（0.03）；诚实边界：模拟语料 + 仅 9 条页标注（一条 query 撬动 0.11 recall），真实库复测留在更大标注集上。页向量半片（v22）冻结，lane 2 整体晋升仍待其证据；
 7. 页向量独立空间：`page#N` 与 `note#N` 同时存在时 RRF 不串号（构造专项回归）；`wiki_graph_search` 关时 `evidencePages` 结果与今天**逐条一致**（零行为回退）；
 8. PPR 纯函数单测（收敛、边权、reset 投影）+ 递归 CTE 环/深度上界测试；`vectorStore()` memo 在配置变更后对页面路径同样失效（防用旧端点）；
 9. 三重预算仍兜得住邻居扩召回（deadline 触发即停在已收集集合，不超发）。
