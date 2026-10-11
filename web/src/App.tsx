@@ -231,7 +231,7 @@ function App() {
       <ToastContext.Provider value={pushToast}>
         <div className="app">
           {connBanner && (
-            <div className="conn-banner" role="alert" aria-live="polite">{connBanner}</div>
+            <div className={s.connBanner} role="alert" aria-live="polite">{connBanner}</div>
           )}
           <a className={s.skipLink} href="#main-content" onClick={skipToContent}>{t('common.show', { defaultValue: 'Skip to main content' })}</a>
           <NavBar onOpenPalette={() => setPaletteOpen(true)} />

@@ -12,6 +12,7 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest'
 import { render, cleanup, screen, waitFor } from '@testing-library/react'
 import type { ReactElement } from 'react'
+import styles from './App.module.css'
 
 /** Record of every Wails binding method invoked during a test. */
 const wailsCalls: string[] = []
@@ -113,6 +114,8 @@ describe('App desktop shell', () => {
     await waitFor(() => expect(wailsCalls).toContain('ListAllNotes'), { timeout: LAZY_CHUNK_TIMEOUT })
     const body = document.body.textContent ?? ''
     expect(body).not.toMatch(/did not match the expected pattern/)
-    expect(document.querySelector('.conn-banner')).toBeNull()
+    // .connBanner lives in App.module.css since the 2026-10-11 P35 migration;
+    // query the hashed class so a stripped rule still fails this assertion.
+    expect(document.querySelector(`.${styles.connBanner}`)).toBeNull()
   }, LAZY_CHUNK_TIMEOUT)
 })

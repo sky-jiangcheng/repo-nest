@@ -1,8 +1,23 @@
-/* App 外壳（导航栏容器、主内容区、跳转链接）— 组件独占样式。
-   边界判据：skip-link / main-content 全站只被 App.tsx 引用（main-content 另有一个
-   id 同名，那是 #main-content 锚点，不属样式）。main-content 的 768px 媒体查询一并
-   随之下沉。navbar.css 里的 nav-* / lang-* 仍留全局，下一轮再处理。
+/* App 外壳（导航栏容器、主内容区、跳转链接、连接横幅）— 组件独占样式。
+   边界判据：skip-link / main-content / conn-banner 全站只被 App.tsx 引用
+   （main-content 另有一个 id 同名，那是 #main-content 锚点，不属样式）。
+   main-content 的 768px 媒体查询一并随之下沉。navbar.css 已于 P35 第七轮
+   整文件并入本文件（nav-* / lang-* 全部在 App.tsx 内独占）。
 */
+
+/* 连接横幅：从 styles/index.css 迁入（2026-10-11）。后端连接断开时 App.tsx
+   渲染的唯一全局遗留组件类——迁入后全局样式表不再含任何组件独占规则，
+   P35「全局只剩 reset / tokens / 跨组件共享」的边界判据就此闭合。 */
+.connBanner {
+  background: var(--danger-soft);
+  color: var(--danger);
+  text-align: center;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-default);
+}
+
 .skipLink {
   position: absolute;
   left: 8px;

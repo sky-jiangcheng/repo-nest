@@ -19,14 +19,3 @@
 @import './design-system/features/settings.css';
 @import './design-system/features/fab.css';
 
-/* Connection banner */
-.conn-banner {
-  background: var(--danger-soft);
-  color: var(--danger);
-  text-align: center;
-  padding: 6px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  border-bottom: 1px solid var(--border-default);
-}
-
