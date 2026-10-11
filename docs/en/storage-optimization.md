@@ -22,7 +22,7 @@ This page targets two audiences:
 | 4 | **Secondary indexes** | `idx_projects_starred / collected / collected_at` speed up star filtering; `idx_note_versions(note_id, created_at DESC)` supports version history lookups |
 | 5 | **Materialized statistics (core)** | `daily_stats` **pre-aggregates** raw `git log` commits by `(repository_id, stat_date, author)` (idempotent via `ON CONFLICT DO UPDATE`). Heatmap / summary read straight from this table with a `GROUP BY` and **never re-run `git log`** |
 | 6 | **Mining result cache** | `repo_meta` uses `ON CONFLICT DO UPDATE` + `updated_at` for invalidation and re-mines incrementally, avoiding repeated filesystem scans |
-| 7 | **Engineering-level tuning** | SQLite WAL + single-connection tuning, so concurrent reads and writes don't block; 12 versioned migrations applied automatically; migrations are immutable and append-only |
+| 7 | **Engineering-level tuning** | SQLite WAL + single-connection tuning, so concurrent reads and writes don't block; 21 versioned migrations applied automatically; migrations are immutable and append-only |
 
 > Item 5 is the fundamental source of the "AI value": raw git information (commit history, file paths, file contents) is **volatile and expensive** — every direct `git log` or file-by-file read is a one-off, throwaway consumption. RepoNest parses everything **once at scan time**; after that, queries never touch the `git` command.
 

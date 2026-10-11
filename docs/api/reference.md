@@ -52,6 +52,7 @@ RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 | `GetProjects` | `(date string, starredOnly bool) → ProjectResponse[]` | 项目列表（默认昨天；今/昨无数据时按需触发单日刷新） |
 | `GetProjectDetail` | `(id) → ProjectDetail` | 项目 + 仓库列表及各自历史统计 |
 | `GetProjectStats` | `(id, date) → DailyStat[]` | 某日（默认昨天）项目统计 |
+| `GetRepoCommits` / `GetProjectCommits` | `(repoID / projectID, limit) → RecentCommit[]` | 仓库 / 项目最近提交 |
 | `GetProjectOverview` | `(id) → ProjectOverview` | 知识挖掘：README/技术栈/语言/依赖/贡献者/活跃度/最近提交（缓存于 repo_meta，未命中异步挖掘） |
 | `SearchProjects` | `(query) → ProjectResponse[]` | 名称/路径模糊搜索（含昨日统计增强） |
 | `ToggleStar` | `(id) → bool` | 切换收藏，返回新状态（原子 UPDATE） |
@@ -100,7 +101,7 @@ RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 | `ListNotes(projectID)` / `ListAllNotes()` / `ListAllTags()` | 项目笔记 / 全局笔记（含项目名）/ 全部标签 |
 | `CreateNote(projectID, content)` | 创建（默认 kind=other, source=manual） |
 | `CreateNoteWithMeta(projectID, title, content, tags, kind, source)` | 带元数据创建 |
-| `UpdateNote(noteID, content)` / `UpdateNoteMeta(noteID, title, tags, kind, pinned)` | 更新内容 / 元数据 |
+| `UpdateNote(noteID, content)` / `UpdateNoteFull(noteID, content, title, tags, kind, pinned)` | 更新内容 / 内容与全部元数据一把更新 |
 | `PinNote(noteID, pinned)` / `MoveNote(noteID, projectID)` / `DeleteNote(noteID)` | 置顶 / 迁移 / 删除 |
 | `ListNoteVersions(noteID)` | 版本列表（最近 50） |
 | `RestoreNoteVersion(noteID, versionID)` | 恢复到历史版本 |
@@ -117,7 +118,7 @@ RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 | 方法 | 说明 |
 |------|------|
 | `GetConfig()` | `{config: map, scan_roots: []}` |
-| `UpdateConfig(key, value)` | 允许键：`daily_code_standard` / `scan_depth` / `git_author` / `auto_import`（数值键校验数字） |
+| `UpdateConfig(key, value)` | 允许键共 22 个——核心：`daily_code_standard` / `scan_depth` / `git_author` / `auto_import` / `claude_session_capture` / `openclaw_project` / `hermes_project`；语义检索与向量库：`semantic_search` / `embedding_base_url` / `embedding_model` / `embedding_api_key` / `embedding_dim` / `vector_store` / `vector_store_url` / `vector_store_api_key` / `vector_store_collection`；AI 与知识图谱：`ai_chat_base_url` / `ai_chat_model` / `ai_chat_api_key` / `wiki_compile` / `wiki_lint_llm` / `wiki_graph_search`（非 string 键校验数值；密钥键在 `GetConfig` 回掩码。逐键默认值与「开了会把什么发出去」见 [AI 集成](features/ai-integration.md)配置表） |
 | `UpdateScanRoots(roots[])` | 原子替换扫描根列表 |
 
 ## AI 导出与插件
@@ -127,16 +128,37 @@ RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 | `GenerateLLMsTxt()` | 面向 LLM 的知识库总览 Markdown |
 | `ExportNoteAsMarkdown(noteID)` | 带 YAML frontmatter 的笔记 Markdown |
 | `GetPluginStatuses()` / `ReloadPlugins()` | 插件加载状态 / 热重载 |
-| `GetKnowledgeSources()` | 知识源列表（内置 claude + 插件注册） |
+| `GetKnowledgeSources()` | 知识源列表（内置 6 个 agent 记忆源 claude / codex / opencode / openclaw / hermes / cursor + 插件注册） |
 | `TriggerKnowledgeImport(name)` / `TriggerAllKnowledgeImports()` | 触发导入（发出 `import.completed` 前端事件） |
-| `ImportClaudeMemory()` | Claude 记忆一键导入 |
+| `ImportClaudeMemory()` | Claude 记忆一键导入（兼容旧入口；等价于按名触发 `claude` 源） |
 | `Health()` | `{status, version}` |
+
+## AI 与知识图谱（M6/M7）
+
+> 全部是桌面绑定。MCP 刻意**不含** wiki 写面——agent 能自己写待审知识就等于绕过人在环（ADR-0015 决策 6）；`StartAskStream` 同理只进桌面 + SSE，不经 `/api/rpc`。
+
+| 方法 | 说明 |
+|------|------|
+| `AskAI(projectID, question)` / `AskAIWithEvidence(projectID, question)` | 纯聊天 / 带证据问答（两路召回 + `[P#]/[N#]` 引用 + `Truncated` 截断标记） |
+| `StartAskStream(projectID, question)` | 流式问答：先返回 `stream_id`，正文经 `ai.ask.stream` 事件（或浏览器态 `/api/ai/ask-stream` SSE）逐段到达 |
+| `FileAnswerAsPage(projectID, question, answer, evidence, citedRefs)` | 把答案回档为 `query` 页（链到被引页面与笔记；只认当次检索解析得出的引用编号） |
+| `RebuildEmbeddings()` | 全库重算笔记向量（`semantic_search` 之后才跑；日常增量走 `note_embed_dirty` 队列） |
+| `ListAIModels(baseURL, apiKey)` / `TestAIChat(baseURL, model, apiKey)` | 拉取模型列表 / 测试端点（`finish_reason` 透传，截断与格式错不同形） |
+| `CaptureClaudeHandoff(projectID)` / `LatestHandoff(projectID)` | 按需捕捉 Claude 交接 / 最近交接状态（VS Code 状态栏同源） |
+| `ExportMemoryJSON(limit)` | OMP 风格 Memory Object 导出（provisional，只有导出向） |
+| `RunWikiLint(projectID, wantLLM)` | lint 五查；findings 只写 `project_todos`，**没有任何路径能改页面** |
+| `CompileNote(noteID)` / `CompileProjectNotes(projectID, maxNotes)` | 同步编译（产物一律 `status=pending` + 自动挂来源笔记） |
+| `StartCompileJob` / `GetCompileJob` / `ListCompileJobs` / `StartLintJob` / `CancelCompileJob` | 异步编译 / lint job（ADR-0016；结构化三查不进 job） |
+| `ListPendingWikiPages(projectID)` / `ListRejectedWikiPages(projectID)` | 待审 / 不合格页列表（审核 tab 数据源，带来源笔记与出入链） |
+| `ApproveWikiPage(pageID)` / `RejectWikiPage(pageID)` / `DeleteCompiledPage(pageID)` | 批准（同时抽取正文 `[[wikilink]]` 为幂等 `mentions` 边）/ 标记不合格（保留入链，不删行）/ 彻底删除未发布页 |
+| `LayeredProjectContext(projectID, query, includeTranscripts)` | L3 全局画像 → L2 项目场景 → L1 笔记 → L0 逐字稿的分层装配（逐层独立预算） |
 
 ## 事件（Wails → 前端）
 
 | 事件 | 载荷 |
 |------|------|
 | `import.completed` | `{source, created, updated, skipped, error?}` |
+| `ai.ask.stream` | 流式问答分片：`{stream_id, delta}` × N，终帧 `{stream_id, done, reply, evidence, truncated}` 或 `{stream_id, error}` |
 
 ---
 

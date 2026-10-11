@@ -18,7 +18,7 @@ Current priorities:
 2. The dashboard and statistics are supporting capabilities, not the main product story
 3. Plugin/web-only capabilities are no longer expanded by default (the PWA has been removed from the main desktop build; see [ADR-0008](adr/0008-pwa-removal.md))
 
-The frontend landing page is the **knowledge base**, and the navigation order is **Knowledge base → Dashboard → Settings** (see [ADR-0006](adr/0006-scope-freeze.md)).
+The frontend landing page is the **knowledge base**, and the navigation order is **Knowledge base → Dashboard → Review → Settings** (the Review tab came with [ADR-0016](adr/0016-async-batch-jobs.md)).
 
 The core loop:
 
@@ -57,7 +57,7 @@ The "hand it to AI" step happens at **session boundaries**: `reponest_scan` buil
 
 - **Discover**: automatically scans local Git repositories and intelligently groups them (monorepo / single repo)
 - **Understand**: project details automatically surface a README summary, tech stack, dependencies, contributors, and activity
-- **Capture**: Markdown notes (categories / tags / version history), with Claude memory import
+- **Capture**: Markdown notes (categories / tags / version history), with six built-in agent memory importers
 - **Retrieve**: FTS5 full-text search (with a fallback for short CJK queries); hits can be located and explained
 - **AI consumption**: the MCP session memory protocol (`reponest_scan` / `reponest_context` / `reponest_handoff`) plus llms.txt, ready for direct consumption by Claude Code, Cursor, and others
 
@@ -71,7 +71,7 @@ RepoNest's artifacts serve two audiences at once: **you, sitting in the IDE** (w
 flowchart TB
     subgraph HUMAN["👤 Human user — visible in the IDE"]
         direction LR
-        DESKTOP["Desktop App<br/>dashboard · knowledge base"]
+        DESKTOP["Desktop App<br/>knowledge base · dashboard · review"]
         VSCODE["VS Code extension<br/>Cursor · Windsurf"]
         BLOG["Blog / ADRs"]
         DESKTOP ~~~ VSCODE ~~~ BLOG
@@ -123,6 +123,7 @@ This manual covers RepoNest's core features and use cases. The docs are written 
 | Back up data / migrate to a new machine / uninstall | [Data and Backup](data-management.md) |
 | View commits / goals / heatmap | [Dashboard](features/dashboard.md) |
 | Write notes, search notes, recover old versions | [Knowledge Base and Notes](features/knowledge.md) |
+| Review AI-compiled pages and handle lint todos | [Knowledge Base and Notes](features/knowledge.md) — "Wiki Pages and the Review Queue" |
 | See a project's tech stack and dependencies | [Project Detail](features/project-detail.md) |
 | Let Claude / Cursor read and write my knowledge base | [AI Integration](features/ai-integration.md) |
 | Write a plugin or a knowledge source importer | [Plugin Guide](plugins/overview.md) |

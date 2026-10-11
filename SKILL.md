@@ -51,7 +51,7 @@ installation readiness, not whether the data is true.
 
 **Typical scenario**: "What do I know about topic Y?"
 1. `reponest_notes_search({ query: "Y" })` — full-text search across all notes
-2. `reponest_ask({ query: "Y" })` — semantic search with top-5 results
+2. `reponest_ask({ query: "Y" })` — FTS5 search across notes + todos, returned as a formatted top-5 answer
 3. `reponest_notes_read({ id })` — read the most relevant note in detail
 
 ## What RepoNest Does
@@ -60,7 +60,7 @@ installation readiness, not whether the data is true.
 - **Daily activity tracking**: Lines added/deleted, files changed, commit counts per repo (365-day backfill on demand)
 - **Knowledge base**: Cross-project Markdown notes with tags, pins, version history + LCS diff
 - **Full-text search**: SQLite FTS5 trigram + bm25 ranking across notes and todos
-- **Claude memory import**: Idempotent import of `~/.claude/projects/*/memory/*.md`
+- **Agent memory import**: idempotent import from six built-in sources (claude / codex / opencode / openclaw / hermes / cursor)
 - **Repo knowledge mining**: README excerpt, tech stack, languages, dependencies, contributors, activity
 - **AI context export**: `llms.txt` and per-note `.md` export
 
@@ -86,14 +86,14 @@ go build -o /usr/local/bin/reponest-mcp ./cmd/mcp/
 
 ### MCP Tools
 
-> **Usage patterns**: `reponest_ask` is the primary entry point for most queries (returns top-5 ranked results). Use `reponest_notes_search` for precise FTS5 search. For write operations, always read the existing note first to avoid overwriting.
+> **Usage patterns**: `reponest_ask` is the primary entry point for most queries (FTS5 over notes + todos, returned as a formatted top-5 answer). Use `reponest_notes_search` for precise FTS5 hits. For write operations, always read the existing note first to avoid overwriting.
 
 | Tool | Description | Key Parameters | Example |
 |------|-------------|----------------|--------|
 | `reponest_scan` | Discover local Git repos and populate the knowledge base (first run; headless) | none (seeds default scan roots, then scans synchronously) | `{}` |
 | `reponest_context` | Load full project context in one call (session start) | `project_id?`, `project_name?` (fuzzy); none = auto-resolve when only one project | `{ project_name: "auth" }` |
 | `reponest_handoff` | Record a structured session handoff (session end) | `project_id`, `summary`, `changes?`, `decisions?`, `gotchas?`, `next_steps?`, `agent?`, `tags?` | `{ project_id: 1, summary: "...", gotchas: ["..."], next_steps: ["..."] }` |
-| `reponest_ask` | Ask a question, get top-5 ranked results | `query` (string, supports CJK) | `{ query: "数据库迁移方案" }` |
+| `reponest_ask` | Ask a question; FTS5 over notes + todos, returns a formatted top-5 answer | `query` (string, supports CJK) | `{ query: "数据库迁移方案" }` |
 | `reponest_notes_search` | FTS5 full-text search across notes | `query` (string, trigram + bm25) | `{ query: "react hooks" }` |
 | `reponest_notes_read` | Read one note by ID | `id` (number) | `{ id: 42 }` |
 | `reponest_notes_create` | Create a new note | `project_id`, `title`, `content`, `category?`, `tags?` | `{ project_id: 1, title: "API Design", content: "...", category: "knowledge" }` |
@@ -141,6 +141,6 @@ Or in a project-level `.mcp.json` / user-level MCP config (Cursor: Settings → 
 - **Search**: FTS5 trigram + bm25, LIKE fallback for short CJK queries
 - **i18n**: react-i18next, zh-CN + en
 - **Markdown**: Mermaid, KaTeX, callouts, highlight.js
-- **Plugins**: yaegi in-process Go scripts for knowledge source import (see docs/plugins/overview.md)
+- **Plugins**: the six built-in knowledge sources are plain Go implementations (no yaegi); yaegi only runs user-written script plugins (see docs/plugins/overview.md)
 
 Docs: <https://sky-jiangcheng.github.io/repo-nest/> · Repo: <https://github.com/sky-jiangcheng/repo-nest>

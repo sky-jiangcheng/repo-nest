@@ -215,7 +215,7 @@ claude -p --mcp-config .mcp.json \
 
 - **llms.txt**：`GenerateLLMsTxt` 生成知识库总览 Markdown（项目目录 + 技术栈 + 最近 20 条知识笔记），适合喂给 LLM 建立上下文。**llms.txt 是导出格式**（应用内生成，不随仓库分发），不作为独立产品方向扩张（见 ADR-0006）
 - **笔记导出**：任意笔记导出为带 YAML frontmatter 的 `.md`（`ExportNoteAsMarkdown`）
-- **Claude 记忆导入**：`~/.claude/projects/*/memory/*.md` 幂等导入（见[知识库](knowledge.md)）
+- **agent 记忆导入**：内置 6 个源（claude / codex / opencode / openclaw / hermes / cursor）幂等导入，入口在 **设置 → 插件**（见[知识库](knowledge.md)与[插件手册](../plugins/overview.md)）
 
 ## agent-score 自检
 

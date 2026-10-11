@@ -98,11 +98,12 @@ flowchart TB
 | 功能 | 定位 | 说明 |
 |------|------|------|
 | 知识库 | 核心 | 跨项目笔记中心：Markdown、标签、置顶、FTS5 全文搜索、版本历史 |
+| 知识图谱 | 支持 | 知识页面 + 关系边 + 审核队列；问答取证默认读图扩召回（摄入编译默认关，见[知识库与笔记](features/knowledge.md)） |
 | 仓库知识挖掘 | 核心 | 自动提取 README、技术栈、语言占比、依赖、贡献者、活跃度 |
 | 项目理解与检索 | 核心 | 命令面板 `⌘/Ctrl+K`、全局搜索、项目上下文跳转 |
 | AI 集成 | 核心 | llms.txt、笔记导出、MCP server（含 agent-score 自检，见[AI 集成](features/ai-integration.md)） |
 | 仪表盘 | 支持 | 每日目标进度环、项目卡片、趋势折线图、提交热力图 |
-| 插件系统 | 实验 | yaegi 进程内 Go 脚本 + 5 个内置知识源导入（见[知识源导入](plugins/overview.md)） |
+| 插件系统 | 实验 | yaegi 进程内 Go 脚本 + 6 个内置知识源导入（见[知识源导入](plugins/overview.md)） |
 
 各页展开的图：仪表盘的页面分层见[仪表盘](features/dashboard.md#页面结构自上而下)，笔记的保存与版本链路见[知识库](features/knowledge.md)，知识库为何比 AI 直读 git 更划算见[存储结构优化与 AI 价值](storage-optimization.md#二比-ai-直接读-git-仓库的优势)。
 

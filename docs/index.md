@@ -17,7 +17,7 @@ RepoNest 的核心价值是：**让本地 Git 项目从‘散落在终端和记�
 2. 仪表盘与统计是支持能力，不作为产品主叙事
 3. 插件/Web-only 能力不再默认扩展（PWA 已移出桌面主构建，见 [ADR-0008](adr/0008-pwa-removal.md)）
 
-前端默认页为**知识库**，导航顺序为 **知识库 → 仪表盘 → 设置**（见 [ADR-0006](adr/0006-scope-freeze.md)）。
+前端默认页为**知识库**，导航顺序为 **知识库 → 仪表盘 → 审核 → 设置**（审核 tab 见 [ADR-0016](adr/0016-async-batch-jobs.md)）。
 
 核心闭环：
 
@@ -56,7 +56,7 @@ sequenceDiagram
 
 - **发现**：自动扫描本地 Git 仓库并按 Monorepo/单仓库智能分组
 - **理解**：项目详情自动挖掘 README 摘要、技术栈、依赖、贡献者与活跃度
-- **记录**：Markdown 笔记（分类/标签/版本历史），可导入 Claude 记忆
+- **记录**：Markdown 笔记（分类/标签/版本历史），可导入 6 个内置 agent 记忆源
 - **检索**：FTS5 全文搜索（含短 CJK 降级），命中可定位、可解释
 - **AI 使用**：MCP 会话记忆协议（`reponest_scan` / `reponest_context` / `reponest_handoff`）+ llms.txt，供 Claude Code / Cursor 等直接消费
 
@@ -70,7 +70,7 @@ RepoNest 的产物同时服务两类用户：**坐在 IDE 里的你**（需要�
 flowchart TB
     subgraph HUMAN["👤 个人用户 —— 在 IDE 里看见"]
         direction LR
-        DESKTOP["桌面 App<br/>仪表盘 · 知识库"]
+        DESKTOP["桌面 App<br/>知识库 · 仪表盘 · 审核"]
         VSCODE["VS Code 扩展<br/>Cursor · Windsurf"]
         BLOG["博客 / ADR"]
         DESKTOP ~~~ VSCODE ~~~ BLOG
@@ -126,6 +126,7 @@ flowchart TB
 | 备份数据 / 换机迁移 / 卸载 | [数据与备份](data-management.md) |
 | 看提交量 / 目标 / 热力图 | [仪表盘](features/dashboard.md) |
 | 写笔记、搜笔记、找回旧版本 | [知识库与笔记](features/knowledge.md) |
+| 审核 AI 编译产出的页面、处理 lint 待办 | [知识库与笔记](features/knowledge.md)「知识页面与审核队列」 |
 | 看某个项目的技术栈与依赖 | [项目详情](features/project-detail.md) |
 | 让 Claude / Cursor 读写我的知识库 | [AI 集成](features/ai-integration.md) |
 | 写一个插件或知识源导入器 | [插件手册](plugins/overview.md) |

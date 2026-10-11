@@ -213,7 +213,7 @@ Add the same `command` pointing at the `reponest-mcp` binary in the client's MCP
 
 - **llms.txt**: `GenerateLLMsTxt` generates a knowledge base overview in Markdown (project directory + tech stack + the 20 most recent knowledge notes), suitable for feeding an LLM to establish context. **llms.txt is an export format** (generated in-app, not shipped with the repository) and is not being expanded into a standalone product direction (see ADR-0006)
 - **Note export**: any note can be exported as `.md` with YAML frontmatter (`ExportNoteAsMarkdown`)
-- **Claude memory import**: idempotent import from `~/.claude/projects/*/memory/*.md` (see [Knowledge Base](knowledge.md))
+- **Agent memory import**: idempotent import from six built-in sources (claude / codex / opencode / openclaw / hermes / cursor), triggered from **Settings → Plugins** (see [Knowledge Base](knowledge.md) and the [Plugin Guide](../plugins/overview.md))
 
 ## agent-score self-check
 

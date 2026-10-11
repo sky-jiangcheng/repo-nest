@@ -52,6 +52,7 @@ A JSON API for external runtimes such as the DeepSeek Harness dsh-plugin. It sha
 | `GetProjects` | `(date string, starredOnly bool) → ProjectResponse[]` | project list (yesterday by default; triggers an on-demand single-day refresh when neither today nor yesterday has data) |
 | `GetProjectDetail` | `(id) → ProjectDetail` | project + repo list, each with historical stats |
 | `GetProjectStats` | `(id, date) → DailyStat[]` | project stats for a given day (yesterday by default) |
+| `GetRepoCommits` / `GetProjectCommits` | `(repoID / projectID, limit) → RecentCommit[]` | latest commits for a repo / project |
 | `GetProjectOverview` | `(id) → ProjectOverview` | knowledge mining: README / tech stack / languages / dependencies / contributors / activity / recent commits (cached in repo_meta; mined asynchronously on cache miss) |
 | `SearchProjects` | `(query) → ProjectResponse[]` | fuzzy search by name/path (enriched with yesterday's stats) |
 | `ToggleStar` | `(id) → bool` | toggle star, returns the new state (atomic UPDATE) |
@@ -100,7 +101,7 @@ A JSON API for external runtimes such as the DeepSeek Harness dsh-plugin. It sha
 | `ListNotes(projectID)` / `ListAllNotes()` / `ListAllTags()` | project notes / all notes (with project name) / all tags |
 | `CreateNote(projectID, content)` | create (defaults: kind=other, source=manual) |
 | `CreateNoteWithMeta(projectID, title, content, tags, kind, source)` | create with metadata |
-| `UpdateNote(noteID, content)` / `UpdateNoteMeta(noteID, title, tags, kind, pinned)` | update content / metadata |
+| `UpdateNote(noteID, content)` / `UpdateNoteFull(noteID, content, title, tags, kind, pinned)` | update content / content and all metadata in one call |
 | `PinNote(noteID, pinned)` / `MoveNote(noteID, projectID)` / `DeleteNote(noteID)` | pin / move / delete |
 | `ListNoteVersions(noteID)` | version list (latest 50) |
 | `RestoreNoteVersion(noteID, versionID)` | restore to a historical version |
@@ -117,7 +118,7 @@ A successful create emits the plugin event `note.created`.
 | Method | Description |
 |------|------|
 | `GetConfig()` | `{config: map, scan_roots: []}` |
-| `UpdateConfig(key, value)` | allowed keys: `daily_code_standard` / `scan_depth` / `git_author` / `auto_import` (numeric keys are validated as numbers) |
+| `UpdateConfig(key, value)` | 22 allowed keys — core: `daily_code_standard` / `scan_depth` / `git_author` / `auto_import` / `claude_session_capture` / `openclaw_project` / `hermes_project`; semantic search & vector store: `semantic_search` / `embedding_base_url` / `embedding_model` / `embedding_api_key` / `embedding_dim` / `vector_store` / `vector_store_url` / `vector_store_api_key` / `vector_store_collection`; AI & knowledge graph: `ai_chat_base_url` / `ai_chat_model` / `ai_chat_api_key` / `wiki_compile` / `wiki_lint_llm` / `wiki_graph_search` (non-string keys are validated as numbers; secret keys come back masked from `GetConfig`. Per-key defaults and "what turning this on sends out" live in the [AI Integration](features/ai-integration.md) config table) |
 | `UpdateScanRoots(roots[])` | atomically replace the scan root list |
 
 ## AI export and plugins
@@ -127,16 +128,37 @@ A successful create emits the plugin event `note.created`.
 | `GenerateLLMsTxt()` | LLM-oriented Markdown overview of the knowledge base |
 | `ExportNoteAsMarkdown(noteID)` | note Markdown with YAML frontmatter |
 | `GetPluginStatuses()` / `ReloadPlugins()` | plugin load status / hot reload |
-| `GetKnowledgeSources()` | knowledge source list (built-in claude + plugin-registered) |
+| `GetKnowledgeSources()` | knowledge source list (six built-in agent memory sources claude / codex / opencode / openclaw / hermes / cursor + plugin-registered) |
 | `TriggerKnowledgeImport(name)` / `TriggerAllKnowledgeImports()` | trigger imports (emits the `import.completed` frontend event) |
-| `ImportClaudeMemory()` | one-click Claude memory import |
+| `ImportClaudeMemory()` | one-click Claude memory import (legacy entry point; identical to triggering the `claude` source by name) |
 | `Health()` | `{status, version}` |
+
+## AI and knowledge graph (M6/M7)
+
+> All are desktop bindings. MCP deliberately excludes the wiki write surface — an agent that can write pending knowledge itself would bypass the human in the loop (ADR-0015 decision 6); `StartAskStream` likewise lives only on the desktop + SSE and never crosses `/api/rpc`.
+
+| Method | Description |
+|------|------|
+| `AskAI(projectID, question)` / `AskAIWithEvidence(projectID, question)` | plain chat / evidence-backed Q&A (two-arm recall + `[P#]/[N#]` citations + `Truncated` marker) |
+| `StartAskStream(projectID, question)` | streaming Q&A: returns a `stream_id` first, then the answer arrives progressively via `ai.ask.stream` events (or the `/api/ai/ask-stream` SSE endpoint in browser mode) |
+| `FileAnswerAsPage(projectID, question, answer, evidence, citedRefs)` | file an answer back as a `query` page (linked to the cited pages and notes; only citation numbers resolved from that retrieval are accepted) |
+| `RebuildEmbeddings()` | recompute all note embeddings (runs only after `semantic_search` is on; day-to-day increments go through the `note_embed_dirty` queue) |
+| `ListAIModels(baseURL, apiKey)` / `TestAIChat(baseURL, model, apiKey)` | list models / test an endpoint (`finish_reason` is surfaced so truncation and format errors look different) |
+| `CaptureClaudeHandoff(projectID)` / `LatestHandoff(projectID)` | on-demand Claude handoff capture / latest handoff status (same source as the VS Code status bar) |
+| `ExportMemoryJSON(limit)` | OMP-style Memory Object export (provisional, export-only) |
+| `RunWikiLint(projectID, wantLLM)` | the five lint checks; findings only write `project_todos` — **no code path can mutate a page** |
+| `CompileNote(noteID)` / `CompileProjectNotes(projectID, maxNotes)` | synchronous compile (output is always `status=pending` with the source note auto-attached) |
+| `StartCompileJob` / `GetCompileJob` / `ListCompileJobs` / `StartLintJob` / `CancelCompileJob` | async compile / lint jobs (ADR-0016; the three structural checks never enter a job) |
+| `ListPendingWikiPages(projectID)` / `ListRejectedWikiPages(projectID)` | pending / disqualified page lists (the Review tab's data source, with source notes and in/out links) |
+| `ApproveWikiPage(pageID)` / `RejectWikiPage(pageID)` / `DeleteCompiledPage(pageID)` | approve (also extracts body `[[wikilink]]`s into idempotent `mentions` edges) / mark disqualified (keeps inbound links, never deletes the row) / permanently delete an unpublished page |
+| `LayeredProjectContext(projectID, query, includeTranscripts)` | L3 global profile → L2 project scene → L1 notes → L0 transcripts assembly (per-layer independent budgets) |
 
 ## Events (Wails → frontend)
 
 | Event | Payload |
 |------|------|
 | `import.completed` | `{source, created, updated, skipped, error?}` |
+| `ai.ask.stream` | streaming Q&A fragments: `{stream_id, delta}` × N, terminal `{stream_id, done, reply, evidence, truncated}` or `{stream_id, error}` |
 
 ---
 

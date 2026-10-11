@@ -83,16 +83,27 @@ The first four steps only *register* your repositories; what actually makes the 
 - **Desktop**: pick a project in **Quick create note** on the home page and write down how the project runs and where its gotchas are (see [Knowledge Base and Notes](features/knowledge.md));
 - **AI side**: the session end automatically writes a `handoff` note, which is pinned at the top of the next session's context (see [AI Integration](features/ai-integration.md)).
 
+### 6. Import Existing Agent Memories (optional)
+
+If you have already accumulated memories or session logs in Claude / Codex / OpenCode / OpenClaw / Cursor / Hermes, you can import them as knowledge notes instead of copying them by hand. **Settings → Plugins** lists all 6 sources:
+
+- `claude` is the only automatic source: it imports at app startup together with the `auto_import` switch (that switch is **off by default** and must be enabled explicitly in **Settings → Plugins**; once on, it runs on every launch with no manual trigger);
+- the other five sources (`codex` / `opencode` / `openclaw` / `cursor` / `hermes`) are triggered one by one in **Settings → Plugins**, each run showing `created / updated / skipped` counts;
+- `openclaw` and `hermes` need a target project configured first (otherwise everything counts as "skipped").
+
+Do this after step 3 (the scan) — imports match projects by name, so having the projects in the database first raises the hit rate. Details in [Knowledge Source Import](plugins/overview.md).
+
 ## Core Features at a Glance
 
 | Feature | Tier | Description |
 |------|------|------|
 | Knowledge base | Core | Cross-project note hub: Markdown, tags, pinning, FTS5 full-text search, version history |
+| Knowledge graph | Supporting | Knowledge pages + relation edges + review queue; Q&A evidence reads the graph by default (ingest-time compilation off by default; see [Knowledge Base and Notes](features/knowledge.md)) |
 | Repository knowledge mining | Core | Automatically extracts README, tech stack, language breakdown, dependencies, contributors, activity |
 | Project understanding and retrieval | Core | Command palette `⌘/Ctrl+K`, global search, project context navigation |
 | AI integration | Core | llms.txt, note export, MCP server (with agent-score self-check; see [AI Integration](features/ai-integration.md)) |
 | Dashboard | Supporting | Daily goal progress ring, project cards, trend line charts, commit heatmap |
-| Plugin system | Experimental | In-process Go scripts via yaegi + knowledge source import (see [Knowledge Source Import](plugins/overview.md)) |
+| Plugin system | Experimental | In-process Go scripts via yaegi + 6 built-in knowledge source imports (see [Knowledge Source Import](plugins/overview.md)) |
 
 The diagrams behind each page: the dashboard's page layering is in [Dashboard](features/dashboard.md#page-structure-top-to-bottom), the save-and-version chain of a note is in [Knowledge Base and Notes](features/knowledge.md), and why a knowledge base beats letting AI read git directly is in [Storage Optimization and AI Value](storage-optimization.md#2-advantages-over-reading-git-repositories-directly-with-ai).
 
