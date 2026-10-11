@@ -41,7 +41,7 @@ ADR-0015 决策 3 做了一个明确的取舍：**编译器只新建 pending 页
 - loser 置 `status=rejected` + 正文替换为「已并入 [[winner]]」——**沿用 `reject≠delete`，不删行**（删行会级联带走尚未移净的边并毁审计）；因边已全部重指向，winner 承接所有引用，loser 不留悬空入链；
 - winner 的 `id/slug/content/updated_at` **一字不改**——合并是「loser 被吸收」，不是「编辑 winner」，因此仍守住 ADR-0015「不修改已批准页内容」。人改的是边与 loser，不是 winner 正文。
 
-**6. 可选审计表 `page_merges(loser_id, winner_id, kept_at)`（若需要则 v23）。** 普通 `CREATE TABLE`，**不碰任何 CHECK 家族**（避开 `compile_jobs.kind` / `wiki_pages` 那种「加值=整表重建」的坑）。用于「看合并史」和将来「撤销一次合并」（把 loser 从 rejected 恢复、边回指）。**默认不建**，等出现真实撤回需求再加——延续 ADR-0018「覆盖取显式整段替换、不做静默合并」的克制。
+**6. 可选审计表 `page_merges(loser_id, winner_id, kept_at)`（若需要则 v23，与 ADR-0021 的 `page_versions` 共抢——先落库者认领，见该篇待决 1）。** 普通 `CREATE TABLE`，**不碰任何 CHECK 家族**（避开 `compile_jobs.kind` / `wiki_pages` 那种「加值=整表重建」的坑）。用于「看合并史」和将来「撤销一次合并」（把 loser 从 rejected 恢复、边回指）。**默认不建**，等出现真实撤回需求再加——延续 ADR-0018「覆盖取显式整段替换、不做静默合并」的克制。
 
 **7. 预防收紧（把合并债前移）。** 在编译器 prompt 加一条硬规则：「若本条笔记讲的是词表里已存在的概念，用 `add_link`/`attach_note` 指过去，不要再 `create_page` 造近似页」。改 prompt 即可、风险低，降低候选对产生速率。
 

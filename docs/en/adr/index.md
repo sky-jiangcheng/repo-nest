@@ -27,9 +27,10 @@ order: 21
 | [0018](0018-knowledge-graph-foundation.md) | Knowledge-graph foundation — a controlled relation vocabulary makes the graph queryable, graph-aware evidence makes it read | Proposed (lane 1 = relation vocabulary + wikilink + structural lint, schema v21; lane 2 = page vectors + graph-aware evidence, schema v22; the two halves promote independently) |
 | [0019](0019-entity-resolution-merge.md) | Entity resolution and concept merging — fixing "concept splitting", where merging is always human-triggered | Proposed (design only, no code; sits after ADR-0018 lane 1 is Accepted; structural blocking can proceed independently, the vector-similarity branch waits on lane 2) |
 | [0020](0020-community-synthesis.md) | Community summaries — let the synthesis layer grow on its own via Label Propagation | Proposed (design only, no code; gated on ADR-0018 lane 1 Accepted; sync-vs-job trigger is the open call) |
+| [0021](0021-temporal-graph.md) | Temporal graph — giving pages a foundation you can go back to when an edit was wrong (`page_versions`, the safety prerequisite for the revision loop) | Proposed (design only, no code; gated on ADR-0018 lane 1 Accepted; takes schema v23, leaving v22 for lane 2's page vectors; **does not relax** ADR-0015's "the compiler never edits an approved page" — it only builds the foundation) |
 
 ## Conventions
 
 - One ADR per major irreversible decision: Background → Decision → Consequences
 - Superseded ADRs keep their original text and banner; they are never deleted
-- New ADRs increment from `0020`, file name `NNNN-kebab-title.md`
+- New ADRs increment from `0021`, file name `NNNN-kebab-title.md`
