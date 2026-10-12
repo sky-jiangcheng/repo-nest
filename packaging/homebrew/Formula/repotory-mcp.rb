@@ -9,7 +9,7 @@
 class RepotoryMcp < Formula
   desc "MCP stdio server exposing the Repotory local knowledge base to AI agents"
   homepage "https://github.com/sky-jiangcheng/repo-nest"
-  version "1.16.2"
+  version "2.0.0"
   license "MIT"
 
   if OS.mac? && Hardware::CPU.arm?

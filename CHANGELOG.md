@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-12
+
 ### 新增
 
 - **知识图谱底座 · lane 1（[ADR-0018](docs/adr/0018-knowledge-graph-foundation.md)，schema v21）**：给页面之间的链接加了一层受控关系词表——`ref / part-of / depends / implements / documents / supersedes / contradicts / mentions` 八个枚举值，数据库层用 `CHECK` 硬约束（`page_links.relation` 不再是自由文本）。该 `CHECK` 由 Go 侧的关系清单派生生成，两者不会各说各话。目的：让这张图第一次可以按语义查询（"所有 depends 边"），并为 ADR-0018 lane 2 的图感知取证铺路。
@@ -793,7 +795,11 @@ CBiPay 真实数据样例测试(11 仓库聚合工作区)暴露的修复批次,�
 
 - 首个正式版本：Wails 桌面应用骨架、GitHub Actions 多平台构建发布
 
-[Unreleased]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.15.1...HEAD
+[Unreleased]: https://github.com/sky-jiangcheng/repo-nest/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.16.2...v2.0.0
+[1.16.2]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.16.1...v1.16.2
+[1.16.1]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.16.0...v1.16.1
+[1.16.0]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.15.1...v1.16.0
 [1.15.1]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.15.0...v1.15.1
 [1.15.0]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.14.4...v1.15.0
 [1.14.4]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.14.3...v1.14.4

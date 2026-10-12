@@ -6,7 +6,7 @@
 # Version is stamped by scripts/update-manifests.sh from wails.json
 # (info.productVersion) — never edit it by hand.
 cask "repotory-mcp" do
-  version "1.16.2"
+  version "2.0.0"
   name "Repotory MCP Server"
   desc "MCP stdio server exposing the Repotory local knowledge base to AI agents"
   homepage "https://github.com/sky-jiangcheng/repo-nest"
