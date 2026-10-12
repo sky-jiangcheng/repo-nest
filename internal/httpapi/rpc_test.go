@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/service"
+	"repotory/internal/db"
+	"repotory/internal/service"
 )
 
 type fakeBound struct{}

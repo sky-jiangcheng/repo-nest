@@ -3,10 +3,10 @@ status: Superseded by ADR-0002
 date: 2026-08 (originally RFC 0001)
 ---
 
-# RFC 0001: RepoNest Architecture Evolution & Plugin Platform
+# RFC 0001: Repotory Architecture Evolution & Plugin Platform
 
 > **⚠️ Superseded by [ADR 0002](../adr/0002-c-end-repositioning.md)**
-> M2 (resident HTTP Server / RBAC / AK-SK), M3 (plugin protocol gateway + scope permissions), and M4 (PG/ES / K8s / reponest-server) described in this RFC are deprecated.
+> M2 (resident HTTP Server / RBAC / AK-SK), M3 (plugin protocol gateway + scope permissions), and M4 (PG/ES / K8s / repotory-server) described in this RFC are deprecated.
 > The M1 abstraction layer is retained as the foundation supporting additional plugin extension interfaces.
 
 | Item | Value |
@@ -18,13 +18,13 @@ date: 2026-08 (originally RFC 0001)
 
 ## 1. Background and Goals
 
-RepoNest is currently a **Wails + SQLite single-binary desktop application** with highly coupled code:
+Repotory is currently a **Wails + SQLite single-binary desktop application** with highly coupled code:
 
 - `main.App` holds `*sql.DB`, and all handlers (`handlers_*.go`) directly call the functional API of `internal/db/*.go`;
 - Git operations are implemented as package-level functions in `internal/stats/` and `internal/knowledge/`, with no way to switch remote Git providers;
 - The storage layer (SQLite) is tightly bound to business logic, preventing future extension to PG/ES.
 
-The goal is to evolve RepoNest into a layered, decoupled architecture of "**core foundation + protocol gateway + plugin ecosystem**", supporting independent plugins, multi-Git-provider adaptation, and remote deployment scenarios.
+The goal is to evolve Repotory into a layered, decoupled architecture of "**core foundation + protocol gateway + plugin ecosystem**", supporting independent plugins, multi-Git-provider adaptation, and remote deployment scenarios.
 
 This RFC codifies the key decisions across four phases — **M1 (abstraction decoupling) → M2 (service-oriented foundation) → M3 (plugin protocol loop) → M4 (ecosystem scale)** — as the blueprint for subsequent Issue implementation.
 
@@ -35,7 +35,7 @@ This RFC codifies the key decisions across four phases — **M1 (abstraction dec
 - **Wails is retained**: the desktop version remains the primary release form (zero dependencies, double-click to run, matching the current core user value).
 - **Kernel split**: business logic from `main.App` + `handlers_*.go` moves down into `internal/core/`, with the Wails Bind layer kept as a thin wrapper.
 - **Embedded HTTP service**: within the same process, whenever started with the `-server` flag — or **always** in desktop mode — the app listens on `127.0.0.1:18731`, exposing the `/api/v1/*` RESTful API. The plugin protocol and the frontend API share this HTTP server.
-- **Standalone backend deployment**: a `reponest-server` build target will follow later (dropping the Wails bootstrap, keeping HTTP + plugin host), reusing 90%+ of the code.
+- **Standalone backend deployment**: a `repotory-server` build target will follow later (dropping the Wails bootstrap, keeping HTTP + plugin host), reusing 90%+ of the code.
 
 ### 2.2 Storage upgrade timing: introduced in M4 as pluggable backends
 

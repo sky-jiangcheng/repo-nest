@@ -49,16 +49,16 @@ update_file() {
   echo "  updated $file"
 }
 
-for cask in packaging/homebrew/Casks/reponest.rb \
-            packaging/homebrew/Casks/reponest-mcp.rb \
-            packaging/homebrew/Formula/reponest-mcp.rb; do
+for cask in packaging/homebrew/Casks/repotory.rb \
+            packaging/homebrew/Casks/repotory-mcp.rb \
+            packaging/homebrew/Formula/repotory-mcp.rb; do
   # Ruby: `  version "1.7.9"`
   update_file "$cask" \
     '(version[[:space:]]+)"[^"]+"' \
     "\1\"$VERSION\""
 done
 
-for manifest in packaging/scoop/reponest.json packaging/scoop/reponest-mcp.json; do
+for manifest in packaging/scoop/repotory.json packaging/scoop/repotory-mcp.json; do
   # JSON: the version is pinned in two places, and Scoop has no interpolation
   # in the top-level `url` — so both must move together or `scoop install`
   # silently resolves a 404.
@@ -73,8 +73,8 @@ done
 echo
 echo "Done. Verify with:"
 echo "  grep -rn '$VERSION' packaging/"
-echo "  ruby -c packaging/homebrew/Casks/reponest.rb"
-echo "  python3 -m json.tool packaging/scoop/reponest-mcp.json > /dev/null"
+echo "  ruby -c packaging/homebrew/Casks/repotory.rb"
+echo "  python3 -m json.tool packaging/scoop/repotory-mcp.json > /dev/null"
 echo
 echo "sha256 fields are filled automatically by release.yml (fill-sha256 job) after"
 echo "each tag's release is published, or manually via:"
@@ -188,16 +188,16 @@ for a in assets:
 
   echo "Filling sha256 from $SUMS"
   # Desktop app
-  fill packaging/homebrew/Casks/reponest.rb    reponest-darwin-arm64.dmg
-  fill packaging/homebrew/Casks/reponest.rb    reponest-darwin-amd64.dmg
-  fill packaging/scoop/reponest.json           reponest-windows-amd64.zip
+  fill packaging/homebrew/Casks/repotory.rb    repotory-darwin-arm64.dmg
+  fill packaging/homebrew/Casks/repotory.rb    repotory-darwin-amd64.dmg
+  fill packaging/scoop/repotory.json           repotory-windows-amd64.zip
   # MCP server
-  fill packaging/homebrew/Casks/reponest-mcp.rb    reponest-mcp-darwin-arm64.tar.gz
-  fill packaging/homebrew/Casks/reponest-mcp.rb    reponest-mcp-darwin-amd64.tar.gz
-  fill packaging/homebrew/Formula/reponest-mcp.rb  reponest-mcp-darwin-arm64.tar.gz
-  fill packaging/homebrew/Formula/reponest-mcp.rb  reponest-mcp-darwin-amd64.tar.gz
-  fill packaging/homebrew/Formula/reponest-mcp.rb  reponest-mcp-linux-amd64.tar.gz
-  fill packaging/scoop/reponest-mcp.json           reponest-mcp-windows-amd64.zip
+  fill packaging/homebrew/Casks/repotory-mcp.rb    repotory-mcp-darwin-arm64.tar.gz
+  fill packaging/homebrew/Casks/repotory-mcp.rb    repotory-mcp-darwin-amd64.tar.gz
+  fill packaging/homebrew/Formula/repotory-mcp.rb  repotory-mcp-darwin-arm64.tar.gz
+  fill packaging/homebrew/Formula/repotory-mcp.rb  repotory-mcp-darwin-amd64.tar.gz
+  fill packaging/homebrew/Formula/repotory-mcp.rb  repotory-mcp-linux-amd64.tar.gz
+  fill packaging/scoop/repotory-mcp.json           repotory-mcp-windows-amd64.zip
 
   echo
   echo "Any manifest still holding a __FILL_SHA256_*__ placeholder needs a"

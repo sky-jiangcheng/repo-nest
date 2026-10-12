@@ -25,5 +25,5 @@ The leftovers are a **narrative conflict**, beyond mere hygiene: the product is 
 ## Consequences
 
 - Positive: documentation promises match code facts; `web/public/` keeps only the favicon; the frontend no longer carries dual-state logic such as install state and offline fallback.
-- Negative: users who once installed RepoNest as a PWA lose "install entry" as a discovery path — but the desktop scenario they actually rely on is covered by the Releases packages, and the manifest has long been gone, so installation was already impossible in practice.
+- Negative: users who once installed Repotory as a PWA lose "install entry" as a discovery path — but the desktop scenario they actually rely on is covered by the Releases packages, and the manifest has long been gone, so installation was already impossible in practice.
 - Leftover: the tension between the dashboard's "productivity facade" (goal rings / daily code volume standards / workday alerts) and the "memory layer" positioning is handled along the 2.0 convergence direction (see the TODO leftovers); out of scope for this document.

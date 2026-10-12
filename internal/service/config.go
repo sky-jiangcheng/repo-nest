@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // ConfigData holds the application configuration sent to the frontend.

@@ -71,7 +71,7 @@ jobs:
           if [ -f "build/icon.svg" ]; then
             # Initialize a temp package.json in root so npm install works
             if [ ! -f "package.json" ]; then
-              node -e "require('fs').writeFileSync('package.json', JSON.stringify({name:'reponest-build',version:'0.0.0',private:true},null,2))"
+              node -e "require('fs').writeFileSync('package.json', JSON.stringify({name:'repotory-build',version:'0.0.0',private:true},null,2))"
             fi
             npm install --no-save sharp 2>&1 || true
             if node scripts/generate-icons.mjs 2>&1; then
@@ -111,7 +111,7 @@ jobs:
           # step guarantees the binary itself reports the same version at runtime.
           APP_VERSION=$(grep -oE '"productVersion"[[:space:]]*:[[:space:]]*"[^"]+"' wails.json | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
           echo "Building version: $APP_VERSION"
-          LDFLAGS="-X repo-nest/internal/version.Version=$APP_VERSION"
+          LDFLAGS="-X repotory/internal/version.Version=$APP_VERSION"
 
           export PATH=$PATH:$(go env GOPATH)/bin
           if [ "${{ runner.os }}" = "Linux" ]; then
@@ -126,8 +126,8 @@ jobs:
             wails build -platform ${{ matrix.goos }}/${{ matrix.goarch }} -clean -ldflags "$LDFLAGS"
           fi
 
-      # reponest-mcp is the AI execution interface (MCP stdio server) and ships as
-      # its own release asset so `claude mcp add reponest -- ...` works without
+      # repotory-mcp is the AI execution interface (MCP stdio server) and ships as
+      # its own release asset so `claude mcp add repotory -- ...` works without
       # building from source. Pure Go / zero CGO, so the matrix target builds
       # natively. Version is injected from wails.json (SSOT), same as the app.
       - name: Build MCP server
@@ -135,15 +135,15 @@ jobs:
         run: |
           set -e
           APP_VERSION=$(grep -oE '"productVersion"[[:space:]]*:[[:space:]]*"[^"]+"' wails.json | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
-          echo "Building reponest-mcp version: $APP_VERSION"
-          LDFLAGS="-X reponest/internal/version.Version=$APP_VERSION"
+          echo "Building repotory-mcp version: $APP_VERSION"
+          LDFLAGS="-X repotory/internal/version.Version=$APP_VERSION"
           mkdir -p build/mcp
           CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
-            go build -ldflags "$LDFLAGS" -o build/mcp/reponest-mcp ./cmd/mcp/
+            go build -ldflags "$LDFLAGS" -o build/mcp/repotory-mcp ./cmd/mcp/
           # `go build -o name` uses the name verbatim, so add the Windows suffix
-          # ourselves — release assets / manifests / scoop all expect reponest-mcp.exe.
-          if [ "${{ runner.os }}" = "Windows" ] && [ -f build/mcp/reponest-mcp ]; then
-            mv build/mcp/reponest-mcp build/mcp/reponest-mcp.exe
+          # ourselves — release assets / manifests / scoop all expect repotory-mcp.exe.
+          if [ "${{ runner.os }}" = "Windows" ] && [ -f build/mcp/repotory-mcp ]; then
+            mv build/mcp/repotory-mcp build/mcp/repotory-mcp.exe
           fi
           ls -lh build/mcp/
 
@@ -152,8 +152,8 @@ jobs:
         run: |
           set -e
           mkdir -p build/bin/release
-          tar -czf "build/bin/release/reponest-linux-amd64.tar.gz" -C build/bin reponest
-          tar -czf "build/bin/release/reponest-mcp-linux-amd64.tar.gz" -C build/mcp reponest-mcp
+          tar -czf "build/bin/release/repotory-linux-amd64.tar.gz" -C build/bin repotory
+          tar -czf "build/bin/release/repotory-mcp-linux-amd64.tar.gz" -C build/mcp repotory-mcp
           echo "RELEASE_DIR=build/bin/release" >> $GITHUB_ENV
 
       - name: Package macOS
@@ -197,20 +197,20 @@ jobs:
               --app-drop-link 400 280 \
               --background "$STAGING/.background/background.png" \
               --format UDZO \
-              "release/reponest-${{ matrix.target }}.dmg" \
+              "release/repotory-${{ matrix.target }}.dmg" \
               "$STAGING/"
             rm -rf "$STAGING"
 
             if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_ID" ]; then
               echo "Notarizing DMG..."
-              xcrun notarytool submit "release/reponest-${{ matrix.target }}.dmg" --keychain-profile "github-actions" --wait 2>&1 || true
-              xcrun stapler staple "release/reponest-${{ matrix.target }}.dmg" 2>&1 || true
+              xcrun notarytool submit "release/repotory-${{ matrix.target }}.dmg" --keychain-profile "github-actions" --wait 2>&1 || true
+              xcrun stapler staple "release/repotory-${{ matrix.target }}.dmg" 2>&1 || true
             fi
           fi
 
           # MCP server: separate archive, same release, no codesign/notary impact
           # on the .dmg above.
-          tar -czf "release/reponest-mcp-${{ matrix.target }}.tar.gz" -C build/mcp reponest-mcp
+          tar -czf "release/repotory-mcp-${{ matrix.target }}.tar.gz" -C build/mcp repotory-mcp
 
           echo "RELEASE_DIR=release" >> $GITHUB_ENV
 
@@ -219,11 +219,11 @@ jobs:
         shell: bash
         run: |
           mkdir -p release
-          if [ -f "build/bin/reponest.exe" ]; then
-            powershell Compress-Archive -Path "build/bin/reponest.exe" -DestinationPath "release/reponest-windows-amd64.zip"
+          if [ -f "build/bin/repotory.exe" ]; then
+            powershell Compress-Archive -Path "build/bin/repotory.exe" -DestinationPath "release/repotory-windows-amd64.zip"
           fi
-          if [ -f "build/mcp/reponest-mcp.exe" ]; then
-            powershell Compress-Archive -Path "build/mcp/reponest-mcp.exe" -DestinationPath "release/reponest-mcp-windows-amd64.zip"
+          if [ -f "build/mcp/repotory-mcp.exe" ]; then
+            powershell Compress-Archive -Path "build/mcp/repotory-mcp.exe" -DestinationPath "release/repotory-mcp-windows-amd64.zip"
           fi
           echo "RELEASE_DIR=release" >> "$GITHUB_ENV"
 
@@ -258,13 +258,13 @@ jobs:
           cd ide/vscode
           npm ci
           npm run compile
-          npx @vscode/vsce package --no-dependencies -o "../../reponest-vscode-${VER}.vsix"
+          npx @vscode/vsce package --no-dependencies -o "../../repotory-vscode-${VER}.vsix"
 
       - name: Upload vsix artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: vsix-extension
-          path: reponest-vscode-*.vsix
+          path: repotory-vscode-*.vsix
           if-no-files-found: error
 
   create-release:
@@ -347,7 +347,7 @@ jobs:
           npm ci
           npm run compile
           npx @vscode/vsce publish "$VER" --no-dependencies
-          echo "Published reponest-vscode@$VER to the VS Code Marketplace."
+          echo "Published repotory-vscode@$VER to the VS Code Marketplace."
 
   # After the release is published, the sha256 of every shipped asset is a
   # known fact. Homebrew and Scoop hard-fail on a missing/wrong digest, so the

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/core/plugin"
-	"repo-nest/internal/db"
-	"repo-nest/internal/importers/memsrc"
+	"repotory/internal/core/plugin"
+	"repotory/internal/db"
+	"repotory/internal/importers/memsrc"
 )
 
 // fakeXDGData points XDG_DATA_HOME at a temp dir so sessionRoot resolves there.

@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
+	"repotory/internal/db"
+	"repotory/internal/domain"
 )
 
 // validateNoteBounds rejects oversized note fields before they reach the
@@ -131,7 +131,7 @@ func (s *Service) ListAllNotesLimited(limit int) []domain.NoteWithProject {
 	return s.listAllNotes(limit)
 }
 
-// defaultAllNotesLimit matches reponest_notes_list's documented default.
+// defaultAllNotesLimit matches repotory_notes_list's documented default.
 const defaultAllNotesLimit = 50
 
 func (s *Service) listAllNotes(limit int) []domain.NoteWithProject {

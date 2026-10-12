@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 func TestClassifyNoteLayer(t *testing.T) {

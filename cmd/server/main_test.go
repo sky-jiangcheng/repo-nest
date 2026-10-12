@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"repo-nest/internal/service"
+	"repotory/internal/service"
 )
 
 // The two invariants main() guards with a runtime assertion are the whole
@@ -55,18 +55,18 @@ func TestGuardTimeoutsAreSet(t *testing.T) {
 	}
 }
 
-// envOr backs the REPONEST_HTTP_PORT override: empty env means default, a set
+// envOr backs the REPOTORY_HTTP_PORT override: empty env means default, a set
 // env wins, and the precedence must never invert.
 func TestEnvOr(t *testing.T) {
-	t.Setenv("REPONEST_CMDTEST_ENV", "")
-	if got := envOr("REPONEST_CMDTEST_ENV", "18765"); got != "18765" {
+	t.Setenv("REPOTORY_CMDTEST_ENV", "")
+	if got := envOr("REPOTORY_CMDTEST_ENV", "18765"); got != "18765" {
 		t.Errorf("empty env should fall through to default, got %q", got)
 	}
-	t.Setenv("REPONEST_CMDTEST_ENV", "9999")
-	if got := envOr("REPONEST_CMDTEST_ENV", "18765"); got != "9999" {
+	t.Setenv("REPOTORY_CMDTEST_ENV", "9999")
+	if got := envOr("REPOTORY_CMDTEST_ENV", "18765"); got != "9999" {
 		t.Errorf("set env should win, got %q", got)
 	}
-	if got := envOr("REPONEST_CMDTEST_UNSET_ENV", "18765"); got != "18765" {
+	if got := envOr("REPOTORY_CMDTEST_UNSET_ENV", "18765"); got != "18765" {
 		t.Errorf("unset env should give default, got %q", got)
 	}
 }

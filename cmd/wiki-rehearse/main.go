@@ -1,6 +1,6 @@
 // Command wiki-rehearse is the ADR-0018 lane 1 promotion harness: it rehearses
 // the v21 page_links relation-vocabulary migration on a THROWAWAY COPY of a real
-// dashboard.db and proves, on that copy, the one thing a synthetic fixture cannot:
+// repotory.db and proves, on that copy, the one thing a synthetic fixture cannot:
 // that no edge is lost and every legacy relation value normalizes as expected.
 //
 // It is deliberately incapable of mutating the real database:
@@ -10,13 +10,13 @@
 //   - the actual migration runs via db.InitDB on the COPY, i.e. exactly the upgrade
 //     path the desktop app would take on next launch, not a hand-rolled subset.
 //
-// So it is safe to point at a live dashboard.db — but per this repo's rule the
+// So it is safe to point at a live repotory.db — but per this repo's rule the
 // human runs it themselves; the agent only exercises it against temp databases.
 //
 // Usage:
 //
-//	go build -o reponest-wiki-rehearse ./cmd/wiki-rehearse
-//	./reponest-wiki-rehearse -db "$HOME/Library/Application Support/…/dashboard.db"
+//	go build -o repotory-wiki-rehearse ./cmd/wiki-rehearse
+//	./repotory-wiki-rehearse -db "$HOME/Library/Application Support/…/repotory.db"
 //
 // Exit code 0 = the invariant held (no lost/extra edges, all after-relations in
 // the vocabulary); nonzero = something would go wrong, with the diff printed.
@@ -34,7 +34,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // edge is one page_links row, read raw (pre-normalization).
@@ -231,7 +231,7 @@ func rehearse(absSrc, copyPath string) (Report, bool, error) {
 }
 
 func main() {
-	dbPath := flag.String("db", "", "path to dashboard.db (opened READ-ONLY; never modified)")
+	dbPath := flag.String("db", "", "path to repotory.db (opened READ-ONLY; never modified)")
 	outDir := flag.String("out", "", "directory for the copy + dumps + report (default: ./v21-rehearse)")
 	flag.Parse()
 

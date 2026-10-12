@@ -1,16 +1,16 @@
 #!/bin/bash
-# RepoNest install script for macOS and Linux.
-# Installs the desktop app and the MCP server (reponest-mcp), which AI clients
+# Repotory install script for macOS and Linux.
+# Installs the desktop app and the MCP server (repotory-mcp), which AI clients
 # use to read the same local database.
 #
 # Release assets (see .github/workflows/release.yml):
-#   Linux   reponest-linux-amd64.tar.gz   -> bare `reponest` binary
-#   macOS   reponest-darwin-<arch>.dmg    -> RepoNest.app
-#   MCP     reponest-mcp-<target>.tar.gz  -> bare `reponest-mcp` binary
+#   Linux   repotory-linux-amd64.tar.gz   -> bare `repotory` binary
+#   macOS   repotory-darwin-<arch>.dmg    -> Repotory.app
+#   MCP     repotory-mcp-<target>.tar.gz  -> bare `repotory-mcp` binary
 set -e
 
-BINARY_NAME="reponest"
-MCP_BINARY_NAME="reponest-mcp"
+BINARY_NAME="repotory"
+MCP_BINARY_NAME="repotory-mcp"
 REPO="sky-jiangcheng/repo-nest"
 # RELEASES is the base URL for release assets. Overridable so CI can point it
 # at a local fixture server and exercise the real download/extract/install
@@ -143,11 +143,11 @@ verify_sha256() {
 APP_INSTALL_DIR="${APP_INSTALL_DIR:-/Applications}"
 
 if [ "$OS" = "darwin" ]; then
-  DMG="$TMP_DIR/reponest.dmg"
-  APP_NAME="RepoNest.app"
-  echo "Downloading RepoNest for $TARGET (dmg)..."
-  fetch "$RELEASES/reponest-$TARGET.dmg" "$DMG"
-  verify_sha256 "$DMG" "reponest-$TARGET.dmg"
+  DMG="$TMP_DIR/repotory.dmg"
+  APP_NAME="Repotory.app"
+  echo "Downloading Repotory for $TARGET (dmg)..."
+  fetch "$RELEASES/repotory-$TARGET.dmg" "$DMG"
+  verify_sha256 "$DMG" "repotory-$TARGET.dmg"
 
   MOUNT_DIR=$(hdiutil attach "$DMG" -nobrowse -readonly | tail -1 | sed -E 's|.*(/Volumes/.*)|\1|')
   trap 'rm -rf "$TMP_DIR"; [ -n "${MOUNT_DIR:-}" ] && hdiutil detach "$MOUNT_DIR" -quiet' EXIT
@@ -162,33 +162,33 @@ if [ "$OS" = "darwin" ]; then
   MOUNT_DIR=""
 
   echo ""
-  echo "RepoNest installed to $APP_INSTALL_DIR/$APP_NAME"
+  echo "Repotory installed to $APP_INSTALL_DIR/$APP_NAME"
   echo "Run 'open -a \"$APP_INSTALL_DIR/$APP_NAME\"' to start!"
 else
-  TARBALL="$TMP_DIR/reponest.tar.gz"
-  echo "Downloading RepoNest for $TARGET (tar.gz)..."
-  fetch "$RELEASES/reponest-$TARGET.tar.gz" "$TARBALL"
-  verify_sha256 "$TARBALL" "reponest-$TARGET.tar.gz"
+  TARBALL="$TMP_DIR/repotory.tar.gz"
+  echo "Downloading Repotory for $TARGET (tar.gz)..."
+  fetch "$RELEASES/repotory-$TARGET.tar.gz" "$TARBALL"
+  verify_sha256 "$TARBALL" "repotory-$TARGET.tar.gz"
   tar -xzf "$TARBALL" -C "$TMP_DIR" "$BINARY_NAME"
   install_binary "$TMP_DIR/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
 
   echo ""
-  echo "RepoNest installed to $INSTALL_DIR/$BINARY_NAME"
+  echo "Repotory installed to $INSTALL_DIR/$BINARY_NAME"
   echo "Run '$BINARY_NAME' to start!"
 fi
 
 # --- MCP server ---------------------------------------------------------------
-# Ships as its own pure-Go archive, so AI clients can use RepoNest without the
+# Ships as its own pure-Go archive, so AI clients can use Repotory without the
 # desktop app. Non-fatal: a release predating the split simply has no asset.
 echo ""
-echo "Downloading RepoNest MCP server for $TARGET..."
+echo "Downloading Repotory MCP server for $TARGET..."
 
-MCP_ASSET="reponest-mcp-$TARGET.tar.gz"
+MCP_ASSET="repotory-mcp-$TARGET.tar.gz"
 MCP_URL="$RELEASES/$MCP_ASSET"
 
 # Recovery hint shared by both failure paths (no asset / extract failure).
 mcp_install_hint() {
-  echo "WARNING: could not install reponest-mcp ($1)." >&2
+  echo "WARNING: could not install repotory-mcp ($1)." >&2
   echo "         The desktop app is installed and working; install the MCP server manually:" >&2
   echo "         $MCP_URL" >&2
   echo "         then: tar -xzf $MCP_ASSET && sudo install -m 0755 $MCP_BINARY_NAME $INSTALL_DIR/" >&2
@@ -203,8 +203,8 @@ else
   verify_sha256 "$TMP_DIR/$MCP_ASSET" "$MCP_ASSET"
   if tar -xzf "$TMP_DIR/$MCP_ASSET" -C "$TMP_DIR" "$MCP_BINARY_NAME" \
     && install_binary "$TMP_DIR/$MCP_BINARY_NAME" "$INSTALL_DIR/$MCP_BINARY_NAME"; then
-    echo "RepoNest MCP server installed to $INSTALL_DIR/$MCP_BINARY_NAME"
-    echo "Register it with an AI client: claude mcp add reponest -- $INSTALL_DIR/$MCP_BINARY_NAME"
+    echo "Repotory MCP server installed to $INSTALL_DIR/$MCP_BINARY_NAME"
+    echo "Register it with an AI client: claude mcp add repotory -- $INSTALL_DIR/$MCP_BINARY_NAME"
   else
     mcp_install_hint "extract or install failed"
   fi

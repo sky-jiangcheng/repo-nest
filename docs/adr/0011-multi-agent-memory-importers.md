@@ -6,7 +6,7 @@
 
 ## 背景
 
-RepoNest 已有一条干净的「外部记忆 → 知识库笔记」管线：`plugin.KnowledgeImporter` 产出 `[]plugin.ImportDoc`（`ProjectID/Title/Content/Tags/Kind/Source`，见 `internal/core/plugin/plugin.go`），经 `Runtime.RegisterSource`（`internal/core/plugin/runtime/runtime.go`）注册为内置源，导入时由 `TriggerImport → upsertDoc` 以 `(project, source, title)` 幂等 upsert 成笔记（`internal/service/plugin.go:100` 把 Claude 源接进去）。目前只有**一个**具体源：`internal/importers/claude`（读 `~/.claude/projects/*/memory/*.md`）。
+Repotory 已有一条干净的「外部记忆 → 知识库笔记」管线：`plugin.KnowledgeImporter` 产出 `[]plugin.ImportDoc`（`ProjectID/Title/Content/Tags/Kind/Source`，见 `internal/core/plugin/plugin.go`），经 `Runtime.RegisterSource`（`internal/core/plugin/runtime/runtime.go`）注册为内置源，导入时由 `TriggerImport → upsertDoc` 以 `(project, source, title)` 幂等 upsert 成笔记（`internal/service/plugin.go:100` 把 Claude 源接进去）。目前只有**一个**具体源：`internal/importers/claude`（读 `~/.claude/projects/*/memory/*.md`）。
 
 M2 要把同一管线扩展到 Cursor / Codex / OpenCode 等。但 2026-10 现状盘点显示这些源的落盘形态**差异极大且多数非公开契约**：
 
@@ -35,7 +35,7 @@ M2 要把同一管线扩展到 Cursor / Codex / OpenCode 等。但 2026-10 现�
 
 ## 后果
 
-- 正面：多 agent 记忆可汇入同一知识库与 `reponest_context`；新增源成本随公共件下沉递减。
+- 正面：多 agent 记忆可汇入同一知识库与 `repotory_context`；新增源成本随公共件下沉递减。
 - 负面：+N 个外部格式适配器，每个都绑定上游版本；需持续维护真机样本测试。
 - **待决**：① project 匹配规则是否对所有源统一（Claude 现按路径/slug 匹配目标项目，Codex/Cursor 的项目边界未必同名）；② Cursor 是否值得做，或改走「让用户导出为 markdown 再导入」的离线兜底；③ 是否需要一个「记忆源」设置页的统一开关面板。
 
@@ -47,5 +47,5 @@ M2 要把同一管线扩展到 Cursor / Codex / OpenCode 等。但 2026-10 现�
 - **codex**（已落地，opt-in MANUAL）：`~/.codex/sessions/**/rollout-*.jsonl` 流式解析，每会话→一条 log 笔记。真机核验：session_meta.payload.cwd + response_item message content 块。
 - **opencode**（已落地，opt-in MANUAL）：`~/.local/share/opencode/storage/session/<hash>/ses_*.json`，字段已自带 `{id,projectID,directory,title,summary,time}`（已是摘要级，无需解析逐条消息），`directory` 末段驱动项目匹配。真机核验通过（v1.1.36 样本）。
 - **cursor**（**核验后决定暂缓，不实现**）：真机只读核验 `state.vscdb`（`ItemTable`/`cursorDiskKV`/`composerHeaders` 三表）。**结论：低 ROI + 高脆弱，暂缓**——① 线程索引 `composerHeaders` 有干净列（composerId/workspaceId/时间/isSubagent），但**正文分散在 `cursorDiskKV` 的 `bubbleId:<id>` blob、由版本化 headers（`"value":17`）串联**，composer 输入又是 ProseMirror 文档树，逐条还原=多表 join + 内部版本 schema；② **项目归属拿不到**：`workspaceId` 常为 `empty-window`、DB 内无 folder 路径映射；③ 本机仅 4 条且全是空 draft，**无法对真实数据校验** parser。按 ADR-0011 决策 3/5（不背未公开易碎格式的长期债）与「先核验真机格式再写」的纪律，判定为当前**不值得**投入；有真实需求信号 + 能拿到稳定样例时再立项，届时也需 `cursor_project` 显式定向 + 默认关 + 标非官方契约。
-- **openclaw**（**已落地，opt-in MANUAL**）：记忆 = `~/.openclaw-autoclaw/workspace/{IDENTITY,SOUL,USER,AGENTS,HEARTBEAT,TOOLS}.md`（真机核验 + 与 RepoNest 自身 awareness 同名同形）。**安全红线**：parent `~/.openclaw-autoclaw/` 含私钥（`office-plugin-tls/*.pem`）/`vault-roots.json`/`identity/`/`client-sign.json`——importer **硬 scoping 到 `workspace/*.md` 单层非递归**，绝不读 parent/子目录/非 md（有 allowlist 单测：parent `.md`、子目录 `.md`、非 md 一律不导入）。版本日期式 `lastTouchedVersion: 2026.x`，**无 1.0/2.0 判别位**→「只做 2.0」＝按当前布局实现。**全局记忆的项目归属**：走 `openclaw_project` 配置（项目名或 id），未设/未知 → ProjectID 0（被管线 skip），不硬塞、不乱撒。
+- **openclaw**（**已落地，opt-in MANUAL**）：记忆 = `~/.openclaw-autoclaw/workspace/{IDENTITY,SOUL,USER,AGENTS,HEARTBEAT,TOOLS}.md`（真机核验 + 与 Repotory 自身 awareness 同名同形）。**安全红线**：parent `~/.openclaw-autoclaw/` 含私钥（`office-plugin-tls/*.pem`）/`vault-roots.json`/`identity/`/`client-sign.json`——importer **硬 scoping 到 `workspace/*.md` 单层非递归**，绝不读 parent/子目录/非 md（有 allowlist 单测：parent `.md`、子目录 `.md`、非 md 一律不导入）。版本日期式 `lastTouchedVersion: 2026.x`，**无 1.0/2.0 判别位**→「只做 2.0」＝按当前布局实现。**全局记忆的项目归属**：走 `openclaw_project` 配置（项目名或 id），未设/未知 → ProjectID 0（被管线 skip），不硬塞、不乱撒。
 - **hermes**（**已落地 curated-memory 层，opt-in MANUAL**）：**Nous Research 独立产品**（`com.nousresearch.hermes`），与 OpenClaw 两家——早先误判为 OpenClaw 运行时，已更正。经官网文档核验：root `~/.hermes/`（`$HERMES_HOME` 可覆盖），**curated 记忆 = `~/.hermes/memories/{MEMORY.md,USER.md}`**（Markdown）。同目录含 `.env`（密钥）/`mcp-tokens/`/`state.db`→**硬 scoping 到 `memories/*.md` 单层非递归**。项目归属同 openclaw（`hermes_project` 配置）。**Sessions 未导入**：`~/.hermes/sessions/` + `state.db` 记录 schema 无文档且本机不可核验，按「不猜活格式」纪律**暂缓**（见待决）。

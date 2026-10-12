@@ -8,7 +8,7 @@
 
 现有检索是 **FTS5 trigram + bm25**（`internal/db/search.go`、`internal/db/migrate.go` 建 `project_notes_fts`/`project_todos_fts`），补 LIKE 兜底。trigram 对**子串/拼写/部分词**很稳，但结构性地缺**语义**：搜「内存泄漏」召回不到只写了「heap 持续增长、GC 压力大」的笔记——词面不重叠。M3 想补这层召回。
 
-关键约束来自产品形态：RepoNest 是本地优先的 Wails 桌面 App，跨 mac/win 分发，**数据库驱动是 `modernc.org/sqlite`（纯 Go、零 CGO）**（`go.mod`、`internal/db/db.go`）。任何检索增强都不得把 CGO 重新引入构建（会直接炸掉跨平台打包与体积假设）。
+关键约束来自产品形态：Repotory 是本地优先的 Wails 桌面 App，跨 mac/win 分发，**数据库驱动是 `modernc.org/sqlite`（纯 Go、零 CGO）**（`go.mod`、`internal/db/db.go`）。任何检索增强都不得把 CGO 重新引入构建（会直接炸掉跨平台打包与体积假设）。
 
 ## 决策 / 评估结论
 
@@ -53,7 +53,7 @@
 
 **选型结论：不锁单一厂商，标准化到 OpenAI 兼容 `/v1/embeddings` 协议**（OpenAI / Voyage / Jina / 自托管 Ollama·llama.cpp·LM Studio 都实现它），配置化 `base_url + model + api_key + dim`：
 - **质量默认推荐**：OpenAI `text-embedding-3-small`（便宜、多语、CJK 尚可）；更高档 `text-embedding-3-large`；代码/中英混排更强可看 Voyage-3 / Jina-embeddings-v3。
-- **关键洞察（解掉「本地 + 零 CGO」两难）**：既然 A 本就是「B端自愿走网络端点」，把 `base_url` 指向**本机自托管的 Ollama**（`nomic-embed-text`/`bge-m3`）即可：模型在**独立进程**跑，RepoNest 二进制**仍是零 CGO**、且**数据不出机**——对隐私敏感的 B端比云 API 更契合本地优先。即：一个 `RemoteEmbedder`（OpenAI 兼容）同时覆盖云端与本地 Ollama 两条路。
+- **关键洞察（解掉「本地 + 零 CGO」两难）**：既然 A 本就是「B端自愿走网络端点」，把 `base_url` 指向**本机自托管的 Ollama**（`nomic-embed-text`/`bge-m3`）即可：模型在**独立进程**跑，Repotory 二进制**仍是零 CGO**、且**数据不出机**——对隐私敏感的 B端比云 API 更契合本地优先。即：一个 `RemoteEmbedder`（OpenAI 兼容）同时覆盖云端与本地 Ollama 两条路。
 - **风险 posture 不变**：A 默认关、显式开；开启即在文档/设置显著披露「笔记文本会送往所配置的端点（云→出机；本地 Ollama→不出机）」，由用户自选端点自负其责。
 
 **已落地基座（未接搜索热路径，待门）**：`internal/search/hybrid.RemoteEmbedder` 实现 `Embedder`（OpenAI 兼容 POST、按 `index` 乱序回填、HTTP/维度错误宽松失败、bearer 可选），带 httptest 单测。**向量存储层已落地**：`internal/db/vecindex.go`——`EnsureVectorIndex(dim)`（建/按 dim 变更重建 `note_embeddings` vec0，dim 记在自管的 `note_embeddings_meta`，不依赖 sqlite-vec 内部 schema）、`PutNoteEmbedding/DeleteNoteEmbedding/KnnNoteIDs/ClearVectorIndex/DropVectorIndex`；vec 扩展经 `_ modernc.org/sqlite/vec` 链入 `db`（零 CGO、已全仓 `CGO_ENABLED=0` 构建验证；不用 RegisterPageCache 故无冲突）。**配置 + 密钥安全已落地**：新增 `semantic_search`/`embedding_base_url`/`embedding_model`/`embedding_dim`/`embedding_api_key` 配置键，**`embedding_api_key` 在 `GetConfig` 中掩码为 `********`**（不回传前端，后端经 `db.GetConfig` 读真值），有单测。`FuseRRF`/`vecprobe` 亦就绪。

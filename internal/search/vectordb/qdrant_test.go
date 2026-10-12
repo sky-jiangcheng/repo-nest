@@ -24,12 +24,12 @@ func (s *qStub) serve(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == http.MethodGet && r.URL.Path == "/collections":
 		writeJSON(w, map[string]any{"result": map[string]any{"collections": []any{}}})
-	case r.Method == http.MethodPut && r.URL.Path == "/collections/reponest_vecs":
+	case r.Method == http.MethodPut && r.URL.Path == "/collections/repotory_vecs":
 		s.lastCreate = string(body)
 		writeJSON(w, map[string]any{"result": true, "status": "ok"})
-	case r.Method == http.MethodDelete && r.URL.Path == "/collections/reponest_vecs":
+	case r.Method == http.MethodDelete && r.URL.Path == "/collections/repotory_vecs":
 		writeJSON(w, map[string]any{"result": true, "status": "ok"})
-	case r.Method == http.MethodPut && strings.HasPrefix(r.URL.Path, "/collections/reponest_vecs/points"):
+	case r.Method == http.MethodPut && strings.HasPrefix(r.URL.Path, "/collections/repotory_vecs/points"):
 		s.lastUpsert = string(body)
 		writeJSON(w, map[string]any{"result": map[string]any{"status": "completed"}})
 	case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/points/search"):
@@ -50,7 +50,7 @@ func TestQdrantRoundTrip(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(stub.serve))
 	defer srv.Close()
 
-	q, err := NewQdrant(srv.URL, "k-123", "reponest_vecs")
+	q, err := NewQdrant(srv.URL, "k-123", "repotory_vecs")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestOpenFallsBackToLocal(t *testing.T) {
 
 	// Unreachable qdrant (server closed) -> local.
 	srv.Close()
-	got := Open(openMem(t), "qdrant", "http://127.0.0.1:1", "", "reponest_vecs")
+	got := Open(openMem(t), "qdrant", "http://127.0.0.1:1", "", "repotory_vecs")
 	if got.Name() != "local-sqlite-vec" {
 		t.Fatalf("unreachable qdrant should fall back to local, got %s", got.Name())
 	}
@@ -103,7 +103,7 @@ func TestOpenFallsBackToLocal(t *testing.T) {
 	stub := &qStub{t: t}
 	up := httptest.NewServer(http.HandlerFunc(stub.serve))
 	defer up.Close()
-	if got := Open(openMem(t), "qdrant", up.URL, "k", "reponest_vecs"); got.Name() != "qdrant" {
+	if got := Open(openMem(t), "qdrant", up.URL, "k", "repotory_vecs"); got.Name() != "qdrant" {
 		t.Fatalf("reachable qdrant should be chosen, got %s", got.Name())
 	}
 	// Empty/local kind -> local.

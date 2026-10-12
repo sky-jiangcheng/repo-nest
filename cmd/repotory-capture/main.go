@@ -1,18 +1,18 @@
-// Command reponest-capture is the B-end Claude Code SessionEnd hook target
+// Command repotory-capture is the B-end Claude Code SessionEnd hook target
 // (ADR-0010): it captures the just-closed session as a handoff note.
 //
 // Claude Code runs a SessionEnd hook as an external command with the session's
 // working directory. Resolve cwd from (in order): -cwd flag, a JSON object on
 // stdin with a "cwd" field, then the process's own working dir. Then resolve the
-// matching RepoNest project and run the same capture the desktop button does.
+// matching Repotory project and run the same capture the desktop button does.
 //
 // It is inert unless `claude_session_capture=1` AND the project matches — so a
 // hook installed but not enabled is a harmless no-op, and reading transcripts
 // never happens implicitly (ADR-0010 决策 1/2).
 //
-// Hook config (via scripts/reponest-init or manually):
+// Hook config (via scripts/repotory-init or manually):
 //
-//	"SessionEnd": [{ "hooks": [{ "type": "command", "command": "reponest-capture" }] }]
+//	"SessionEnd": [{ "hooks": [{ "type": "command", "command": "repotory-capture" }] }]
 package main
 
 import (
@@ -24,9 +24,9 @@ import (
 	"log"
 	"os"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/platform"
-	"repo-nest/internal/service"
+	"repotory/internal/db"
+	"repotory/internal/platform"
+	"repotory/internal/service"
 )
 
 func main() {
@@ -36,7 +36,7 @@ func main() {
 
 	cwd := resolveCwd(*cwdFlag)
 	if cwd == "" {
-		log.Fatalf("reponest-capture: cannot determine session cwd")
+		log.Fatalf("repotory-capture: cannot determine session cwd")
 	}
 
 	path := *dbPath
@@ -45,7 +45,7 @@ func main() {
 	}
 	database, err := db.InitDB(path)
 	if err != nil {
-		log.Fatalf("reponest-capture: open db: %v", err)
+		log.Fatalf("repotory-capture: open db: %v", err)
 	}
 	defer database.Close()
 
@@ -54,10 +54,10 @@ func main() {
 		// Disabled-by-config or no-matching-project are expected, non-fatal for a
 		// hook; still surface them so operators can debug, but exit 0 so a failed
 		// capture never breaks the user's Claude session teardown.
-		fmt.Fprintf(os.Stderr, "reponest-capture: %v\n", err)
+		fmt.Fprintf(os.Stderr, "repotory-capture: %v\n", err)
 		return
 	}
-	fmt.Printf("reponest-capture: wrote handoff note %d (%q)\n", res.NoteID, res.Title)
+	fmt.Printf("repotory-capture: wrote handoff note %d (%q)\n", res.NoteID, res.Title)
 }
 
 // resolveCwd prefers the flag, then a {"cwd": "..."} stdin object (Claude Code

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // Layered memory (ADR-0014 决策 6 / TODO M6-W5).

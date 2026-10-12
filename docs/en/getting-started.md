@@ -5,11 +5,11 @@ order: 1
 
 # Getting Started
 
-RepoNest is a local-first desktop app (Wails v2, a single file with zero runtime dependencies). Its core value is a **cross-agent project memory layer**: it automatically discovers the Git repositories on your machine and quickly captures notes, dependencies, tech stack, and activity information, so you and any AI agent can search and reuse them. The dashboard and statistics are supporting capabilities, not the product's main entry point.
+Repotory is a local-first desktop app (Wails v2, a single file with zero runtime dependencies). Its core value is a **cross-agent project memory layer**: it automatically discovers the Git repositories on your machine and quickly captures notes, dependencies, tech stack, and activity information, so you and any AI agent can search and reuse them. The dashboard and statistics are supporting capabilities, not the product's main entry point.
 
 ## Download and Install
 
-The install script sets up both the desktop app and `reponest-mcp` (the MCP server used by AI clients).
+The install script sets up both the desktop app and `repotory-mcp` (the MCP server used by AI clients).
 
 ### macOS / Linux
 
@@ -17,7 +17,7 @@ The install script sets up both the desktop app and `reponest-mcp` (the MCP serv
 curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh | bash
 ```
 
-On macOS it installs to `/Applications/RepoNest.app`, on Linux to `/usr/local/bin/reponest`; both place `reponest-mcp` in `/usr/local/bin`.
+On macOS it installs to `/Applications/Repotory.app`, on Linux to `/usr/local/bin/repotory`; both place `repotory-mcp` in `/usr/local/bin`.
 
 ### Windows
 
@@ -31,12 +31,12 @@ Or download the binary for your platform from [GitHub Releases](https://github.c
 
 Launching opens the desktop window directly (a Wails app — no browser needed).
 
-The five-minute path — the first two steps are required, the last two only affect dashboard statistics; MCP-only users (no desktop app) can simply have their agent call `reponest_scan` once:
+The five-minute path — the first two steps are required, the last two only affect dashboard statistics; MCP-only users (no desktop app) can simply have their agent call `repotory_scan` once:
 
 ```mermaid
 flowchart TB
     A["① Configure scan roots<br/>seeded on first launch"] --> B["② Run scan<br/>discover repos · mine knowledge"]
-    E["MCP-only users<br/>agent calls reponest_scan"] -.-> B
+    E["MCP-only users<br/>agent calls repotory_scan"] -.-> B
     B --> DONE["✅ Knowledge base ready<br/>notes · search · AI"]
     B -.-> C["③ Star repos (optional)"]
     C -.-> D["④ Backfill history (optional)"]
@@ -66,7 +66,7 @@ Click **Rescan** on the dashboard; the app recursively discovers every Git repos
 
 > The first scan only registers repositories and projects; it does not pre-scan historical commit data.
 >
-> **At this point the knowledge base is already usable**: you can write notes, search, and hand context to AI (`reponest_context` / `reponest_handoff`). The starring and backfill steps below only affect dashboard statistics, not the knowledge base.
+> **At this point the knowledge base is already usable**: you can write notes, search, and hand context to AI (`repotory_context` / `repotory_handoff`). The starring and backfill steps below only affect dashboard statistics, not the knowledge base.
 
 ### 3. Star Repositories (optional, dashboard statistics)
 
@@ -100,9 +100,9 @@ The diagrams behind each page: the dashboard's page layering is in [Dashboard](f
 
 | Item | macOS | Windows | Linux |
 |------|-------|---------|-------|
-| Database | `~/Library/Application Support/reponest/dashboard.db` | `%APPDATA%\reponest\dashboard.db` | `~/.config/reponest/dashboard.db` |
-| Plugin directory | `…/reponest/plugins/` | `…/reponest\plugins\` | `…/reponest/plugins/` |
-| Logs | `~/Library/Logs/reponest.log` | `%APPDATA%\reponest\logs\reponest.log` | `$XDG_STATE_HOME/reponest/reponest.log` (default `~/.local/state/reponest/`) |
+| Database | `~/Library/Application Support/repotory/repotory.db` | `%APPDATA%\repotory\repotory.db` | `~/.config/repotory/repotory.db` |
+| Plugin directory | `…/repotory/plugins/` | `…/repotory\plugins\` | `…/repotory/plugins/` |
+| Logs | `~/Library/Logs/repotory.log` | `%APPDATA%\repotory\logs\repotory.log` | `$XDG_STATE_HOME/repotory/repotory.log` (default `~/.local/state/repotory/`) |
 
 The schema migrates automatically on upgrade; no manual data handling is needed. For detailed troubleshooting, see [Troubleshooting](troubleshooting.md).
 
@@ -115,10 +115,10 @@ The schema migrates automatically on upgrade; no manual data handling is needed.
 cd web && npm install && npm run build && cd ..
 
 # Desktop app
-go build -ldflags="-s -w" -o reponest .
+go build -ldflags="-s -w" -o repotory .
 
 # MCP server
-go build -o reponest-mcp ./cmd/mcp/
+go build -o repotory-mcp ./cmd/mcp/
 ```
 
 Development mode: `wails dev` (frontend hot reload + Wails binding injection). Testing: `go test ./...`; frontend `npm test` / `npm run build` (strict tsc checks).

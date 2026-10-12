@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/grouper"
-	"repo-nest/internal/platform"
-	"repo-nest/internal/scanner"
+	"repotory/internal/db"
+	"repotory/internal/grouper"
+	"repotory/internal/platform"
+	"repotory/internal/scanner"
 )
 
 // ScanResult holds the result of a scan operation.

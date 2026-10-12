@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // stubEmbedServer returns a fake OpenAI-compatible /v1/embeddings endpoint:

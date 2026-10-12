@@ -35,7 +35,7 @@
     "starredOnly": "暂无关注项目",
     "noProjects": "暂无项目数据",
     "starMsg": "你还没有关注任何项目。点击项目卡片右上角的星标即可关注，或切换到「全部」查看所有项目。",
-    "scanMsg": "RepoNest 尚未扫描到任何 Git 仓库。请先配置扫描目录。",
+    "scanMsg": "Repotory 尚未扫描到任何 Git 仓库。请先配置扫描目录。",
     "viewAll": "查看全部项目",
     "startScan": "开始扫描",
     "configDir": "配置目录",
@@ -201,7 +201,7 @@
     "groupRescan": "重新扫描",
     "importClaudeAction": "开始导入",
     "tabDesc": {
-      "scan": "RepoNest 从这里列出的目录发现本地 Git 仓库",
+      "scan": "Repotory 从这里列出的目录发现本地 Git 仓库",
       "standards": "设定每日代码量目标与扫描深度，作为仪表盘的达标口径",
       "authors": "用于在提交记录中识别你的身份，统计个人代码量",
       "appearance": "选择浅色、深色或跟随系统",

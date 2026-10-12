@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // Regression: a nil scan-root slice serialises to JSON null, and the settings

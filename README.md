@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="build/icon.svg" width="88" alt="RepoNest" />
+  <img src="build/icon.svg" width="88" alt="Repotory" />
 </p>
 
-# RepoNest: Local Git Knowledge Base
+# Repotory: Local Git Knowledge Base
 
-**The local-first memory layer for AI coding agents.** Your agents (Claude Code, Cursor, OpenCode...) read code brilliantly and forget everything the moment the session ends — why a decision was made, what gotcha was discovered, what to do next. RepoNest keeps that knowledge on your machine, searchable, and hands it back to *any* agent in one tool call.
+**The local-first memory layer for AI coding agents.** Your agents (Claude Code, Cursor, OpenCode...) read code brilliantly and forget everything the moment the session ends — why a decision was made, what gotcha was discovered, what to do next. Repotory keeps that knowledge on your machine, searchable, and hands it back to *any* agent in one tool call.
 
 English | [简体中文](README.zh-CN.md)
 
@@ -25,9 +25,9 @@ The whole product is one loop — three tool calls at session boundaries, and ev
 
 ```mermaid
 flowchart TB
-    SCAN["① reponest_scan<br/>first run · discover repos"] --> CTX["② reponest_context<br/>session start · full context"]
+    SCAN["① repotory_scan<br/>first run · discover repos"] --> CTX["② repotory_context<br/>session start · full context"]
     CTX --> WORK(["…work…"])
-    WORK --> HAND["③ reponest_handoff<br/>session end · handoff note"]
+    WORK --> HAND["③ repotory_handoff<br/>session end · handoff note"]
     HAND -.->|"next session starts here"| CTX
     classDef entry fill:#eff6ff,stroke:#3b82f6,color:#1e3a5f
     classDef ctx fill:#f0fdf4,stroke:#22c55e,color:#14532d
@@ -44,7 +44,7 @@ The dashed edge is the point: handoffs are stored in local SQLite, not in any ag
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-Both paths meet at one local knowledge base — the human side (desktop app, VS Code extension), the agent side (MCP tools, llms.txt), one service layer underneath, and `reponest-init` wiring the agent side in one command:
+Both paths meet at one local knowledge base — the human side (desktop app, VS Code extension), the agent side (MCP tools, llms.txt), one service layer underneath, and `repotory-init` wiring the agent side in one command:
 
 ```mermaid
 flowchart TB
@@ -55,7 +55,7 @@ flowchart TB
     end
     subgraph AGENT[🤖 AI agent user — tool surface]
         direction LR
-        MCP[reponest-mcp · 13 MCP tools]
+        MCP[repotory-mcp · 13 MCP tools]
         DSH[dsh Harness plugin · llms.txt]
     end
     subgraph CORE[🧠 Local knowledge base — single source of truth]
@@ -63,7 +63,7 @@ flowchart TB
         SVC[internal/service] --- DB[(SQLite + FTS5)]
     end
     HUMAN ~~~ AGENT ~~~ CORE
-    INIT[⚡ reponest-init · one-command registration]
+    INIT[⚡ repotory-init · one-command registration]
     INIT --> MCP
     DESKTOP --> SVC
     VSCODE --> SVC
@@ -72,11 +72,11 @@ flowchart TB
 ```
 
 > A single-file Wails v2 desktop app (Go + React, embedded SQLite, zero CGO) for **macOS / Windows / Linux**.
-> Works offline with no cloud dependency; AI reads the same local database through the independently distributed [`reponest-mcp`](#set-up-the-ai-execution-interface-reponest-mcp) MCP server.
+> Works offline with no cloud dependency; AI reads the same local database through the independently distributed [`repotory-mcp`](#set-up-the-ai-execution-interface-repotory-mcp) MCP server.
 > Switch agents without losing context: a handoff written by Claude Code is read directly by Cursor.
 > For positioning priorities, feature tiers and the scope freeze, see [ADR-0006](docs/en/adr/0006-scope-freeze.md) and the [positioning brief](docs/positioning-brief.md) (Chinese).
 
-**Why RepoNest?** Coding agents are great at reading code but don't retain *the judgment you've accumulated across these repos*: why something was designed this way, what gotcha you hit last time, what the next todo is. Each agent keeps a private memory format, so switching tools means starting from zero. RepoNest sinks all of that into a local, searchable memory layer that any agent can read and write — `reponest_context` injects it at session start, `reponest_handoff` captures it at session end, and everything in between is retrieved on demand.
+**Why Repotory?** Coding agents are great at reading code but don't retain *the judgment you've accumulated across these repos*: why something was designed this way, what gotcha you hit last time, what the next todo is. Each agent keeps a private memory format, so switching tools means starting from zero. Repotory sinks all of that into a local, searchable memory layer that any agent can read and write — `repotory_context` injects it at session start, `repotory_handoff` captures it at session end, and everything in between is retrieved on demand.
 
 ## Features
 
@@ -101,18 +101,18 @@ The project detail page auto-extracts: README summary, tech stack list (20+ mani
 
 | Channel | Description |
 |---------|-------------|
-| MCP Server | `reponest-mcp` stdio server, 13 tools (repo scan + context injection + session handoff + note CRUD + project queries + search + two self-checks); plugs into Claude Code / Cursor and more (the only interface AI executes through) |
-| `reponest_scan` | One-shot cold start: seeds default scan roots and scans synchronously to discover local Git repos. A pure-MCP install (no desktop app) can bootstrap the knowledge base |
-| `reponest_context` | One call at session start loads the project's full context: tech stack / README summary / dependencies / recent commits / open todos / highly relevant notes (handoff notes first) — replaces 3-4 chained queries |
-| `reponest_handoff` | Structured handoff at session end: summary / changes / decisions / gotchas / next_steps rendered into a unified template and stored; the next session (any agent) reads it automatically |
+| MCP Server | `repotory-mcp` stdio server, 13 tools (repo scan + context injection + session handoff + note CRUD + project queries + search + two self-checks); plugs into Claude Code / Cursor and more (the only interface AI executes through) |
+| `repotory_scan` | One-shot cold start: seeds default scan roots and scans synchronously to discover local Git repos. A pure-MCP install (no desktop app) can bootstrap the knowledge base |
+| `repotory_context` | One call at session start loads the project's full context: tech stack / README summary / dependencies / recent commits / open todos / highly relevant notes (handoff notes first) — replaces 3-4 chained queries |
+| `repotory_handoff` | Structured handoff at session end: summary / changes / decisions / gotchas / next_steps rendered into a unified template and stored; the next session (any agent) reads it automatically |
 | llms.txt | `GenerateLLMsTxt` emits an LLM-oriented knowledge base overview in Markdown |
 | Note export | Export any note as `.md` with YAML frontmatter |
 | Knowledge importers | Bring other agents' memory in: **Claude** memory files auto-imported on startup; **Codex** / **OpenCode** sessions and **OpenClaw** / **Hermes** (Nous) global memory as **opt-in, manually-triggered** sources (allowlist-scoped; global-memory sources attach to a project you pick in Settings). Idempotent upsert. |
-| Session auto-capture (M1) | On-demand capture of a project's latest Claude Code session transcript into a handoff note; a `reponest-capture` CLI covers the B-end SessionEnd-hook automation. **Off by default** (`claude_session_capture`), privacy-gated. |
+| Session auto-capture (M1) | On-demand capture of a project's latest Claude Code session transcript into a handoff note; a `repotory-capture` CLI covers the B-end SessionEnd-hook automation. **Off by default** (`claude_session_capture`), privacy-gated. |
 | Semantic search (M3) | Optional hybrid FTS5 + vector recall (RRF-fused) with a **pluggable vector store**: local **sqlite-vec** (default, pure-Go/zero-CGO) or remote **Qdrant** / **Weaviate** (auto-falls-back to local if unreachable). **Off by default**, gated behind an A/B eval (`cmd/abeval`). See [ADR-0012](docs/adr/0012-semantic-search.md) / [ADR-0013](docs/adr/0013-vector-database-selection.md). |
 | Portable memory export | `ExportMemoryJSON` emits the knowledge base as [Open Memory Protocol](https://github.com/SMJAI/open-memory-protocol)-style memory objects (provisional; OMP is pre-1.0). |
 | Claude memory import | One-click idempotent import of `~/.claude/projects/*/memory/*.md` as knowledge notes (**Support**) |
-| Data integrity audit | `reponest_integrity`, 6 read-only checks: FTS index drift, orphan rows, schema shape vs version stamp, scan coverage, knowledge-cache freshness, version-snapshot orphans. Index drift makes search **silently miss results** with no other mechanism to catch it — this is the only way to detect it |
+| Data integrity audit | `repotory_integrity`, 6 read-only checks: FTS index drift, orphan rows, schema shape vs version stamp, scan coverage, knowledge-cache freshness, version-snapshot orphans. Index drift makes search **silently miss results** with no other mechanism to catch it — this is the only way to detect it |
 
 ### Dashboard & Stats (Support)
 
@@ -148,23 +148,23 @@ Download the archive for your platform from Releases and run it:
 
 | Platform | Assets |
 |----------|--------|
-| macOS | `reponest-darwin-arm64.dmg` / `reponest-darwin-amd64.dmg` |
-| Linux | `reponest-linux-amd64.tar.gz` |
-| Windows | `reponest-windows-amd64.zip` |
+| macOS | `repotory-darwin-arm64.dmg` / `repotory-darwin-amd64.dmg` |
+| Linux | `repotory-linux-amd64.tar.gz` |
+| Windows | `repotory-windows-amd64.zip` |
 
-**Option 2: one-line install script** (desktop app + `reponest-mcp` together)
+**Option 2: one-line install script** (desktop app + `repotory-mcp` together)
 
 | Platform | Command | Installs to |
 |----------|---------|-------------|
-| macOS | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh \| bash` | `/Applications/RepoNest.app` + `/usr/local/bin/reponest-mcp` |
-| Linux | same | `/usr/local/bin/reponest` + `/usr/local/bin/reponest-mcp` |
-| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 \| iex` | `%LOCALAPPDATA%\RepoNest` (added to user PATH automatically) |
+| macOS | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh \| bash` | `/Applications/Repotory.app` + `/usr/local/bin/repotory-mcp` |
+| Linux | same | `/usr/local/bin/repotory` + `/usr/local/bin/repotory-mcp` |
+| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 \| iex` | `%LOCALAPPDATA%\Repotory` (added to user PATH automatically) |
 
 macOS also ships via Homebrew (add the tap first — see [`packaging/`](packaging/README.md)):
 
 ```bash
 brew tap sky-jiangcheng/repo
-brew install --cask sky-jiangcheng/repo/reponest
+brew install --cask sky-jiangcheng/repo/repotory
 ```
 
 Launch opens a desktop window directly (a Wails app — no browser needed):
@@ -173,33 +173,33 @@ Launch opens a desktop window directly (a Wails app — no browser needed):
 2. Click **Rescan** on the dashboard to discover repos — at this point the **knowledge base is already usable**: write/search notes, hand them to AI
 3. (Optional, affects dashboard stats only) star the repos you care about → **Backfill history** fetches 365 days of stats
 
-> **Only want the AI side?** No desktop app needed: install `reponest-mcp`, then have your agent call `reponest_scan` once to bootstrap the knowledge base.
+> **Only want the AI side?** No desktop app needed: install `repotory-mcp`, then have your agent call `repotory_scan` once to bootstrap the knowledge base.
 
 More in [Getting Started](docs/en/getting-started.md).
 
-> **CLI tools** (opt-in, advanced): `reponest vector-init` — guided setup of the vector store (local default / remote Qdrant/Weaviate) + embedding provider; `reponest-capture` — the Claude Code SessionEnd hook target that auto-captures a closed session; `go run ./cmd/abeval -cases queries.jsonl` — the A/B gate that decides whether semantic search earns enabling. All read the same local database; see [ADR-0013](docs/adr/0013-vector-database-selection.md).
+> **CLI tools** (opt-in, advanced): `repotory vector-init` — guided setup of the vector store (local default / remote Qdrant/Weaviate) + embedding provider; `repotory-capture` — the Claude Code SessionEnd hook target that auto-captures a closed session; `go run ./cmd/abeval -cases queries.jsonl` — the A/B gate that decides whether semantic search earns enabling. All read the same local database; see [ADR-0013](docs/adr/0013-vector-database-selection.md).
 
-### Set Up the AI Execution Interface (`reponest-mcp`)
+### Set Up the AI Execution Interface (`repotory-mcp`)
 
-AI clients talk to the independently distributed `reponest-mcp` (an MCP stdio server) — **no desktop app required**; it reads the same local database. The install script above sets it up too; you can also install it standalone:
+AI clients talk to the independently distributed `repotory-mcp` (an MCP stdio server) — **no desktop app required**; it reads the same local database. The install script above sets it up too; you can also install it standalone:
 
 | Method | Platform | Command |
 |--------|----------|---------|
-| Manual (no prerequisites) | All platforms | Download `reponest-mcp-<target>.tar.gz` / `.zip` from [Releases](https://github.com/sky-jiangcheng/repo-nest/releases) |
-| Homebrew | macOS | `brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/reponest-mcp` |
-| Homebrew | Linux | `brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/reponest-mcp` |
-| Scoop | Windows | `scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/reponest-mcp` |
+| Manual (no prerequisites) | All platforms | Download `repotory-mcp-<target>.tar.gz` / `.zip` from [Releases](https://github.com/sky-jiangcheng/repo-nest/releases) |
+| Homebrew | macOS | `brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/repotory-mcp` |
+| Homebrew | Linux | `brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/repotory-mcp` |
+| Scoop | Windows | `scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/repotory-mcp` |
 
 Then register it with your AI client — one command covers Claude Code / Cursor / VS Code / Windsurf (step one of [ADR-0009](docs/adr/0009-ide-presence.md), idempotent):
 
 ```bash
-node scripts/reponest-init/index.mjs --with-hook
+node scripts/repotory-init/index.mjs --with-hook
 ```
 
 Or register Claude Code only:
 
 ```bash
-claude mcp add reponest -- "$(which reponest-mcp)"
+claude mcp add repotory -- "$(which repotory-mcp)"
 ```
 
 #### See it work in 30 seconds
@@ -207,58 +207,58 @@ claude mcp add reponest -- "$(which reponest-mcp)"
 After registering, one step remains on first use:
 
 > **First use** (bootstrap the knowledge base, no desktop app needed):
-> The agent calls `reponest_scan()` — seeds default scan roots and scans, returning your local repo list in one shot.
+> The agent calls `repotory_scan()` — seeds default scan roots and scans, returning your local repo list in one shot.
 
 Every work session then follows this rhythm:
 
 > **Session start** (a new agent takes over the project):
 > "Continue working on the auth project."
 >
-> The agent calls `reponest_context({ project_name: "auth" })` — tech stack, todos, and the last session's handoff note in one call, then gets straight to work.
+> The agent calls `repotory_context({ project_name: "auth" })` — tech stack, todos, and the last session's handoff note in one call, then gets straight to work.
 
 > **Session end** (knowledge doesn't evaporate):
-> The agent calls `reponest_handoff({ project_id: 1, summary: "Finished the OAuth migration", gotchas: ["the production cookie key needs rotating"], next_steps: ["run the regression suite"] })` — the next session (even from Cursor) continues from here automatically.
+> The agent calls `repotory_handoff({ project_id: 1, summary: "Finished the OAuth migration", gotchas: ["the production cookie key needs rotating"], next_steps: ["run the regression suite"] })` — the next session (even from Cursor) continues from here automatically.
 
 Any time in between you can just ask:
 
 > "What local projects do I have? What did I note down about auth?"
 
-The agent chains `reponest_projects_list` → `reponest_notes_search` → `reponest_notes_read`; new conclusions go back with `reponest_notes_create`. You can also export any note as `.md` with YAML frontmatter, or generate an LLM-oriented `llms.txt` overview. The full tool list and workflows live in [SKILL.md](SKILL.md).
+The agent chains `repotory_projects_list` → `repotory_notes_search` → `repotory_notes_read`; new conclusions go back with `repotory_notes_create`. You can also export any note as `.md` with YAML frontmatter, or generate an LLM-oriented `llms.txt` overview. The full tool list and workflows live in [SKILL.md](SKILL.md).
 
 The manifests are in [`packaging/`](packaging/README.md); versions derive from `wails.json` and `sha256` values come from the actual release assets (Homebrew / Scoop refuse to install on checksum mismatch — by design). Published taps:
 
 - **Homebrew**: [sky-jiangcheng/homebrew-repo](https://github.com/sky-jiangcheng/homebrew-repo)
 - **Scoop**: [sky-jiangcheng/scoop-repo](https://github.com/sky-jiangcheng/scoop-repo)
 
-> Same for the desktop app: `brew install --cask sky-jiangcheng/repo/reponest` (macOS), `scoop install repo/reponest` (Windows). Linux desktop ships as a tarball only.
+> Same for the desktop app: `brew install --cask sky-jiangcheng/repo/repotory` (macOS), `scoop install repo/repotory` (Windows). Linux desktop ships as a tarball only.
 
 ### Data Directory
 
 Configuration and the database live in the per-user app data directory (schema migrates automatically on upgrade):
 
-- **macOS**: `~/Library/Application Support/reponest/dashboard.db`
-- **Windows**: `%APPDATA%/reponest/dashboard.db`
-- **Linux**: `~/.config/reponest/dashboard.db`
+- **macOS**: `~/Library/Application Support/repotory/repotory.db`
+- **Windows**: `%APPDATA%/repotory/repotory.db`
+- **Linux**: `~/.config/repotory/repotory.db`
 
 Log paths: see [Troubleshooting](docs/en/troubleshooting.md).
 
 ## VS Code Extension (preview)
 
-The extension (VS Code / Cursor / Windsurf — one VSIX covers all three) is a **preview**. Every product release automatically publishes it to the [Marketplace](https://marketplace.visualstudio.com/items?itemName=sky-jiangcheng.reponest-vscode) (active once the `VSCE_PAT` secret is configured); the `.vsix` is also attached to each [Release](https://github.com/sky-jiangcheng/repo-nest/releases) for manual install, and you can always package from source:
+The extension (VS Code / Cursor / Windsurf — one VSIX covers all three) is a **preview**. Every product release automatically publishes it to the [Marketplace](https://marketplace.visualstudio.com/items?itemName=sky-jiangcheng.repotory-vscode) (active once the `VSCE_PAT` secret is configured); the `.vsix` is also attached to each [Release](https://github.com/sky-jiangcheng/repo-nest/releases) for manual install, and you can always package from source:
 
 ```bash
 git clone https://github.com/sky-jiangcheng/repo-nest.git
 cd repo-nest/ide/vscode
 npm install
-npx @vscode/vsce package --no-dependencies   # → reponest-vscode-0.1.0.vsix
+npx @vscode/vsce package --no-dependencies   # → repotory-vscode-0.1.0.vsix
 ```
 
 Then install the produced `.vsix`:
 
 - **UI**: Extensions view → `⋯` menu → **Install from VSIX…**
-- **CLI**: `code --install-extension reponest-vscode-0.1.0.vsix` (use `cursor` / `windsurf` for the forks)
+- **CLI**: `code --install-extension repotory-vscode-0.1.0.vsix` (use `cursor` / `windsurf` for the forks)
 
-The extension is a thin client: commands call `reponest-mcp` over stdio (install it first — brew / scoop / [Releases](https://github.com/sky-jiangcheng/repo-nest/releases)), and all answers come from the same `internal/service` layer as the desktop app. Capability details in [`ide/vscode/README.md`](ide/vscode/README.md).
+The extension is a thin client: commands call `repotory-mcp` over stdio (install it first — brew / scoop / [Releases](https://github.com/sky-jiangcheng/repo-nest/releases)), and all answers come from the same `internal/service` layer as the desktop app. Capability details in [`ide/vscode/README.md`](ide/vscode/README.md).
 
 ## Building from Source
 
@@ -269,10 +269,10 @@ Requirements: **Go 1.25+**, **Node.js 20+** (frontend build), optional [Wails CL
 cd web && npm install && npm run build && cd ..
 
 # Desktop app
-go build -ldflags "-s -w" -o reponest .
+go build -ldflags "-s -w" -o repotory .
 
 # MCP server
-go build -o reponest-mcp ./cmd/mcp/
+go build -o repotory-mcp ./cmd/mcp/
 
 # Or use the script
 ./scripts/build.sh
@@ -331,12 +331,12 @@ The brand name and machine identifiers are **intentionally inconsistent**: the d
 
 | Layer | Value | Used for |
 |-------|-------|----------|
-| Brand (display) | `RepoNest` | `productName`, in-app logo, docs and UI copy |
-| Full display name | `RepoNest: Local Git Knowledge Base` | Window title, HTML `<title>`, README title |
+| Brand (display) | `Repotory` | `productName`, in-app logo, docs and UI copy |
+| Full display name | `Repotory: Local Git Knowledge Base` | Window title, HTML `<title>`, README title |
 | Repo & package identifier | `repo-nest` | GitHub repo name, Go module name, npm package name, docs site URL |
-| Frozen identifiers (never follow the brand) | `reponest` | Command / binary name (`outputfilename`), user data directory, MCP server name `reponest-mcp` and tool prefix `reponest_*` |
+| Frozen identifiers (never follow the brand) | `repotory` | Command / binary name (`outputfilename`), user data directory, MCP server name `repotory-mcp` and tool prefix `repotory_*` |
 
-Why frozen: the data directory `reponest` has already been through two automatic migrations (gitboard → gitbuddy → reponest); another rename would mean a third data move. MCP tool names are an external contract with AI clients — renaming breaks existing configs and allowlists. When contributing, please do not "helpfully unify" these names.
+Why frozen: the data directory `repotory` has already been through two automatic migrations (gitboard → gitbuddy → repotory); another rename would mean a third data move. MCP tool names are an external contract with AI clients — renaming breaks existing configs and allowlists. When contributing, please do not "helpfully unify" these names.
 
 ## Documentation
 

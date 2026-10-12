@@ -19,7 +19,7 @@ v1.15.1 的知识层是一个**写入通道丰富、结构很薄、检索局部�
 
 - **Karpathy 的 LLM Wiki 原始 gist**（`gist.github.com/karpathy/442a6bf555914893e9891c11519de94f`）。核心不是检索算法而是**编译时机**：RAG 在查询时从零找碎片、理解不累积；LLM Wiki 在摄入时把新文档**合并进一份持久的、互链的 Markdown 库**——更新实体页、修订主题综述、标注新数据与旧结论的矛盾。三层：raw sources 只读、wiki 由 LLM 独占读写、`schema.md` 是这个 agent 的纪律来源。三操作：ingest / query / **lint**（查矛盾、过时声明、孤页、缺交叉引用、数据缺口）。两条导航约定：`index.md`（内容目录，每次 ingest 必更新，查询先读它再下钻）与 `log.md`（追加式、前缀可 grep 的操作时间线）。**它自己承认边界**：index 导航在 ~100 来源 / 几百页面内表现好，更大规模才需要真正的检索。
 - **`nashsu/llm_wiki`**（桌面实现，~2 万星）。给出可抄的目录与工程细节：`purpose.md` / `schema.md` / `raw/sources/` / `wiki/{index,log,overview}.md` + `entities/` `concepts/` `sources/` `queries/` `synthesis/`；页面 = Markdown + YAML frontmatter，**没有数据库**；一次 ingest 可触碰 **10-15 个页面**；SHA256 跳过未变文件、两步 CoT 摄入、带崩溃恢复与重试的**串行**队列；好答案归档回 `wiki/queries/`（探索也复利）。
-- **`TencentCloud/TencentDB-Agent-Memory`**（~2.8 万星，WorkBuddy / CodeBuddy / OpenClaw / Hermes / DeepSeek Harness 共用的记忆中枢，且明确致谢 Karpathy 那篇）。它在 wiki 之上多做的两件事正是 RepoNest 该抄的：**分层蒸馏** L0 原始转录 → L1 原子事实 → L2 场景 → L3 画像，检索时「L2/L3 引导上下文，要具体事实才用 BM25 + 向量 + RRF 回落到 L1/L0」，并用**条数 / 字符预算 / 超时三重封顶**防止记忆吃掉整个上下文窗口；**资产化治理**——Chat Memory / Skill / LLM-Wiki / CodeGraph 统一注册为 Memory Asset，带 ownership / version / status / visibility(private|team|restricted) / 使用计数 / agent 绑定。
+- **`TencentCloud/TencentDB-Agent-Memory`**（~2.8 万星，WorkBuddy / CodeBuddy / OpenClaw / Hermes / DeepSeek Harness 共用的记忆中枢，且明确致谢 Karpathy 那篇）。它在 wiki 之上多做的两件事正是 Repotory 该抄的：**分层蒸馏** L0 原始转录 → L1 原子事实 → L2 场景 → L3 画像，检索时「L2/L3 引导上下文，要具体事实才用 BM25 + 向量 + RRF 回落到 L1/L0」，并用**条数 / 字符预算 / 超时三重封顶**防止记忆吃掉整个上下文窗口；**资产化治理**——Chat Memory / Skill / LLM-Wiki / CodeGraph 统一注册为 Memory Asset，带 ownership / version / status / visibility(private|team|restricted) / 使用计数 / agent 绑定。
 
 ## 决策
 
@@ -31,7 +31,7 @@ v1.15.1 的知识层是一个**写入通道丰富、结构很薄、检索局部�
 
 ### 2. SQLite 仍是唯一 SSOT，文件树只读导出，不做双向同步
 
-这是与三个参照物最大的分歧，必须写死。它们都建立在「wiki 就是一堆 md 文件 + git」上，靠 Obsidian 提供阅读与 graph view。RepoNest 反过来：**库内结构 + 单向导出旁路**（`reponest wiki export` 渲染成 md 文件树 + frontmatter + wikilink，附导出清单）。
+这是与三个参照物最大的分歧，必须写死。它们都建立在「wiki 就是一堆 md 文件 + git」上，靠 Obsidian 提供阅读与 graph view。Repotory 反过来：**库内结构 + 单向导出旁路**（`repotory wiki export` 渲染成 md 文件树 + frontmatter + wikilink，附导出清单）。
 
 理由：笔记一旦有两个写入者（文件编辑器 + 应用内编辑器），冲突、去重与 `note_versions`（现每笔记至多留 50 版快照，`db/migrate.go:155-182`）都要重做一套。**单向导出已经白嫖了 Obsidian graph view 与「git 里 review LLM 改了什么」这两个真实价值，而不必接受双写代价。** 待双向同步出现真实需求信号（用户拿 Obsidian 改回来）时，另开一篇 ADR 取代本决策。
 
@@ -57,7 +57,7 @@ lint 定时跑五查（矛盾 / 过时声明 / 孤页 / 缺交叉引用 / 数据
 
 L0 = 会话转录（已有 capture 链路）/ L1 = 原子笔记（现在的 `project_notes`）/ L2 = 项目场景（`BuildProjectContext` 已是雏形，含 handoff 优先排序，`internal/service/context.go:94-120`）/ L3 = 跨项目稳定画像（待立项）。检索按 L2/L3 引导、L1/L0 取证分层，而不是一股脑塞。
 
-对外仍然只走已有两个面：MCP 工具 + `/api/rpc`。**不去自建或对接远端 Memory Hub**——RepoNest 的定位是 local-first（scoop 清单里的原话就是 "Local-first code project context base"）。若将来要互通，方向是 RepoNest 作为那类 Hub 的**一个本地 asset 源/审计面板**，且要等 OMP 稳定（自家导出至今标着 PROVISIONAL、导入侧刻意未写，`internal/service/omp_export.go:13-19`）。
+对外仍然只走已有两个面：MCP 工具 + `/api/rpc`。**不去自建或对接远端 Memory Hub**——Repotory 的定位是 local-first（scoop 清单里的原话就是 "Local-first code project context base"）。若将来要互通，方向是 Repotory 作为那类 Hub 的**一个本地 asset 源/审计面板**，且要等 OMP 稳定（自家导出至今标着 PROVISIONAL、导入侧刻意未写，`internal/service/omp_export.go:13-19`）。
 
 ## 候选矩阵
 
@@ -79,14 +79,14 @@ L0 = 会话转录（已有 capture 链路）/ L1 = 原子笔记（现在的 `pro
 - 隐私面放大：见决策 4 的前置项。
 - 新迁移 + 新配置键 + 新前端面，是三层同时动的活儿，不是一个 sprint 的量。
 
-**待决**：~~页面四类够不够~~（→ **已由 W1 裁决为五类**）；~~`schema.md` 等价物放全局还是按项目~~（→ **已裁决 2026-10-09：全局默认 + 项目覆盖**；kind 词表与安全契约（三种 op、预算、先审后入）全局不可覆盖，覆盖面仅限描述性纪律，SSOT 落库不落导出树。理由全文见 TODO M6 schema 作用域条）；与 `dsh-plugin-reponest` 的关系（导出旁路给 dsh 的会话读？）；向量层在页面量上来后是否要把融合范围从 notes 扩到 `wiki_pages`（受 ADR-0012「只对 notes 融合」的既有约束限制）。
+**待决**：~~页面四类够不够~~（→ **已由 W1 裁决为五类**）；~~`schema.md` 等价物放全局还是按项目~~（→ **已裁决 2026-10-09：全局默认 + 项目覆盖**；kind 词表与安全契约（三种 op、预算、先审后入）全局不可覆盖，覆盖面仅限描述性纪律，SSOT 落库不落导出树。理由全文见 TODO M6 schema 作用域条）；与 `dsh-plugin-repotory` 的关系（导出旁路给 dsh 的会话读？）；向量层在页面量上来后是否要把融合范围从 notes 扩到 `wiki_pages`（受 ADR-0012「只对 notes 融合」的既有约束限制）。
 
 > **W1 落地时的两处修正（2026-10-08，schema v16）**
 >
 > 1. **四类改五类**。决策 1 原列 entity / concept / source / synthesis，但决策 3 承诺的 query 闭环（「好答案回档成新页」）需要一个归宿，而 Karpathy 模式与 `nashsu/llm_wiki` 的目录里都确有 `queries/` 一类。缺了它，答案只能写回普通笔记，页面层就缺一类真实存在的产物。实现因此是五类，多出的 `query` 由 SQLite 的 `CHECK` 与 Go 侧枚举双重守住。
 > 2. **「可逆」必须配自愈**。迁移带版本戳、v16 只跑一次，而派生层按定义允许被丢弃重建（决策 5 把 SSOT 留在 `project_notes`）。只在迁移里建表的话，一次 `DropWikiSchema` 之后重启就是 `schema_version=16` 却没有表的死库。故 `InitDB` 现在无条件 `EnsureWikiSchema`，沿用 `EnsureFTSIndex`「可对任何库安全调用」的同一契约。这一条是**被可逆性测试抓出来的**，不是设计时想到的——测试先失败，才看见漏洞。
 >
-> 3. **W1b 也已落地，并更正本文的命令名**：原文写的 `reponest wiki export` 并不存在——根 `reponest` 是 Wails 桌面应用、没有任何子命令派发。实际交付的是独立二进制 `reponest-wiki-export`（`cmd/wiki-export`），且比原计划多做两件：陈旧文件只报告不删除（删除等于宣称树归导出所有，正是决策 2 拒绝的立场），以及统计页正文里指向不存在页的 `[[链接]]`（页→页的边由 FK CASCADE 保证不悬空，正文链接是唯一会烂的地方，这份计数即 W4 lint 的输入）。
+> 3. **W1b 也已落地，并更正本文的命令名**：原文写的 `repotory wiki export` 并不存在——根 `repotory` 是 Wails 桌面应用、没有任何子命令派发。实际交付的是独立二进制 `repotory-wiki-export`（`cmd/wiki-export`），且比原计划多做两件：陈旧文件只报告不删除（删除等于宣称树归导出所有，正是决策 2 拒绝的立场），以及统计页正文里指向不存在页的 `[[链接]]`（页→页的边由 FK CASCADE 保证不悬空，正文链接是唯一会烂的地方，这份计数即 W4 lint 的输入）。
 >
 > 4. **W4 落地时把"五查"拆成了两层**。原文把 lint 当作一类动作，实际其中三查（孤页 / 缺交叉引用 / 数据缺口）纯 SQL 即可判定，另两查（矛盾 / 过时声明）必须问模型且会出错、会花 token。因此结构层随时可跑，模型层单独设 `wiki_lint_llm` 开关且默认关，`llm_note` 负责把"没发现问题"与"没开"区分开。另加了两条原文没有的采信规则：模型给的 `page_id` 必须能在库里查到才成为 finding，回复解析不出 JSON 就一条不提。
 

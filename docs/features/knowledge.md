@@ -173,8 +173,8 @@ lint 还会顺着关系类型做三条**结构体检**（都是纯 SQL/内存判
 ### 导出到 Obsidian（只读旁路）
 
 ```
-go build -o reponest-wiki-export ./cmd/wiki-export
-./reponest-wiki-export -out ./vault            # 目标目录有外来文件会被拒
+go build -o repotory-wiki-export ./cmd/wiki-export
+./repotory-wiki-export -out ./vault            # 目标目录有外来文件会被拒
 ```
 
 渲染成 `vault/wiki/<entities|concepts|sources|synthesis|queries>/<slug>.md`，带 YAML frontmatter（含 `status` 与 `source`）、`[[wikilink]]` 出链与反向链接、`wiki/index.md` 目录页与 `EXPORT-MANIFEST.json` 清单。用途是**看图**：用 Obsidian 的 graph view 判断这套分类是不是你知识本来的形状。两个刻意的性质：

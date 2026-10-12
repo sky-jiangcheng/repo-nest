@@ -7,7 +7,7 @@ order: 10
 
 ## Common issues
 
-### The dashboard shows "RepoNest has not found any Git repositories yet"
+### The dashboard shows "Repotory has not found any Git repositories yet"
 
 **Cause**: No scan roots are configured, or the configured directories contain no Git repositories.
 
@@ -70,15 +70,15 @@ The FTS5 trigram index matches a minimum of 3 characters; shorter queries automa
 
 | Platform | Log path |
 |------|---------|
-| macOS | `~/Library/Logs/reponest.log` |
-| Linux | `$XDG_STATE_HOME/reponest/reponest.log` (default `~/.local/state/reponest/reponest.log`) |
-| Windows | `%APPDATA%\reponest\logs\reponest.log` |
+| macOS | `~/Library/Logs/repotory.log` |
+| Linux | `$XDG_STATE_HOME/repotory/repotory.log` (default `~/.local/state/repotory/repotory.log`) |
+| Windows | `%APPDATA%\repotory\logs\repotory.log` |
 
 Logs also record the PATH environment and plugin runtime state; attach them when reporting an issue.
 
 ## Data safety notes
 
-- RepoNest is a **local-first** desktop app: it listens on no network ports and uploads no data; statistics are read through the local `git` CLI
+- Repotory is a **local-first** desktop app: it listens on no network ports and uploads no data; statistics are read through the local `git` CLI
 - The database and configuration live in the user application data directory (see [Getting Started](getting-started.md) for the location); uninstalling does not remove them automatically. For backup, migration, and full removal, see [Data and Backup](data-management.md)
 - Desktop WebView responses carry security headers such as CSP (`default-src 'self'` and others)
 

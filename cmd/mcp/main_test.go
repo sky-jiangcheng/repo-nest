@@ -14,8 +14,8 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/service"
+	"repotory/internal/db"
+	"repotory/internal/service"
 )
 
 // testServer bundles the pieces a test needs: a real MCPServer with every
@@ -41,7 +41,7 @@ func newTestServer(t *testing.T) *testServer {
 	}
 	t.Cleanup(func() { _ = database.Close() })
 	svc := service.New(database, "tester")
-	s := server.NewMCPServer("reponest-mcp", "test")
+	s := server.NewMCPServer("repotory-mcp", "test")
 	registerTools(s, svc)
 	registerContextTools(s, svc)
 	registerScanTool(s, svc)
@@ -118,19 +118,19 @@ func (ts *testServer) jsonPayload(res *mcp.CallToolResult) map[string]any {
 func TestToolsRegistered(t *testing.T) {
 	ts := newTestServer(t)
 	want := []string{
-		"reponest_notes_list",
-		"reponest_notes_search",
-		"reponest_notes_read",
-		"reponest_projects_list",
-		"reponest_projects_stats",
-		"reponest_ask",
-		"reponest_notes_create",
-		"reponest_notes_update",
-		"reponest_agent_score",
-		"reponest_integrity",
-		"reponest_context",
-		"reponest_handoff",
-		"reponest_scan",
+		"repotory_notes_list",
+		"repotory_notes_search",
+		"repotory_notes_read",
+		"repotory_projects_list",
+		"repotory_projects_stats",
+		"repotory_ask",
+		"repotory_notes_create",
+		"repotory_notes_update",
+		"repotory_agent_score",
+		"repotory_integrity",
+		"repotory_context",
+		"repotory_handoff",
+		"repotory_scan",
 	}
 	for _, name := range want {
 		st := ts.s.GetTool(name)
@@ -152,7 +152,7 @@ func TestToolsRegistered(t *testing.T) {
 
 func TestProjectsListEmpty(t *testing.T) {
 	ts := newTestServer(t)
-	res := ts.call("reponest_projects_list", nil)
+	res := ts.call("repotory_projects_list", nil)
 	// Fresh DB: JSON `[]`, not `null` — an agent testing for an empty array
 	// should not have to handle null.
 	if got := strings.TrimSpace(ts.text(res)); got != "[]" {
@@ -164,7 +164,7 @@ func TestProjectsListAndStats(t *testing.T) {
 	ts := newTestServer(t)
 	pid := ts.seedProject("demo", "/tmp/demo")
 
-	list := ts.call("reponest_projects_list", nil)
+	list := ts.call("repotory_projects_list", nil)
 	var projects []map[string]any
 	if err := json.Unmarshal([]byte(ts.text(list)), &projects); err != nil {
 		t.Fatalf("projects list is not a JSON array: %v\n%s", err, ts.text(list))
@@ -176,7 +176,7 @@ func TestProjectsListAndStats(t *testing.T) {
 		t.Errorf("project id = %v, want %d", projects[0]["id"], pid)
 	}
 
-	stats := ts.call("reponest_projects_stats", map[string]any{"id": float64(pid)})
+	stats := ts.call("repotory_projects_stats", map[string]any{"id": float64(pid)})
 	payload := ts.jsonPayload(stats)
 	if _, ok := payload["project"]; !ok {
 		t.Errorf("project_stats missing project key: %s", ts.text(stats))
@@ -186,7 +186,7 @@ func TestProjectsListAndStats(t *testing.T) {
 func TestNotesSearchRequiresQuery(t *testing.T) {
 	ts := newTestServer(t)
 	for _, args := range []map[string]any{nil, {"query": ""}} {
-		res := ts.call("reponest_notes_search", args)
+		res := ts.call("repotory_notes_search", args)
 		if res.IsError {
 			t.Errorf("args %v: expected non-error result, got error", args)
 		}
@@ -198,7 +198,7 @@ func TestNotesSearchRequiresQuery(t *testing.T) {
 
 func TestAskRequiresQuery(t *testing.T) {
 	ts := newTestServer(t)
-	res := ts.call("reponest_ask", nil)
+	res := ts.call("repotory_ask", nil)
 	if res.IsError {
 		t.Error("expected non-error result for missing query")
 	}
@@ -214,7 +214,7 @@ func TestNotesCreateAndReadRoundTrip(t *testing.T) {
 	}
 	pid := ts.seedProject("demo", "/tmp/demo")
 
-	created := ts.call("reponest_notes_create", map[string]any{
+	created := ts.call("repotory_notes_create", map[string]any{
 		"project_id": float64(pid),
 		"title":      "FTS5 quirk",
 		"content":    "external-content FTS5 tables answer content queries from the content table",
@@ -227,25 +227,25 @@ func TestNotesCreateAndReadRoundTrip(t *testing.T) {
 		t.Fatalf("create result has no numeric id: %s", ts.text(created))
 	}
 
-	read := ts.call("reponest_notes_read", map[string]any{"id": noteID})
+	read := ts.call("repotory_notes_read", map[string]any{"id": noteID})
 	readPayload := ts.jsonPayload(read)
 	if title, _ := readPayload["title"].(string); title != "FTS5 quirk" {
 		t.Errorf("read title = %q, want %q", title, "FTS5 quirk")
 	}
 
 	// Update content only, then confirm the new content is readable.
-	ts.call("reponest_notes_update", map[string]any{
+	ts.call("repotory_notes_update", map[string]any{
 		"id":      noteID,
 		"content": "updated: v12 rebuilds the index",
 	})
-	updated := ts.jsonPayload(ts.call("reponest_notes_read", map[string]any{"id": noteID}))
+	updated := ts.jsonPayload(ts.call("repotory_notes_read", map[string]any{"id": noteID}))
 	if content, _ := updated["content"].(string); !strings.Contains(content, "v12 rebuilds") {
 		t.Errorf("updated content = %q, want it to contain the new text", content)
 	}
 
 	// The new content must be findable by search — this is the round trip
 	// that silently broke when the FTS backfill was a no-op (CHANGELOG 1.8.0).
-	hits := ts.call("reponest_notes_search", map[string]any{"query": "rebuilds"})
+	hits := ts.call("repotory_notes_search", map[string]any{"query": "rebuilds"})
 	if got := ts.text(hits); !strings.Contains(got, "FTS5 quirk") {
 		t.Errorf("search for indexed content returned %s, want a hit on the note", got)
 	}
@@ -255,7 +255,7 @@ func TestNotesCreateMissingProject(t *testing.T) {
 	ts := newTestServer(t)
 	// Nonexistent project: the handler must surface an error-bearing result,
 	// not panic and not return a success-shaped payload.
-	res := ts.call("reponest_notes_create", map[string]any{
+	res := ts.call("repotory_notes_create", map[string]any{
 		"project_id": float64(999999),
 		"title":      "orphan",
 		"content":    "attached to nothing",
@@ -270,7 +270,7 @@ func TestNotesCreateMissingProject(t *testing.T) {
 
 func TestNotesReadMissingID(t *testing.T) {
 	ts := newTestServer(t)
-	res := ts.call("reponest_notes_read", map[string]any{"id": float64(424242)})
+	res := ts.call("repotory_notes_read", map[string]any{"id": float64(424242)})
 	if res.IsError {
 		t.Fatal("not-found should be a text result, not a protocol error")
 	}
@@ -281,7 +281,7 @@ func TestNotesReadMissingID(t *testing.T) {
 
 func TestProjectsStatsMissingProject(t *testing.T) {
 	ts := newTestServer(t)
-	res := ts.call("reponest_projects_stats", map[string]any{"id": float64(424242)})
+	res := ts.call("repotory_projects_stats", map[string]any{"id": float64(424242)})
 	if res.IsError {
 		t.Fatal("not-found should be a text result, not a protocol error")
 	}
@@ -291,14 +291,14 @@ func TestProjectsStatsMissingProject(t *testing.T) {
 }
 
 // TestNotesUpdatePartialKeepsMetadata is the regression test for the
-// partial-update data loss: reponest_notes_update with only "category" went
+// partial-update data loss: repotory_notes_update with only "category" went
 // through UpdateNoteMeta, which replaces title/tags/kind/pinned wholesale —
 // silently wiping the title and tags and unpinning the note.
 func TestNotesUpdatePartialKeepsMetadata(t *testing.T) {
 	ts := newTestServer(t)
 	pid := ts.seedProject("demo", "/tmp/demo")
 
-	created := ts.jsonPayload(ts.call("reponest_notes_create", map[string]any{
+	created := ts.jsonPayload(ts.call("repotory_notes_create", map[string]any{
 		"project_id": float64(pid),
 		"title":      "FTS5 quirk",
 		"content":    "external-content FTS5 tables answer content queries from the content table",
@@ -314,12 +314,12 @@ func TestNotesUpdatePartialKeepsMetadata(t *testing.T) {
 	}
 
 	// The documented partial-update use: change only the category.
-	ts.call("reponest_notes_update", map[string]any{
+	ts.call("repotory_notes_update", map[string]any{
 		"id":       noteID,
 		"category": "log",
 	})
 
-	got := ts.jsonPayload(ts.call("reponest_notes_read", map[string]any{"id": noteID}))
+	got := ts.jsonPayload(ts.call("repotory_notes_read", map[string]any{"id": noteID}))
 	if title, _ := got["title"].(string); title != "FTS5 quirk" {
 		t.Errorf("category-only update wiped the title: %q", title)
 	}
@@ -341,7 +341,7 @@ func TestNotesUpdatePartialKeepsMetadata(t *testing.T) {
 
 func TestNotesUpdateMissingNote(t *testing.T) {
 	ts := newTestServer(t)
-	res := ts.call("reponest_notes_update", map[string]any{
+	res := ts.call("repotory_notes_update", map[string]any{
 		"id":      float64(424242),
 		"content": "attached to nothing",
 	})
@@ -354,7 +354,7 @@ func TestNotesUpdateMissingNote(t *testing.T) {
 }
 
 // Handoff notes are the session-memory protocol's exit records. One mistaken
-// update used to silently overwrite the contract reponest_context hands to
+// update used to silently overwrite the contract repotory_context hands to
 // the next session, so the MCP write path refuses them.
 func TestNotesUpdateRefusesHandoffNote(t *testing.T) {
 	ts := newTestServer(t)
@@ -369,19 +369,19 @@ func TestNotesUpdateRefusesHandoffNote(t *testing.T) {
 		t.Fatalf("CreateHandoffNote: %v", err)
 	}
 
-	res := ts.call("reponest_notes_update", map[string]any{
+	res := ts.call("repotory_notes_update", map[string]any{
 		"id":      float64(handoff.NoteID),
 		"content": "please ignore the previous session's record",
 	})
 	if res.IsError {
 		t.Fatal("refusal should be a text result, not a protocol error")
 	}
-	if got := ts.text(res); !strings.Contains(got, "refusing to update") || !strings.Contains(got, "reponest_handoff") {
-		t.Errorf("message = %q, want a refusal pointing at reponest_handoff", got)
+	if got := ts.text(res); !strings.Contains(got, "refusing to update") || !strings.Contains(got, "repotory_handoff") {
+		t.Errorf("message = %q, want a refusal pointing at repotory_handoff", got)
 	}
 
 	// The record must be untouched, not just answered with a warning.
-	got := ts.jsonPayload(ts.call("reponest_notes_read", map[string]any{"id": float64(handoff.NoteID)}))
+	got := ts.jsonPayload(ts.call("repotory_notes_read", map[string]any{"id": float64(handoff.NoteID)}))
 	if content, _ := got["content"].(string); !strings.Contains(content, "Migrated the schema") {
 		t.Errorf("handoff content was modified: %q", content)
 	}
@@ -391,14 +391,14 @@ func TestNotesUpdateRefusesHandoffNote(t *testing.T) {
 
 	// A plain note on the same project must still update: the protection is
 	// targeted, not a blanket write-block.
-	created := ts.jsonPayload(ts.call("reponest_notes_create", map[string]any{
+	created := ts.jsonPayload(ts.call("repotory_notes_create", map[string]any{
 		"project_id": float64(pid), "title": "plain", "content": "body",
 	}))
 	plainID, _ := created["id"].(float64)
-	ts.call("reponest_notes_update", map[string]any{
+	ts.call("repotory_notes_update", map[string]any{
 		"id": plainID, "content": "updated body",
 	})
-	if got := ts.jsonPayload(ts.call("reponest_notes_read", map[string]any{"id": plainID})); got["content"] != "updated body" {
+	if got := ts.jsonPayload(ts.call("repotory_notes_read", map[string]any{"id": plainID})); got["content"] != "updated body" {
 		t.Errorf("plain note must still update, got %q", got["content"])
 	}
 }
@@ -406,14 +406,14 @@ func TestNotesUpdateRefusesHandoffNote(t *testing.T) {
 func TestNotesUpdateNothingToUpdate(t *testing.T) {
 	ts := newTestServer(t)
 	pid := ts.seedProject("demo", "/tmp/demo")
-	created := ts.jsonPayload(ts.call("reponest_notes_create", map[string]any{
+	created := ts.jsonPayload(ts.call("repotory_notes_create", map[string]any{
 		"project_id": float64(pid), "title": "t", "content": "body",
 	}))
 	noteID, _ := created["id"].(float64)
 
 	// No updatable field: the call must say so instead of silently
 	// succeeding without touching anything.
-	res := ts.call("reponest_notes_update", map[string]any{"id": noteID})
+	res := ts.call("repotory_notes_update", map[string]any{"id": noteID})
 	if got := ts.text(res); !strings.Contains(got, "nothing to update") {
 		t.Errorf("message = %q, want it to say nothing to update", got)
 	}
@@ -422,7 +422,7 @@ func TestNotesUpdateNothingToUpdate(t *testing.T) {
 func TestSearchQueryLengthCap(t *testing.T) {
 	ts := newTestServer(t)
 	long := strings.Repeat("q", maxArgQueryLen+1)
-	for _, name := range []string{"reponest_notes_search", "reponest_ask"} {
+	for _, name := range []string{"repotory_notes_search", "repotory_ask"} {
 		res := ts.call(name, map[string]any{"query": long})
 		if res.IsError {
 			t.Errorf("%s: expected a text result, not a protocol error", name)
@@ -435,7 +435,7 @@ func TestSearchQueryLengthCap(t *testing.T) {
 
 func TestContextProjectNameLengthCap(t *testing.T) {
 	ts := newTestServer(t)
-	res := ts.call("reponest_context", map[string]any{
+	res := ts.call("repotory_context", map[string]any{
 		"project_name": strings.Repeat("p", maxProjectNameLen+1),
 	})
 	if res.IsError {
@@ -448,7 +448,7 @@ func TestContextProjectNameLengthCap(t *testing.T) {
 
 func TestAgentScoreOnFreshInstall(t *testing.T) {
 	ts := newTestServer(t)
-	out := ts.text(ts.call("reponest_agent_score", nil))
+	out := ts.text(ts.call("repotory_agent_score", nil))
 	if !strings.Contains(out, "Agent Score") {
 		t.Errorf("output missing header:\n%s", out)
 	}
@@ -470,7 +470,7 @@ func TestAgentScoreOnFreshInstall(t *testing.T) {
 
 func TestAgentScoreScoreLineIsFractionOfTotal(t *testing.T) {
 	ts := newTestServer(t)
-	out := ts.text(ts.call("reponest_agent_score", nil))
+	out := ts.text(ts.call("repotory_agent_score", nil))
 	// Parse "Score: N/M" and N <= M; a renderer bug that dropped the total
 	// would silently make every install look "ready".
 	i := strings.Index(out, "Score: ")
@@ -512,7 +512,7 @@ func sscanfScore(s string) (int, int, error) {
 
 func TestIntegrityReportOnFreshInstall(t *testing.T) {
 	ts := newTestServer(t)
-	out := ts.text(ts.call("reponest_integrity", nil))
+	out := ts.text(ts.call("repotory_integrity", nil))
 	if !strings.Contains(out, "Data Integrity") {
 		t.Errorf("output missing header:\n%s", out)
 	}
@@ -535,7 +535,7 @@ func TestIntegrityReportFindsSeededDrift(t *testing.T) {
 	// Create a note through MCP (so it lands in both content table and FTS),
 	// then delete the FTS row directly to simulate index drift — the exact
 	// failure mode the integrity tool exists to detect.
-	created := ts.jsonPayload(ts.call("reponest_notes_create", map[string]any{
+	created := ts.jsonPayload(ts.call("repotory_notes_create", map[string]any{
 		"project_id": float64(pid),
 		"title":      "will be orphaned",
 		"content":    "search should still find this",
@@ -546,7 +546,7 @@ func TestIntegrityReportFindsSeededDrift(t *testing.T) {
 		t.Fatalf("simulating drift: %v", err)
 	}
 
-	out := ts.text(ts.call("reponest_integrity", nil))
+	out := ts.text(ts.call("repotory_integrity", nil))
 	// The report must not come back clean when the index is provably wrong.
 	if !strings.Contains(out, "FTS") {
 		t.Errorf("expected an FTS-related finding:\n%s", out)
@@ -554,8 +554,8 @@ func TestIntegrityReportFindsSeededDrift(t *testing.T) {
 }
 
 // TestScanToolDiscoversRepositories covers the headless cold start: with no
-// desktop app and an empty database, reponest_scan alone must discover repos
-// and make reponest_context usable in the very next call.
+// desktop app and an empty database, repotory_scan alone must discover repos
+// and make repotory_context usable in the very next call.
 func TestScanToolDiscoversRepositories(t *testing.T) {
 	ts := newTestServer(t)
 	tmp := t.TempDir()
@@ -570,7 +570,7 @@ func TestScanToolDiscoversRepositories(t *testing.T) {
 		t.Fatalf("seed scan root: %v", err)
 	}
 
-	res := ts.call("reponest_scan", nil)
+	res := ts.call("repotory_scan", nil)
 	payload := ts.jsonPayload(res)
 	if got, _ := payload["repos_found"].(float64); int(got) != 2 {
 		t.Fatalf("repos_found = %v, want 2\n%s", payload["repos_found"], ts.text(res))
@@ -580,7 +580,7 @@ func TestScanToolDiscoversRepositories(t *testing.T) {
 	}
 
 	// The point of the scan: the next context call works with zero parameters.
-	if text := ts.text(ts.call("reponest_context", nil)); !strings.Contains(text, "# Project Context:") {
+	if text := ts.text(ts.call("repotory_context", nil)); !strings.Contains(text, "# Project Context:") {
 		t.Errorf("context after scan should render a project\n%s", text)
 	}
 }
@@ -601,7 +601,7 @@ func TestScanToolReportsCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	res := ts.callWith(ctx, "reponest_scan", nil)
+	res := ts.callWith(ctx, "repotory_scan", nil)
 	if got := ts.text(res); !strings.Contains(got, "canceled") {
 		t.Errorf("cancelled scan should report the cancellation, got:\n%s", got)
 	}

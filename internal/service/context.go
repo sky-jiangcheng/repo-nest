@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
+	"repotory/internal/db"
+	"repotory/internal/domain"
 )
 
 // contextNotesLimit caps how many notes BuildProjectContext embeds so a
@@ -102,7 +102,7 @@ type ProjectResolution struct {
 // first because they record how the previous session ended.
 func (s *Service) BuildProjectContext(res *ProjectResolution) string {
 	if res == nil || (res.Project == nil && len(res.Candidates) == 0) {
-		return "No projects found yet. Call reponest_scan to discover local Git repositories (it seeds the default scan roots on first run), then call reponest_context again."
+		return "No projects found yet. Call repotory_scan to discover local Git repositories (it seeds the default scan roots on first run), then call repotory_context again."
 	}
 
 	if res.Project == nil {
@@ -341,7 +341,7 @@ func oneLineSummary(content string, maxLen int) string {
 }
 
 // IsHandoffNote reports whether a note carries the "handoff" tag. Handoff
-// notes are the session-memory protocol's exit records: reponest_context
+// notes are the session-memory protocol's exit records: repotory_context
 // renders the latest one in full and the next session acts on it, so the MCP
 // write path treats them as append-only protocol artifacts rather than
 // ordinary notes.

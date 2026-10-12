@@ -3,7 +3,7 @@
 - 状态：Proposed（**仅设计，不落代码**。晋升前置：ADR-0018 lane 1 Accepted（社区检测要沿受控 relation 白名单传播，词表是它的地基）。触发方式（同步 vs job）见决策 6 与待决 4，是本文最需要被拍的一条）
 - 日期：2026-10-10
 - 关联：[ADR-0014](0014-llm-wiki-knowledge-compiler.md)（决策 1 把 synthesis 列为五类之一、决策 5 的 lint 有 `no-synthesis` 缺口检查）、[ADR-0015](0015-w3-minimal-compile-loop.md)（"MVP 不做 synthesis 自动重写"、只新建 pending 不改批准页、审核隔离）、[ADR-0016](0016-async-batch-jobs.md)（长任务 job 化，但 `compile_jobs.kind` 加值=整表重建）、[ADR-0018](0018-knowledge-graph-foundation.md)（lane 1 受控关系词表 = 本 ADR 传播所沿的边；lane 2 PPR 是"第一次读图"，本 ADR 是"第二次"）、[ADR-0019](0019-entity-resolution-merge.md)（合并让社区更干净，但本 ADR 不阻塞在其后：分裂也能摘要，只是质量打折）；TODO **M7** 后续；起点 schema v21
-- 配套：`RepoNest-知识图谱实施计划-2026-10-09.md` 的 Phase 4a
+- 配套：`Repotory-知识图谱实施计划-2026-10-09.md` 的 Phase 4a
 
 ## 背景
 

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"repo-nest/internal/search/abeval"
+	"repotory/internal/search/abeval"
 )
 
 // loadCases is the parser between the user's labeled file and the A/B gate

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
+	"repotory/internal/db"
+	"repotory/internal/domain"
 )
 
 // downStore stands in for a vector backend that stopped answering: every

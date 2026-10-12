@@ -2,9 +2,9 @@
 # Build release artifacts into assets/releases/v<version>/.
 #
 # Two products ship from one release:
-#   - reponest-mcp  : pure Go, zero CGO. Cross-compiles for every target from
+#   - repotory-mcp  : pure Go, zero CGO. Cross-compiles for every target from
 #                     any host, so this script can always produce all four.
-#   - reponest      : the Wails desktop shell. It links GTK/WebKit on Linux and
+#   - repotory      : the Wails desktop shell. It links GTK/WebKit on Linux and
 #                     needs the native toolchain on macOS and Windows, so it can
 #                     only be produced on each target's own CI runner - exactly
 #                     what .github/workflows/release.yml does on a tag push.
@@ -36,9 +36,9 @@ mkdir -p "$OUT"
 
 # Matches the release matrix in .github/workflows/release.yml.
 TARGETS=(linux-amd64 darwin-amd64 darwin-arm64 windows-amd64)
-LDFLAGS="-s -w -X reponest/internal/version.Version=$VERSION"
+LDFLAGS="-s -w -X repotory/internal/version.Version=$VERSION"
 
-echo "=== RepoNest $VERSION ==="
+echo "=== Repotory $VERSION ==="
 echo "output: $OUT"
 echo
 
@@ -50,21 +50,21 @@ build_mcp() {
   # CGO_ENABLED=0: the MCP server is a pure stdio JSON-RPC loop with no UI
   # dependency, so it cross-compiles cleanly and runs anywhere.
   CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" \
-    go build -ldflags "$LDFLAGS" -o "$stage/reponest-mcp" ./cmd/mcp/ 2>&1 | sed 's/^/    /'
+    go build -ldflags "$LDFLAGS" -o "$stage/repotory-mcp" ./cmd/mcp/ 2>&1 | sed 's/^/    /'
 
   # `go build -o name` uses the name verbatim, so the Windows .exe suffix has to
   # be added here - release assets, the Scoop manifest and install.ps1 all
-  # expect reponest-mcp.exe.
+  # expect repotory-mcp.exe.
   local asset
   case "$target" in
     windows-amd64)
-      mv "$stage/reponest-mcp" "$stage/reponest-mcp.exe"
-      asset="reponest-mcp-$target.zip"
-      (cd "$stage" && zip -q -j "$OUT/$asset" reponest-mcp.exe)
+      mv "$stage/repotory-mcp" "$stage/repotory-mcp.exe"
+      asset="repotory-mcp-$target.zip"
+      (cd "$stage" && zip -q -j "$OUT/$asset" repotory-mcp.exe)
       ;;
     *)
-      asset="reponest-mcp-$target.tar.gz"
-      tar -czf "$OUT/$asset" -C "$stage" reponest-mcp
+      asset="repotory-mcp-$target.tar.gz"
+      tar -czf "$OUT/$asset" -C "$stage" repotory-mcp
       ;;
   esac
   echo "  ✓ $asset"

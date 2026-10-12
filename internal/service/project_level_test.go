@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // Regression guard for a bug where MergeProjectUp / SplitProjectDown computed

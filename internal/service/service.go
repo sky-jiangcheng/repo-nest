@@ -1,8 +1,8 @@
-// Package service contains RepoNest's business logic: project aggregation,
+// Package service contains Repotory's business logic: project aggregation,
 // the repository scan pipeline, stats refresh, knowledge notes, search and
 // AI-facing exports. It is the single layer that talks to the database
 // (internal/db) and the git provider (internal/core/git); the Wails binding
-// layer (internal/app), the CLI (cmd/reponest) and the MCP server (cmd/mcp)
+// layer (internal/app), the CLI (cmd/repotory) and the MCP server (cmd/mcp)
 // are thin adapters over it and share one implementation.
 package service
 
@@ -14,15 +14,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"repo-nest/internal/core/git"
-	pluginruntime "repo-nest/internal/core/plugin/runtime"
-	"repo-nest/internal/version"
+	"repotory/internal/core/git"
+	pluginruntime "repotory/internal/core/plugin/runtime"
+	"repotory/internal/version"
 )
 
 // ImportEventPayload is the data broadcast after a knowledge-source import.
 type ImportEventPayload map[string]any
 
-// Service carries all RepoNest business logic and its runtime state (scan
+// Service carries all Repotory business logic and its runtime state (scan
 // progress, status-bar cache). It is safe for concurrent use.
 type Service struct {
 	db    *sql.DB

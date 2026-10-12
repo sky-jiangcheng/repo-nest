@@ -69,7 +69,7 @@ wiki_pages.source  TEXT NOT NULL DEFAULT 'manual'
 
 ## MVP 明确不做
 
-synthesis 页自动重写、概念去重自动合并、矛盾驱动的修订、页面级向量索引、审核 UI、定时编译、跨项目编译、文件树双向同步（ADR-0014 决策 2）。审核界面在 MVP 用绑定 + 一个 CLI 视图（`reponest-wiki-export` 里带上 pending 标记）顶住，UI 审批页作为下一步单独评审。
+synthesis 页自动重写、概念去重自动合并、矛盾驱动的修订、页面级向量索引、审核 UI、定时编译、跨项目编译、文件树双向同步（ADR-0014 决策 2）。审核界面在 MVP 用绑定 + 一个 CLI 视图（`repotory-wiki-export` 里带上 pending 标记）顶住，UI 审批页作为下一步单独评审。
 
 ## 后果
 

@@ -22,10 +22,10 @@
 //
 // Usage:
 //
-//	reponest-queryset -db path/to/dashboard.db -seed > notes.tsv
+//	repotory-queryset -db path/to/repotory.db -seed > notes.tsv
 //	# edit notes.tsv: for each query line, list the note numbers that answer it
-//	reponest-queryset -db path/to/dashboard.db -emit notes.tsv -out queries.jsonl
-//	reponest-abeval -cases queries.jsonl -k 10 -min-recall 0.05
+//	repotory-queryset -db path/to/repotory.db -emit notes.tsv -out queries.jsonl
+//	repotory-abeval -cases queries.jsonl -k 10 -min-recall 0.05
 package main
 
 import (
@@ -39,9 +39,9 @@ import (
 	"strconv"
 	"strings"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/platform"
-	"repo-nest/internal/search/abeval"
+	"repotory/internal/db"
+	"repotory/internal/platform"
+	"repotory/internal/search/abeval"
 )
 
 func main() {
@@ -101,13 +101,13 @@ func dumpWorksheet(database *sql.DB) error {
 	w := bufio.NewWriter(os.Stdout)
 	defer w.Flush()
 
-	fmt.Fprintln(w, "# RepoNest 检索标注工作表")
+	fmt.Fprintln(w, "# Repotory 检索标注工作表")
 	fmt.Fprintln(w, "#")
 	fmt.Fprintln(w, "# 步骤 1：给每条笔记起一个真实的问题——你确实会问的问题。")
 	fmt.Fprintln(w, "#         已有的问题比编造的更真实；只写你真会问的。")
 	fmt.Fprintln(w, "# 步骤 2：对每个问题，在 relevant= 里填能真正回答它的笔记行号。")
 	fmt.Fprintln(w, "#         填 1-3 条即可。凑数会把门禁的结论变成噪音。")
-	fmt.Fprintln(w, "# 步骤 3：保存后运行 reponest-queryset -emit <本文件> -out queries.jsonl")
+	fmt.Fprintln(w, "# 步骤 3：保存后运行 repotory-queryset -emit <本文件> -out queries.jsonl")
 	fmt.Fprintln(w, "#")
 	fmt.Fprintln(w, "# ---- 笔记清单 ----")
 

@@ -10,7 +10,7 @@ M3 needs vector storage (axis B), independent of the embedding provider (axis A)
 
 ## Decisions
 
-1. **Default = local `sqlite-vec`** (same `dashboard.db` file, same transaction, zero extra process).
+1. **Default = local `sqlite-vec`** (same `repotory.db` file, same transaction, zero extra process).
 2. **Remote is opt-in via a pluggable `VectorStore` registry** (`internal/search/vectordb`: `Register(kind, factory)` + `Kinds()`; `Open` selects by `vector_store`, and **falls back to local on unknown kind / unreachable remote**). Backends: `local`, `qdrant` (REST), `weaviate` (REST + GraphQL nearVector). Contracts verified against **live local containers** before coding (httptest + build-tag `qdrantlive`/`weavialive`).
 3. **Zero-CGO is a hard filter**: LanceDB / go-libsql need CGO → not default candidates.
 4. **`cmd/vector-init`** guides setup (self-check vec, store health check, choose embedding provider Ollama-local / remote / skip + vector-store choice, then point the user to Settings). `semantic_search` stays off.

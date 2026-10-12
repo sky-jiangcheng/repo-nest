@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // setupDBFile gives each test its own throwaway database file so the CLI paths
@@ -50,7 +50,7 @@ func TestWikiExportMainHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !contains(string(body), "source: reponest-export") {
+	if !contains(string(body), "source: repotory-export") {
 		t.Errorf("exported page missing source stamp:\n%s", body)
 	}
 	if !contains(res.stdout, "exported 1 page") {
@@ -224,13 +224,13 @@ func runMainInline(t *testing.T, args []string, capture bool) {
 }
 
 // runMainInSubprocess re-executes this test binary as a subprocess with
-// REPONEST_CMDTEST_ARGS set, so main() runs in a fresh process where neither
+// REPOTORY_CMDTEST_ARGS set, so main() runs in a fresh process where neither
 // the flag redefinition nor the real os.Exit can hurt the suite. The child
 // re-enters main through the hook in TestMain.
 func runMainInSubprocess(t *testing.T, args []string) cmdResult {
 	t.Helper()
 
-	env := append(os.Environ(), "REPONEST_CMDTEST_ARGS="+fmt.Sprint(args))
+	env := append(os.Environ(), "REPOTORY_CMDTEST_ARGS="+fmt.Sprint(args))
 	cmd := exec.Command(os.Args[0], "-test.run", "^TestCmdTestSubprocessHook$", "-test.v")
 	cmd.Env = env
 	stdout, err := cmd.StdoutPipe()
@@ -264,7 +264,7 @@ func runMainInSubprocess(t *testing.T, args []string) cmdResult {
 // it exists so the subprocess has a test entry point that runs main() with
 // the args passed through the environment.
 func TestCmdTestSubprocessHook(t *testing.T) {
-	raw := os.Getenv("REPONEST_CMDTEST_ARGS")
+	raw := os.Getenv("REPOTORY_CMDTEST_ARGS")
 	if raw == "" {
 		t.Skip("not in subprocess mode")
 	}

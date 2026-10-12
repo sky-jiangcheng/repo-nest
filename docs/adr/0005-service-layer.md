@@ -6,7 +6,7 @@
 
 ## 背景
 
-1.7.0 前的代码形态：根目录 `package main` 堆积 14 个 handler 文件（约 1900 行业务逻辑），CLI（`cmd/reponest`）与 MCP（`cmd/mcp`）各自用 `internal/db` 重复实现"同一查询 + 同一格式化"；存在两条竞争的扫描管线、5 处近乎相同的统计刷新循环、1195 行单体 `queries.go`。探索性深挖还发现两个被重复代码掩盖的生产 bug（repository 幽灵列、go.mod 块解析 panic）。
+1.7.0 前的代码形态：根目录 `package main` 堆积 14 个 handler 文件（约 1900 行业务逻辑），CLI（`cmd/repotory`）与 MCP（`cmd/mcp`）各自用 `internal/db` 重复实现"同一查询 + 同一格式化"；存在两条竞争的扫描管线、5 处近乎相同的统计刷新循环、1195 行单体 `queries.go`。探索性深挖还发现两个被重复代码掩盖的生产 bug（repository 幽灵列、go.mod 块解析 panic）。
 
 ## 决策
 
@@ -37,8 +37,8 @@ Wails、CLI、MCP **共享同一 service 实现**。UI 层（app）不接触 `*s
 ### 5. 版本与数据路径
 
 - 版本号 SSOT：`internal/version.Version`（app/CLI/MCP/agent-score 共用）
-- **用户数据路径不变**（DB/日志文件名/插件目录沿用 `reponest` 目录名）——品牌更名（RepoNest）不迁移数据
-- Go module 路径保持 `reponest`（避免全库 import 改写；见 TODO.md 更名计划）
+- **用户数据路径不变**（DB/日志文件名/插件目录沿用 `repotory` 目录名）——品牌更名（Repotory）不迁移数据
+- Go module 路径保持 `repotory`（避免全库 import 改写；见 TODO.md 更名计划）
 
 ## 后果
 

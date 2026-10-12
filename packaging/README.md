@@ -1,18 +1,18 @@
 # packaging/
 
-Homebrew and Scoop manifests for RepoNest release artifacts.
+Homebrew and Scoop manifests for Repotory release artifacts.
 
 The release workflow (`.github/workflows/release.yml`) publishes these assets per
 tag, and the manifests below point at them:
 
 | Asset | Platform | Consumers |
 |-------|----------|-----------|
-| `reponest-darwin-arm64.dmg` / `reponest-darwin-amd64.dmg` | macOS desktop app | Homebrew Cask |
-| `reponest-linux-amd64.tar.gz` | Linux desktop app | manual |
-| `reponest-windows-amd64.zip` | Windows desktop app | Scoop |
-| `reponest-mcp-darwin-arm64.tar.gz` / `reponest-mcp-darwin-amd64.tar.gz` | macOS MCP server | Homebrew Cask |
-| `reponest-mcp-linux-amd64.tar.gz` | Linux MCP server | Homebrew Formula |
-| `reponest-mcp-windows-amd64.zip` | Windows MCP server | Scoop |
+| `repotory-darwin-arm64.dmg` / `repotory-darwin-amd64.dmg` | macOS desktop app | Homebrew Cask |
+| `repotory-linux-amd64.tar.gz` | Linux desktop app | manual |
+| `repotory-windows-amd64.zip` | Windows desktop app | Scoop |
+| `repotory-mcp-darwin-arm64.tar.gz` / `repotory-mcp-darwin-amd64.tar.gz` | macOS MCP server | Homebrew Cask |
+| `repotory-mcp-linux-amd64.tar.gz` | Linux MCP server | Homebrew Formula |
+| `repotory-mcp-windows-amd64.zip` | Windows MCP server | Scoop |
 
 The desktop app is macOS/Windows/Linux, but only macOS has a real installer
 artifact (`.dmg`); Linux ships a bare tarball and Windows a zip. The MCP server
@@ -81,10 +81,10 @@ copied here on every release.
 
 ```bash
 # Ruby syntax only (no Homebrew needed)
-ruby -c homebrew/Casks/reponest.rb
+ruby -c homebrew/Casks/repotory.rb
 
 # JSON syntax only
-python3 -m json.tool scoop/reponest-mcp.json > /dev/null
+python3 -m json.tool scoop/repotory-mcp.json > /dev/null
 ```
 
 Both are safe to run in CI on every change.

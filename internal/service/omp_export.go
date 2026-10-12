@@ -10,7 +10,7 @@ import (
 // OMP-compatible memory export (ADR-0013 outlook). OMP — the Open Memory
 // Protocol — is an emerging, vendor-neutral standard for portable AI memory
 // (Memory Object: id/content/type/source/tags/created_at/updated_at). Emitting
-// this shape gives RepoNest a portable export/import seam that could replace
+// this shape gives Repotory a portable export/import seam that could replace
 // per-tool importer guessing once OMP matures.
 //
 // PROVISIONAL: OMP is v0.4 (pre-1.0). We export a superset-compatible object and
@@ -34,7 +34,7 @@ type OMPSource struct {
 	Timestamp string `json:"timestamp,omitempty"`
 }
 
-// ompType maps a RepoNest note to an OMP memory type. RepoNest kinds are
+// ompType maps a Repotory note to an OMP memory type. Repotory kinds are
 // knowledge|log|idea|other; a note tagged "handoff" is a session exit record.
 // Projection: handoff/log -> episodic (what happened); idea -> procedural
 // (intended how-to); knowledge/other -> semantic (facts).
@@ -74,10 +74,10 @@ func (s *Service) ExportMemoryJSON(limit int) string {
 			content = n.Title + "\n\n" + n.Content
 		}
 		out = append(out, OMPMemory{
-			ID:        "urn:reponest:note:" + strconv.FormatInt(n.ID, 10),
+			ID:        "urn:repotory:note:" + strconv.FormatInt(n.ID, 10),
 			Content:   content,
 			Type:      ompType(n.Kind, n.Tags),
-			Source:    OMPSource{Tool: "reponest", SessionID: n.Source, Timestamp: n.CreatedAt},
+			Source:    OMPSource{Tool: "repotory", SessionID: n.Source, Timestamp: n.CreatedAt},
 			Tags:      ompTags(n.Kind, n.Tags),
 			CreatedAt: n.CreatedAt,
 			UpdatedAt: n.UpdatedAt,

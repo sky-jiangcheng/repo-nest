@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // Incremental embedding (ADR-0012's "增删改即时生效" half). ADR-0012 shipped the

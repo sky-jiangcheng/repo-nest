@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"repo-nest/internal/core/plugin"
+	"repotory/internal/core/plugin"
 )
 
 // setupDB creates an in-memory database for tests.
@@ -52,7 +52,7 @@ func writePlugin(t *testing.T, dir, body string) {
 func TestLoadHelloPlugin(t *testing.T) {
 	dir := t.TempDir()
 	writePlugin(t, filepath.Join(dir, "hello"), `package main
-import "repo-nest/internal/core/plugin"
+import "repotory/internal/core/plugin"
 
 func Name() string { return "hello" }
 
@@ -95,7 +95,7 @@ func TestLoadEmptyDir(t *testing.T) {
 func TestPluginPanicDoesNotCrashHost(t *testing.T) {
 	dir := t.TempDir()
 	writePlugin(t, filepath.Join(dir, "panic-on-init"), `package main
-import "repo-nest/internal/core/plugin"
+import "repotory/internal/core/plugin"
 
 func Name() string { return "panic-on-init" }
 
@@ -151,7 +151,7 @@ func Name( { return "x" }
 func TestEventHandling(t *testing.T) {
 	dir := t.TempDir()
 	writePlugin(t, filepath.Join(dir, "listener"), `package main
-import "repo-nest/internal/core/plugin"
+import "repotory/internal/core/plugin"
 
 func Name() string { return "listener" }
 
@@ -174,7 +174,7 @@ func Init(ctx *plugin.Context) error {
 func TestEventHandlerPanicRecovered(t *testing.T) {
 	dir := t.TempDir()
 	writePlugin(t, filepath.Join(dir, "bad-handler"), `package main
-import "repo-nest/internal/core/plugin"
+import "repotory/internal/core/plugin"
 
 func Name() string { return "bad-handler" }
 
@@ -194,7 +194,7 @@ func Init(ctx *plugin.Context) error {
 func TestKnowledgeSourceRegistration(t *testing.T) {
 	dir := t.TempDir()
 	writePlugin(t, filepath.Join(dir, "importer"), `package main
-import "repo-nest/internal/core/plugin"
+import "repotory/internal/core/plugin"
 
 func Name() string { return "importer" }
 
@@ -230,7 +230,7 @@ func TestTriggerImportWritesNotes(t *testing.T) {
 
 	dir := t.TempDir()
 	writePlugin(t, filepath.Join(dir, "importer"), `package main
-import "repo-nest/internal/core/plugin"
+import "repotory/internal/core/plugin"
 
 func Name() string { return "importer" }
 func Source() string { return "claude" }
@@ -277,7 +277,7 @@ func TestTriggerImportIdempotent(t *testing.T) {
 
 	dir := t.TempDir()
 	writePlugin(t, filepath.Join(dir, "imp"), `package main
-import "repo-nest/internal/core/plugin"
+import "repotory/internal/core/plugin"
 
 func Name() string { return "imp" }
 func Source() string { return "claude" }
@@ -324,7 +324,7 @@ func TestImportPanicRecovered(t *testing.T) {
 
 	dir := t.TempDir()
 	writePlugin(t, filepath.Join(dir, "bad-import"), `package main
-import "repo-nest/internal/core/plugin"
+import "repotory/internal/core/plugin"
 
 func Name() string { return "bad-import" }
 func Source() string { return "boom" }
@@ -355,7 +355,7 @@ import (
 	"fmt"
 	"strings"
 
-	"repo-nest/internal/core/plugin"
+	"repotory/internal/core/plugin"
 )
 
 func Name() string { return strings.ToUpper(fmt.Sprintf("%s", "safe")) }
@@ -366,7 +366,7 @@ func Init(ctx *plugin.Context) error { return nil }
 import (
 	"os/exec"
 
-	"repo-nest/internal/core/plugin"
+	"repotory/internal/core/plugin"
 )
 
 func Name() string { return "evil" }

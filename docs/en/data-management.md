@@ -5,11 +5,11 @@ order: 8
 
 # Data and Backup
 
-RepoNest is a local-first app: there are no cloud services or accounts, and all knowledge data (notes, todos, project metadata, statistics) lives only in a single SQLite database on your machine. AI clients such as Claude Code read that same local data over MCP. That means **backing up = copying one directory, and migrating = moving one directory**.
+Repotory is a local-first app: there are no cloud services or accounts, and all knowledge data (notes, todos, project metadata, statistics) lives only in a single SQLite database on your machine. AI clients such as Claude Code read that same local data over MCP. That means **backing up = copying one directory, and migrating = moving one directory**.
 
 ```mermaid
 flowchart TB
-    APP["Desktop app<br/>the only writer"] --> DIR[("Data dir reponest/<br/>db · plugins/ · logs")]
+    APP["Desktop app<br/>the only writer"] --> DIR[("Data dir repotory/<br/>db · plugins/ · logs")]
     DIR --> MCP["MCP / headless HTTP<br/>AI reads the same DB"]
     DIR -.->|"quit the app first"| CP["Cold backup<br/>copy the directory"]
     CP -.-> NEW["New machine: restore,<br/>then fix scan roots"]
@@ -24,7 +24,7 @@ How to read it: the box in the middle is the **single source of truth** — the 
 
 | Item | Location |
 |------|------|
-| Database (notes, todos, version history, statistics, scan root configuration) | `dashboard.db` inside the data directory in the table below |
+| Database (notes, todos, version history, statistics, scan root configuration) | `repotory.db` inside the data directory in the table below |
 | Plugins | `plugins/` under the data directory |
 | Logs | Platform log directory (see [Troubleshooting](troubleshooting.md#log-file-locations)) |
 
@@ -32,22 +32,22 @@ Data directory:
 
 | Platform | Path |
 |------|------|
-| macOS | `~/Library/Application Support/reponest/` |
-| Windows | `%APPDATA%\reponest\` |
-| Linux | `~/.config/reponest/` |
+| macOS | `~/Library/Application Support/repotory/` |
+| Windows | `%APPDATA%\repotory\` |
+| Linux | `~/.config/repotory/` |
 
 ## Backup
 
-1. **Quit RepoNest** (the database runs in WAL mode; copying it while the app is running can lose WAL content that has not been flushed to disk)
-2. Copy the entire data directory `reponest/` (or at least `dashboard.db` together with `dashboard.db-wal` / `dashboard.db-shm`)
+1. **Quit Repotory** (the database runs in WAL mode; copying it while the app is running can lose WAL content that has not been flushed to disk)
+2. Copy the entire data directory `repotory/` (or at least `repotory.db` together with `repotory.db-wal` / `repotory.db-shm`)
 
 We recommend taking a cold backup before swapping disks or upgrading to a major version; day to day, you can also include the data directory in your whole-disk backups such as Time Machine or File History.
 
 ## Migrating to a New Machine
 
 1. Old machine: quit the app and copy the data directory
-2. New machine: [install RepoNest](getting-started.md#download-and-install), then **launch it once and quit** (so the app creates the directory structure and schema)
-3. Replace the `reponest/` directory on the new machine with your backed-up copy, then start the app again
+2. New machine: [install Repotory](getting-started.md#download-and-install), then **launch it once and quit** (so the app creates the directory structure and schema)
+3. Replace the `repotory/` directory on the new machine with your backed-up copy, then start the app again
 
 Note: scan roots are stored in the database as **absolute paths**. If the new machine has a different username or directory layout, open **Settings → Scan Directories** after launch, update them to the local paths, and click **Rescan**. If repositories have moved, project grouping (monorepo split/merge records) is simply re-detected from the new paths; notes and todos are unaffected.
 
@@ -57,7 +57,7 @@ There is no factory-reset button in the app; resetting means deleting the data d
 
 ```bash
 # macOS example: quit the app first
-rm -rf ~/Library/Application\ Support/reponest
+rm -rf ~/Library/Application\ Support/repotory
 ```
 
 After restarting, the default scan roots are re-seeded and an empty database is recreated. **This wipes all notes and todos** — make sure you have a backup first.
@@ -66,9 +66,9 @@ There is no built-in switch to clear statistics while keeping notes. If you need
 
 ## Uninstall
 
-1. Remove the binary (the install script puts it at `/usr/local/bin/reponest`; on Windows it is `%LOCALAPPDATA%\RepoNest\reponest.exe`, or wherever you placed it manually)
-2. Delete the data directory (see the table above) and the logs (`~/Library/Logs/reponest.log` and the other platform log paths)
-3. If you installed the PWA: remove RepoNest from the system or browser app list
+1. Remove the binary (the install script puts it at `/usr/local/bin/repotory`; on Windows it is `%LOCALAPPDATA%\Repotory\repotory.exe`, or wherever you placed it manually)
+2. Delete the data directory (see the table above) and the logs (`~/Library/Logs/repotory.log` and the other platform log paths)
+3. If you installed the PWA: remove Repotory from the system or browser app list
 
 ## Related Pages
 

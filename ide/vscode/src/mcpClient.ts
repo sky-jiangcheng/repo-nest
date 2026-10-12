@@ -1,7 +1,7 @@
-// Minimal MCP stdio client — just enough for reponest-mcp: initialize
+// Minimal MCP stdio client — just enough for repotory-mcp: initialize
 // handshake + tools/call. Speaks newline-delimited JSON-RPC 2.0 over stdio,
 // which is the MCP stdio transport. Thin-client rule (ADR-0009): this file
-// evolves only with the MCP wire contract, never with RepoNest internals.
+// evolves only with the MCP wire contract, never with Repotory internals.
 import { spawn, type ChildProcess } from "node:child_process";
 
 export interface McpOptions {
@@ -14,7 +14,7 @@ interface Pending {
   reject: (err: Error) => void;
 }
 
-// Tool calls (reponest_context, handoff writes) are second-scale against the
+// Tool calls (repotory_context, handoff writes) are second-scale against the
 // local service; 60s is generous headroom while still bounding a hang.
 const REQUEST_TIMEOUT_MS = 60_000;
 
@@ -40,12 +40,12 @@ export class McpStdioClient {
     );
     proc.on("exit", (code) => {
       this.proc = null;
-      this.rejectAll(new Error(`reponest-mcp exited (code ${code ?? "?"})`));
+      this.rejectAll(new Error(`repotory-mcp exited (code ${code ?? "?"})`));
     });
     await this.request("initialize", {
       protocolVersion: "2024-11-05",
       capabilities: {},
-      clientInfo: { name: "reponest-vscode", version: "0.1.0" },
+      clientInfo: { name: "repotory-vscode", version: "0.1.0" },
     });
     this.notify("notifications/initialized", {});
   }
@@ -53,7 +53,7 @@ export class McpStdioClient {
   stop(): void {
     this.proc?.kill();
     this.proc = null;
-    this.rejectAll(new Error("reponest-mcp client stopped"));
+    this.rejectAll(new Error("repotory-mcp client stopped"));
   }
 
   /** Call a tool and return its text content concatenated. */
@@ -74,7 +74,7 @@ export class McpStdioClient {
   private request(method: string, params: unknown): Promise<unknown> {
     const proc = this.proc;
     if (!proc?.stdin) {
-      return Promise.reject(new Error("reponest-mcp is not running"));
+      return Promise.reject(new Error("repotory-mcp is not running"));
     }
     const id = this.nextId++;
     const body = JSON.stringify({ jsonrpc: "2.0", id, method, params });
@@ -83,7 +83,7 @@ export class McpStdioClient {
       // leave the promise (and the withProgress spinner) pending forever.
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`reponest-mcp request timed out: ${method}`));
+        reject(new Error(`repotory-mcp request timed out: ${method}`));
       }, REQUEST_TIMEOUT_MS);
       timer.unref?.();
       this.pending.set(id, {

@@ -7,7 +7,7 @@ order: 8
 
 > ⚠️ **Experimental**: the plugin system interface may change and is not a platform extension direction (see [ADR-0006](../adr/0006-scope-freeze.md)).
 
-RepoNest imports documents into the knowledge base idempotently. Six sources ship **built in** as ordinary Go implementations of `plugin.KnowledgeImporter`; yaegi only carries *user-authored script* plugins, so the built-in path does not depend on the interpreter at all.
+Repotory imports documents into the knowledge base idempotently. Six sources ship **built in** as ordinary Go implementations of `plugin.KnowledgeImporter`; yaegi only carries *user-authored script* plugins, so the built-in path does not depend on the interpreter at all.
 
 ```mermaid
 flowchart TB
@@ -25,7 +25,7 @@ flowchart TB
     class DB store
 ```
 
-How to read it: both entry points (the built-in agent-memory sources, and plugin scripts) **converge on one upsert path**, and idempotency is guaranteed by the triple `(project_id, source, title)`. Re-importing therefore **updates** rather than creating duplicates — running the import again never makes the knowledge base dirtier. Writes go through a trigger that syncs the FTS index, so imported documents are immediately searchable via `reponest_notes_search`.
+How to read it: both entry points (the built-in agent-memory sources, and plugin scripts) **converge on one upsert path**, and idempotency is guaranteed by the triple `(project_id, source, title)`. Re-importing therefore **updates** rather than creating duplicates — running the import again never makes the knowledge base dirtier. Writes go through a trigger that syncs the FTS index, so imported documents are immediately searchable via `repotory_notes_search`.
 
 Note the last branch: **a document that cannot be matched to a project is not stored at all** — it is only counted in `skipped`. When `openclaw` / `hermes` have no target project configured, every one of their documents lands in this branch.
 

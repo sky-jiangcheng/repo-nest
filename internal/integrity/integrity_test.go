@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // -- fixtures ---------------------------------------------------------------
@@ -81,8 +81,8 @@ func setupDBWithRepo(t *testing.T) (*sql.DB, int64, int64) {
 	if err := db.ReplaceScanRoots(database, []string{"/home/dev/code"}); err != nil {
 		t.Fatalf("ReplaceScanRoots: %v", err)
 	}
-	projectID := insertProject(t, database, "reponest", "/home/dev/code/reponest", true)
-	repoID := insertRepository(t, database, projectID, "/home/dev/code/reponest")
+	projectID := insertProject(t, database, "repotory", "/home/dev/code/repotory", true)
+	repoID := insertRepository(t, database, projectID, "/home/dev/code/repotory")
 	return database, projectID, repoID
 }
 
@@ -100,7 +100,7 @@ func seedHealthyDB(t *testing.T) (*sql.DB, int64) {
 	if _, err := db.CreateTodo(database, projectID, "verify the integrity checks"); err != nil {
 		t.Fatalf("CreateTodo: %v", err)
 	}
-	if err := db.UpsertRepoMeta(database, repoID, `["Go"]`, "# RepoNest", `{"Go": 100}`, "[]", "[]", "{}"); err != nil {
+	if err := db.UpsertRepoMeta(database, repoID, `["Go"]`, "# Repotory", `{"Go": 100}`, "[]", "[]", "{}"); err != nil {
 		t.Fatalf("UpsertRepoMeta: %v", err)
 	}
 	return database, projectID
@@ -738,7 +738,7 @@ func TestKnowledgeCacheFreshness(t *testing.T) {
 		// The repository the cache describes is gone and the cache entry is
 		// not: the AI would quote knowledge about a deleted project.
 		mustExec(t, database, "PRAGMA foreign_keys=OFF")
-		mustExec(t, database, "DELETE FROM repositories WHERE path = ?", "/home/dev/code/reponest")
+		mustExec(t, database, "DELETE FROM repositories WHERE path = ?", "/home/dev/code/repotory")
 
 		c := checkOf(t, CheckKnowledgeCacheFreshness(database), StatusFail)
 		wantMetric(t, c, "repositories", 0)

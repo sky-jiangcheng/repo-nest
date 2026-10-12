@@ -8,7 +8,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	"repo-nest/internal/service"
+	"repotory/internal/service"
 )
 
 // maxProjectNameLen bounds the fuzzy project_name argument. Project names and
@@ -16,14 +16,14 @@ import (
 // the LIKE match, so it is rejected instead of searched.
 const maxProjectNameLen = 200
 
-// registerContextTools wires the session memory loop: reponest_context loads
+// registerContextTools wires the session memory loop: repotory_context loads
 // a project's full working context in one call (session cold start) and
-// reponest_handoff records what the session accomplished (session exit).
+// repotory_handoff records what the session accomplished (session exit).
 // Together they turn the knowledge base from something an agent has to
 // actively search into a memory layer it starts and ends every session with.
 func registerContextTools(mcpServer *server.MCPServer, svc *service.Service) {
 	mcpServer.AddTool(mcp.Tool{
-		Name: "reponest_context",
+		Name: "repotory_context",
 		Description: "Load a project's complete working context in one call: tech stack, README excerpt, languages, dependencies, contributors, recent commits, open todos and the most relevant knowledge notes (session handoffs first). " +
 			"Call this at the START of a work session instead of chaining projects_list, notes_search and notes_read. " +
 			"Pass project_id (preferred), or project_name for a fuzzy match, or nothing when only one project exists; if several projects match you get a catalog to pick from. " +
@@ -33,7 +33,7 @@ func registerContextTools(mcpServer *server.MCPServer, svc *service.Service) {
 			Properties: map[string]any{
 				"project_id": map[string]any{
 					"type":        "number",
-					"description": "Project ID (see reponest_projects_list)",
+					"description": "Project ID (see repotory_projects_list)",
 				},
 				"project_name": map[string]any{
 					"type":        "string",
@@ -55,10 +55,10 @@ func registerContextTools(mcpServer *server.MCPServer, svc *service.Service) {
 	})
 
 	mcpServer.AddTool(mcp.Tool{
-		Name: "reponest_handoff",
+		Name: "repotory_handoff",
 		Description: "Record a structured session handoff so the NEXT session (you or any other agent) starts with full context. " +
 			"Call this at the END of a work session with what you did, decided, learned and what should happen next. " +
-			"Persisted as a knowledge note tagged 'handoff'; reponest_context surfaces handoffs first. Returns the created note ID.",
+			"Persisted as a knowledge note tagged 'handoff'; repotory_context surfaces handoffs first. Returns the created note ID.",
 		InputSchema: mcp.ToolInputSchema{
 			Type: "object",
 			Properties: map[string]any{

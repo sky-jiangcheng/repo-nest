@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 func TestExportMemoryJSON(t *testing.T) {
@@ -33,10 +33,10 @@ func TestExportMemoryJSON(t *testing.T) {
 	byType := map[string]int{}
 	for _, m := range out {
 		byType[m.Type]++
-		if m.Source.Tool != "reponest" {
-			t.Errorf("source.tool = %q, want reponest", m.Source.Tool)
+		if m.Source.Tool != "repotory" {
+			t.Errorf("source.tool = %q, want repotory", m.Source.Tool)
 		}
-		if !strings.HasPrefix(m.ID, "urn:reponest:note:") {
+		if !strings.HasPrefix(m.ID, "urn:repotory:note:") {
 			t.Errorf("bad id %q", m.ID)
 		}
 	}

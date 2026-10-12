@@ -71,7 +71,7 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
                 the mark is a compact nest-and-card silhouette, and below
                 ~24px the bowl's inner arc closes up and it reads as a blob. */}
             <BrandMark size={26} className={`${s.navBrandMark}`} />
-            <span className={`${s.NavBrandName}`}>RepoNest</span>
+            <span className={`${s.NavBrandName}`}>Repotory</span>
           </Link>
           <div className={`${s.navLinks}`}>
             <Link to="/" className={navClass(pathname === '/' || pathname === '/knowledge')}>

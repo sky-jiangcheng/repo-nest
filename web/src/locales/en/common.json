@@ -35,7 +35,7 @@
     "starredOnly": "No starred projects",
     "noProjects": "No project data",
     "starMsg": "You haven't starred any projects yet. Click the star on a project card to follow it, or switch to All view.",
-    "scanMsg": "RepoNest has not found any Git repositories yet. Please configure scan roots first.",
+    "scanMsg": "Repotory has not found any Git repositories yet. Please configure scan roots first.",
     "viewAll": "View all projects",
     "startScan": "Start scan",
     "configDir": "Configure directories",
@@ -202,7 +202,7 @@
     "groupRescan": "Rescan",
     "importClaudeAction": "Start import",
     "tabDesc": {
-      "scan": "RepoNest discovers local Git repositories under these directories",
+      "scan": "Repotory discovers local Git repositories under these directories",
       "standards": "Set the daily line goal and scan depth used by the dashboard",
       "authors": "Identifies you in commit records so personal output is counted",
       "appearance": "Choose light, dark, or follow the system",

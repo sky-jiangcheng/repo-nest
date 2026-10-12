@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
-	"repo-nest/internal/integrity"
+	"repotory/internal/db"
+	"repotory/internal/domain"
+	"repotory/internal/integrity"
 )
 
 // SummaryData holds the daily summary payload.

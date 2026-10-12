@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
+	"repotory/internal/db"
+	"repotory/internal/domain"
 )
 
 // ListTodos returns all todo items for a project.

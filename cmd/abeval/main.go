@@ -24,11 +24,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
-	"repo-nest/internal/platform"
-	"repo-nest/internal/search/abeval"
-	"repo-nest/internal/service"
+	"repotory/internal/db"
+	"repotory/internal/domain"
+	"repotory/internal/platform"
+	"repotory/internal/search/abeval"
+	"repotory/internal/service"
 )
 
 type labeledCase struct {

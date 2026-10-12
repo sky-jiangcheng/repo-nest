@@ -1,6 +1,6 @@
 # 贡献指南
 
-RepoNest（仓库与包标识 `repo-nest`）是本地优先的 Git 知识库桌面应用。欢迎 Issue 与 PR——动手前请花两分钟读完本文，尤其是「范围冻结」与「命名分层」两节，它们是本仓库最容易被好心 PR 违反的约定。
+Repotory（仓库与包标识 `repotory`）是本地优先的 Git 知识库桌面应用。欢迎 Issue 与 PR——动手前请花两分钟读完本文，尤其是「范围冻结」与「命名分层」两节，它们是本仓库最容易被好心 PR 违反的约定。
 
 ## 环境要求
 
@@ -20,8 +20,8 @@ cd web && npm install && npm run build && cd ..
 wails dev
 
 # 纯后端构建（桌面应用 + MCP server）
-go build -ldflags="-s -w" -o reponest .
-go build -o reponest-mcp ./cmd/mcp/
+go build -ldflags="-s -w" -o repotory .
+go build -o repotory-mcp ./cmd/mcp/
 ```
 
 提交前请跑齐三件套：
@@ -46,8 +46,8 @@ cd web && npm run build  # tsc 严格检查（ESLint 现状见 TODO.md）
 
 品牌展示层与机器标识**有意不一致**，完整规约见 [README 命名分层](README.md#命名分层)。速记：
 
-- 品牌文案写 `RepoNest`，完整展示名 `RepoNest: Local Git Knowledge Base`，仓库/包标识写 `repo-nest`
-- **不要「顺手统一」冻结标识**：二进制/命令名 `reponest`、数据目录 `reponest`（`internal/platform` 的 `dirName`）、MCP server 名 `reponest-mcp` 与工具前缀 `reponest_*`。它们绑定用户数据迁移史与 AI 客户端对外契约，改名是破坏性变更
+- 品牌文案写 `Repotory`，完整展示名 `Repotory: Local Git Knowledge Base`，仓库/包标识写 `repotory`
+- **不要「顺手统一」冻结标识**：二进制/命令名 `repotory`、数据目录 `repotory`（`internal/platform` 的 `dirName`）、MCP server 名 `repotory-mcp` 与工具前缀 `repotory_*`。它们绑定用户数据迁移史与 AI 客户端对外契约，改名是破坏性变更
 
 ## 提交与版本
 

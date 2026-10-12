@@ -5,15 +5,15 @@ order: 7
 
 # AI Integration
 
-RepoNest provides read channels and self-check tools for AI agents, all reusing the same `internal/service` implementation (behavior identical to the desktop app).
+Repotory provides read channels and self-check tools for AI agents, all reusing the same `internal/service` implementation (behavior identical to the desktop app).
 
-## Value proposition: RepoNest is a data source for AI, not an AI platform
+## Value proposition: Repotory is a data source for AI, not an AI platform
 
-**RepoNest does not host models, does not hold API keys on your behalf, and ships no agent orchestration.** More precisely: it is the **data foundation** — it models raw git information into a structured, indexable, materializable local knowledge base (see [Storage Optimization and AI Value](../storage-optimization.md)); AI tools (Claude Code / Cursor, etc.) **consume** this layer of data through the 13 MCP tools, fetching on demand and searching precisely.
+**Repotory does not host models, does not hold API keys on your behalf, and ships no agent orchestration.** More precisely: it is the **data foundation** — it models raw git information into a structured, indexable, materializable local knowledge base (see [Storage Optimization and AI Value](../storage-optimization.md)); AI tools (Claude Code / Cursor, etc.) **consume** this layer of data through the 13 MCP tools, fetching on demand and searching precisely.
 
 For the argument for why this layer is better than letting AI read git directly, see [Storage Optimization and AI Value](../storage-optimization.md).
 
-A boundary that needs stating: earlier versions of this page claimed "**RepoNest does not call any large language model**". **The product has since disproved that sentence** — AI Q&A (v1.15.0) calls an OpenAI-compatible `/chat/completions`, and optional semantic search calls `/v1/embeddings`. The accurate positioning is the sentence above: models and endpoints are **user-supplied**, the capabilities are **off by default**, and keys stay local. The distinction is worth being pedantic about because it decides where privacy responsibility lies — "we don't ship AI" means not one line of your notes leaves this machine unless you explicitly enabled it and typed in your own endpoint; "we ship AI" would not be that promise.
+A boundary that needs stating: earlier versions of this page claimed "**Repotory does not call any large language model**". **The product has since disproved that sentence** — AI Q&A (v1.15.0) calls an OpenAI-compatible `/chat/completions`, and optional semantic search calls `/v1/embeddings`. The accurate positioning is the sentence above: models and endpoints are **user-supplied**, the capabilities are **off by default**, and keys stay local. The distinction is worth being pedantic about because it decides where privacy responsibility lies — "we don't ship AI" means not one line of your notes leaves this machine unless you explicitly enabled it and typed in your own endpoint; "we ship AI" would not be that promise.
 
 ### Configuration keys
 
@@ -26,7 +26,7 @@ The whitelist in `internal/service/config.go` splits into two groups. **Core con
 | `scan_depth` | integer | `2` | Scan directory depth |
 | `git_author` | string | System git user | Affects "My" statistics / heatmap attribution |
 
-**The AI-side keys are all optional, all off by default, and all require you to supply the endpoint** — RepoNest brings no service of its own:
+**The AI-side keys are all optional, all off by default, and all require you to supply the endpoint** — Repotory brings no service of its own:
 
 | Key | Default | Purpose | What leaves the machine if enabled |
 |-----|---------|---------|-----------------------------------|
@@ -70,50 +70,50 @@ A model writing into the knowledge base at all (compilation) requires two furthe
 Beyond MCP there is a second channel onto the same implementation: expose `internal/service` over loopback HTTP for browser mode, scripts and other agents.
 
 ```
-go build -o reponest-server ./cmd/server
-./reponest-server --port 18765        # or env REPONEST_HTTP_PORT; listens on 127.0.0.1 only
+go build -o repotory-server ./cmd/server
+./repotory-server --port 18765        # or env REPOTORY_HTTP_PORT; listens on 127.0.0.1 only
 ```
 
 - `POST /api/rpc` reflects every desktop binding (JSON body naming method + args) and runs the **same implementation** as Wails; `Startup` / `Shutdown` / `Service` itself are excluded. Write operations obey the same protocol protections as MCP (for example handoff notes refuse to be overwritten by update).
 - For browser development use `bash scripts/dev.sh`: it starts the headless API (default 18731) *and* Vite. Running `npx vite` alone yields a page that loads but 502s every request — that is a missing backend, not a broken app.
-- **Release assets contain only**: the desktop installers (4 platforms), `reponest-mcp-<platform>`, and the VS Code VSIX. `reponest-server`, `cmd/vector-init`, `cmd/abeval`, `cmd/reponest-capture` and `cmd/wiki-export` (the read-only wiki export) must be built yourself (`go build` / `go run`); they are not distributed with releases.
+- **Release assets contain only**: the desktop installers (4 platforms), `repotory-mcp-<platform>`, and the VS Code VSIX. `repotory-server`, `cmd/vector-init`, `cmd/abeval`, `cmd/repotory-capture` and `cmd/wiki-export` (the read-only wiki export) must be built yourself (`go build` / `go run`); they are not distributed with releases.
 
-MCP is the only AI execution interface (the `reponest` CLI is not shipped with releases). stdio protocol, the database is opened once per process, 13 tools (including 4 write operations: scan + note create/update + session handoff):
+MCP is the only AI execution interface (the `repotory` CLI is not shipped with releases). stdio protocol, the database is opened once per process, 13 tools (including 4 write operations: scan + note create/update + session handoff):
 
 The two ends of the session memory protocol, in sequence:
 
 ```mermaid
 sequenceDiagram
     participant A as AI Agent
-    participant R as reponest-mcp
+    participant R as repotory-mcp
     participant K as Knowledge base (SQLite)
-    A->>R: reponest_context (session start)
+    A->>R: repotory_context (session start)
     R->>K: resolve project + assemble context<br/>(handoffs first)
     K-->>A: full project context Markdown
     Note over A,K: work: notes_search / ask /<br/>read / create / update
-    A->>R: reponest_handoff (session end, summary required)
+    A->>R: repotory_handoff (session end, summary required)
     R->>K: render to the fixed template,<br/>tag 'handoff', protected from overwrites
     K-->>A: returns note_id
     Note over K,A: the next session (any agent) reads it first via context
 ```
 
-How to read it: the protocol has exactly **two entry calls** (`reponest_context` to open a session, `reponest_handoff` to close it) and one guarantee in between — a handoff note is written once, tagged `handoff`, and `reponest_notes_update` refuses to overwrite it, so the next session always reads the same record at the top of its context.
+How to read it: the protocol has exactly **two entry calls** (`repotory_context` to open a session, `repotory_handoff` to close it) and one guarantee in between — a handoff note is written once, tagged `handoff`, and `repotory_notes_update` refuses to overwrite it, so the next session always reads the same record at the top of its context.
 
 | Tool | Description | Read/Write |
 |------|-------------|------------|
-| `reponest_scan` | Cold start: seeds the default scan roots and scans them synchronously, discovering local Git repositories (works with a pure MCP install, no desktop app needed) | Write |
-| `reponest_context` | Injects the full project context at session start (tech stack / README / todos / highly relevant notes, with handoff notes pinned to the top) | Read |
-| `reponest_handoff` | Structured handoff at session end (summary/changes/decisions/gotchas/next_steps), persisted to the database and read back pinned-to-top by the next `reponest_context`; notes written this way carry a `handoff` tag, and `reponest_notes_update` refuses to overwrite them | Write |
-| `reponest_notes_list` | All notes | Read |
-| `reponest_notes_search` | FTS5 search (query) | Read |
-| `reponest_notes_read` | Read a note by ID | Read |
-| `reponest_notes_create` | Create a new knowledge note | Write |
-| `reponest_notes_update` | Update note content and metadata (partial update; refuses to overwrite `handoff` protocol notes) | Write |
-| `reponest_projects_list` | All projects | Read |
-| `reponest_projects_stats` | Project statistics (by id) | Read |
-| `reponest_ask` | Q&A-style retrieval, top-5 text results | Read |
-| `reponest_agent_score` | Check local AI readiness (DB / notes / search / MCP / llms.txt / SKILL.md / i18n) | Read |
-| `reponest_integrity` | Audit data trustworthiness (FTS index drift / orphan rows / cache freshness / coverage) | Read |
+| `repotory_scan` | Cold start: seeds the default scan roots and scans them synchronously, discovering local Git repositories (works with a pure MCP install, no desktop app needed) | Write |
+| `repotory_context` | Injects the full project context at session start (tech stack / README / todos / highly relevant notes, with handoff notes pinned to the top) | Read |
+| `repotory_handoff` | Structured handoff at session end (summary/changes/decisions/gotchas/next_steps), persisted to the database and read back pinned-to-top by the next `repotory_context`; notes written this way carry a `handoff` tag, and `repotory_notes_update` refuses to overwrite them | Write |
+| `repotory_notes_list` | All notes | Read |
+| `repotory_notes_search` | FTS5 search (query) | Read |
+| `repotory_notes_read` | Read a note by ID | Read |
+| `repotory_notes_create` | Create a new knowledge note | Write |
+| `repotory_notes_update` | Update note content and metadata (partial update; refuses to overwrite `handoff` protocol notes) | Write |
+| `repotory_projects_list` | All projects | Read |
+| `repotory_projects_stats` | Project statistics (by id) | Read |
+| `repotory_ask` | Q&A-style retrieval, top-5 text results | Read |
+| `repotory_agent_score` | Check local AI readiness (DB / notes / search / MCP / llms.txt / SKILL.md / i18n) | Read |
+| `repotory_integrity` | Audit data trustworthiness (FTS index drift / orphan rows / cache freshness / coverage) | Read |
 
 ### Readiness vs. data trustworthiness
 
@@ -121,29 +121,29 @@ The two self-check tools answer **different questions** — don't mix them up:
 
 | Tool | Question it answers | Question it cannot answer |
 |------|--------------------|---------------------------|
-| `reponest_agent_score` | Is this installation configured correctly? (notes present? MCP reachable? i18n complete?) | Whether the data itself is correct |
-| `reponest_integrity` | Can the data still be trusted? (has the index drifted? are there orphan rows? is the cache fresh?) | Whether the configuration is complete |
+| `repotory_agent_score` | Is this installation configured correctly? (notes present? MCP reachable? i18n complete?) | Whether the data itself is correct |
+| `repotory_integrity` | Can the data still be trusted? (has the index drifted? are there orphan rows? is the cache fresh?) | Whether the configuration is complete |
 
-**Why the second one exists**: once the FTS5 index drifts out of sync with `project_notes`, search **silently returns fewer results**, while `agent_score` still reports "Search operational" — it measures connectivity, not content. `reponest_integrity` compares the index's real document count against the FTS5 `_docsize` shadow table (with an external-content table, a plain `SELECT rowid` reads the content table, so it would never reveal the drift) and checks that the sync triggers are all in place. For details, see the [checklist in `internal/integrity`](../../../internal/integrity/integrity.go).
+**Why the second one exists**: once the FTS5 index drifts out of sync with `project_notes`, search **silently returns fewer results**, while `agent_score` still reports "Search operational" — it measures connectivity, not content. `repotory_integrity` compares the index's real document count against the FTS5 `_docsize` shadow table (with an external-content table, a plain `SELECT rowid` reads the content table, so it would never reveal the drift) and checks that the sync triggers are all in place. For details, see the [checklist in `internal/integrity`](../../../internal/integrity/integrity.go).
 
-When an AI notices that "the search results seem incomplete", it should run `reponest_integrity` first instead of jumping to the conclusion that the knowledge base has little content.
+When an AI notices that "the search results seem incomplete", it should run `repotory_integrity` first instead of jumping to the conclusion that the knowledge base has little content.
 
-### One-command registration (reponest-init, recommended)
+### One-command registration (repotory-init, recommended)
 
 Step one of [ADR-0009](../adr/0009-ide-presence.md): detect the binary and register every supported client with a single command; idempotent and safe to re-run:
 
 ```bash
-node scripts/reponest-init/index.mjs --with-hook
+node scripts/repotory-init/index.mjs --with-hook
 ```
 
-- Detects `reponest-mcp` (override with `--bin`) and registers it with Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`), VS Code (`.vscode/mcp.json`) and Windsurf (configs land only where the client's directory exists); JetBrains gets printed manual guidance
+- Detects `repotory-mcp` (override with `--bin`) and registers it with Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`), VS Code (`.vscode/mcp.json`) and Windsurf (configs land only where the client's directory exists); JetBrains gets printed manual guidance
 - `--with-hook` also installs the SessionEnd hook below (script + merged `settings.json`, backed up before changes)
-- `--dry-run` previews every write; when the binary is missing it prints install guidance, and `--yes` writes the bare command name `reponest-mcp` (works once installed)
+- `--dry-run` previews every write; when the binary is missing it prints install guidance, and `--yes` writes the bare command name `repotory-mcp` (works once installed)
 
 ### Connect Claude Code manually (alternative)
 
 ```bash
-claude mcp add reponest -- /path/to/reponest-mcp
+claude mcp add repotory -- /path/to/repotory-mcp
 ```
 
 Or write it into `.mcp.json` (project level) / `~/.claude.json` (user level):
@@ -151,7 +151,7 @@ Or write it into `.mcp.json` (project level) / `~/.claude.json` (user level):
 ```json
 {
   "mcpServers": {
-    "reponest": { "command": "/usr/local/bin/reponest-mcp", "args": [] }
+    "repotory": { "command": "/usr/local/bin/repotory-mcp", "args": [] }
   }
 }
 ```
@@ -170,7 +170,7 @@ Write it into `.claude/settings.json` (project level, shared with collaborators 
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/reponest-handoff.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/repotory-handoff.sh"
           }
         ]
       }
@@ -179,7 +179,7 @@ Write it into `.claude/settings.json` (project level, shared with collaborators 
 }
 ```
 
-The companion script `.claude/hooks/reponest-handoff.sh` (remember to `chmod +x`):
+The companion script `.claude/hooks/repotory-handoff.sh` (remember to `chmod +x`):
 
 ```sh
 #!/bin/sh
@@ -191,7 +191,7 @@ set -u
 cd "${CLAUDE_PROJECT_DIR:-$(pwd)}" || exit 0
 command -v claude >/dev/null 2>&1 || exit 0
 claude -p --mcp-config .mcp.json \
-  'This session ended. Call reponest_handoff for the current project: a concise summary plus next_steps. If the project cannot be resolved, call reponest_context once first. Do nothing else.' \
+  'This session ended. Call repotory_handoff for the current project: a concise summary plus next_steps. If the project cannot be resolved, call repotory_context once first. Do nothing else.' \
   >/dev/null 2>&1 || true
 ```
 
@@ -199,13 +199,13 @@ Design points and costs (stated plainly, so the narrative doesn't oversell):
 
 - **Trigger**: fired by Claude Code when a session ends; the trigger reason (`clear` / `logout` / `prompt_input_exit` / `other`) is written to stdin as JSON, and the script can read stdin and skip when appropriate (e.g. "the context was just cleared" doesn't need a handoff).
 - **Cost**: one bounded headless turn (`claude -p`), a fraction of the whole session context it preserves; the hook has a default timeout (60s) and the script ends silently with `|| true`, so the session exit is never blocked.
-- **Fallback path**: skipped outright when the `claude` CLI is missing; when MCP is not registered, the headless call fails and is swallowed — the protocol requires handoffs to be written through `reponest_handoff`; the hook only guarantees "it always fires" and never bypasses the protocol to write the database directly.
-- **Protocol protection**: handoff notes carry the `handoff` tag and `reponest_notes_update` refuses to overwrite them (guarding against accidental clobbering); in the next session, `reponest_context` renders them in full, pinned to the top.
+- **Fallback path**: skipped outright when the `claude` CLI is missing; when MCP is not registered, the headless call fails and is swallowed — the protocol requires handoffs to be written through `repotory_handoff`; the hook only guarantees "it always fires" and never bypasses the protocol to write the database directly.
+- **Protocol protection**: handoff notes carry the `handoff` tag and `repotory_notes_update` refuses to overwrite them (guarding against accidental clobbering); in the next session, `repotory_context` renders them in full, pinned to the top.
 - The hook's event name and configuration fields evolve with Claude Code versions; before wiring it up, defer to `claude --help` and the official hooks documentation.
 
 ### Connect Cursor / other MCP clients
 
-Add the same `command` pointing at the `reponest-mcp` binary in the client's MCP configuration (Cursor: `Settings → MCP → Add Server`).
+Add the same `command` pointing at the `repotory-mcp` binary in the client's MCP configuration (Cursor: `Settings → MCP → Add Server`).
 
 ## llms.txt and Markdown export (in-app)
 
@@ -215,17 +215,17 @@ Add the same `command` pointing at the `reponest-mcp` binary in the client's MCP
 
 ## agent-score self-check
 
-agent-score has been merged into the MCP tool `reponest_agent_score`; no separate build is needed. Call it from any MCP client to get the 7-item AI readiness score.
+agent-score has been merged into the MCP tool `repotory_agent_score`; no separate build is needed. Call it from any MCP client to get the 7-item AI readiness score.
 
 ## Why not just let AI read the git repository
 
-A common question: since Claude Code / Cursor can run `git log` and read files directly, why route through RepoNest at all? The core answer is **cost and determinism**:
+A common question: since Claude Code / Cursor can run `git log` and read files directly, why route through Repotory at all? The core answer is **cost and determinism**:
 
 - **Reading is expensive**: every direct `git log` or file-by-file scan is a one-off expense — repeated reads mean repeated tokens;
 - **Reading is messy / incomplete**: large repositories inevitably exceed the context window and get truncated, and the model may hallucinate or skip binary files / `.gitignore`;
 - **Reading is slow**: recomputing statistics on every call turns a seconds-scale task into a minutes-scale one.
 
-RepoNest parses and materializes the raw git data into local SQLite **once at scan time** (`daily_stats` pre-aggregates statistics, `repo_meta` caches mined results, `project_notes_fts` builds the full-text index); after that, AI only fetches on demand and hits precisely through the MCP tools. For the full comparison and storage structure details, see [Storage Optimization and AI Value](../storage-optimization.md).
+Repotory parses and materializes the raw git data into local SQLite **once at scan time** (`daily_stats` pre-aggregates statistics, `repo_meta` caches mined results, `project_notes_fts` builds the full-text index); after that, AI only fetches on demand and hits precisely through the MCP tools. For the full comparison and storage structure details, see [Storage Optimization and AI Value](../storage-optimization.md).
 
 ## Skill card for AI agents
 

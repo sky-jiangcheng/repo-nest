@@ -69,7 +69,7 @@ Defaults (all configurable): ≤20 notes per run, ≤6 pages per note, ≤1500 b
 
 ## Explicitly not in MVP
 
-Automatic synthesis rewriting, automatic concept de-duplication, contradiction-driven revision, page-level vector indexes, a review UI, scheduled compilation, cross-project compilation, two-way file sync (ADR-0014 Decision 2). For review, MVP uses bindings plus a CLI view (`reponest-wiki-export` marks pending rows); the review screen is a separate step.
+Automatic synthesis rewriting, automatic concept de-duplication, contradiction-driven revision, page-level vector indexes, a review UI, scheduled compilation, cross-project compilation, two-way file sync (ADR-0014 Decision 2). For review, MVP uses bindings plus a CLI view (`repotory-wiki-export` marks pending rows); the review screen is a separate step.
 
 ## Consequences
 

@@ -1,4 +1,4 @@
-// Thin HTTP helper for the RepoNest headless service (reponest server).
+// Thin HTTP helper for the Repotory headless service (repotory server).
 // The headless API is loopback-only by design (see internal/httpapi/server.go).
 import * as http from "node:http";
 

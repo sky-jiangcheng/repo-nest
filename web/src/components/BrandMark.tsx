@@ -1,4 +1,4 @@
-// BrandMark — the RepoNest mark, drawn from the same construction as the
+// BrandMark — the Repotory mark, drawn from the same construction as the
 // brand SSOT (build/icon.svg) that generates the app icon, favicons and the
 // VS Code extension icon.
 //

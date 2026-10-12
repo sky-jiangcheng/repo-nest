@@ -12,10 +12,11 @@
   - **批准页面时自动抽取正文 `[[wikilink]]` 为 `mentions` 边**：只连到真实存在的页、不连自己、幂等；不依赖模型，故可自动执行而不破坏人在环——"批准"这个动作本身就是"这些链接可信"的信号。
   - **lint 新增三条结构体检**（纯 SQL/内存判定，不开模型、不改页面）：`supersedes` 时间倒挂、`part-of`/`depends` 成环、`contradicts` 缺反向。与其余检查一样只写 `[lint]` 项目待办。
 - **`db.ListPageLinks`**：一次查询返回每条边连同两端的 kind / updated_at / project，供 lint 的关系体检免 N+1 地遍历，按被审项目作用域过滤。
-- **`cmd/wiki-rehearse`（v21 真库演练 harness，ADR-0018 lane 1 晋升条件 1）**：一条命令在**一次性副本**上安全演练 v21 迁移并判定「不丢边 + 归一正确」。以 `mode=ro` 打开源库、只跑 `VACUUM INTO` 出副本、在副本上执行真实的 `db.InitDB`（含 v21）、只读导出迁移前后 `page_links`，再校验不变量（normalize 前的每条边都在结果里、无凭空边、结果 relation 全在词表内），退出码 0 即通过；源库永不写入。产物：`rehearse-copy.db` / `page_links.{before,after}.jsonl` / `report.json`。真实 `dashboard.db` 的演练由用户亲自执行（agent 只在临时库验证），故 lane 1 仍待此演练通过才升 Accepted。
+- **`cmd/wiki-rehearse`（v21 真库演练 harness，ADR-0018 lane 1 晋升条件 1）**：一条命令在**一次性副本**上安全演练 v21 迁移并判定「不丢边 + 归一正确」。以 `mode=ro` 打开源库、只跑 `VACUUM INTO` 出副本、在副本上执行真实的 `db.InitDB`（含 v21）、只读导出迁移前后 `page_links`，再校验不变量（normalize 前的每条边都在结果里、无凭空边、结果 relation 全在词表内），退出码 0 即通过；源库永不写入。产物：`rehearse-copy.db` / `page_links.{before,after}.jsonl` / `report.json`。真实数据库的演练已由用户于 2026-10-12 亲自执行并通过（见下方「变更」节），lane 1 已升 Accepted。
 
 ### 变更
 
+- **品牌更名 RepoNest → Repotory**：产品、二进制（`repotory` / `repotory-mcp` / `repotory-server` / `repotory-capture`）、MCP 工具前缀（`reponest_*` → `repotory_*`）、npm 包（`repotory` / `repotory-vscode` / `repotory-init`）、Homebrew/Scoop 清单与数据文件全部随新名。**数据零丢失的透明迁移**（沿用 gitboard→gitbuddy→reponest 的既有机制）：下次启动时数据目录 `reponest/`→`repotory/`、日志 `reponest.log`→`repotory.log`、数据库 `dashboard.db`→`repotory.db`（含 WAL/SHM sidecar）自动改名接续；`repotory.db` 已存在时旧文件原样保留（新名永远优先）。**MCP 消费者注意**：工具前缀已变，旧 `.mcp.json` / hook 配置需重跑 `npx repotory-init` 或手动改前缀。
 - **编译器的 `add_link` 关系改为从八型枚举里选**（prompt 契约同步更新），产物默认关系由 `compiled-from` 改为 `ref`；回档问答指向证据页的链接由 `cites` 归一为 `ref`。任何未知值或旧拼写在入库前经 `db.NormalizeRelation` 折叠到词表（如 `depends-on`→`depends`、`compiled-from` / `cites`→`ref`），未知值降级为 `ref` 而非报错打断一次本来合格的写入。
 - **迁移 v21 重建 `page_links` 表**（SQLite 不能给已有列补 `CHECK`）：既有边的 relation 被规范化进词表，同一对页面因归一而产生的重复边被合并——**只改标签、不删边**。**真库演练已于 2026-10-12 完成**（`cmd/wiki-rehearse`：源库只读 + 一次性副本，v20→v21，2 边 0 丢 0 增、`related_to`/`used_in` 折叠入 `ref`，产物留档 `v21-rehearse/`），**ADR-0018 lane 1 自当日起升 Accepted**；lane 2（schema v22）仍待 Phase 0。
 

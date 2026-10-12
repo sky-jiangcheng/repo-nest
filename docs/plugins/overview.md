@@ -7,7 +7,7 @@ order: 8
 
 > ⚠️ **实验性**：插件系统接口可能变更，不作为平台扩展方向（见 [ADR-0006](../adr/0006-scope-freeze.md)）。
 
-RepoNest 向知识库幂等导入文档。内置 6 个源都是普通的 Go 实现（`plugin.KnowledgeImporter`），**不经过 yaegi**；yaegi 只承载用户自己写的脚本插件。
+Repotory 向知识库幂等导入文档。内置 6 个源都是普通的 Go 实现（`plugin.KnowledgeImporter`），**不经过 yaegi**；yaegi 只承载用户自己写的脚本插件。
 
 ```mermaid
 flowchart TB
@@ -25,7 +25,7 @@ flowchart TB
     class DB store
 ```
 
-读图：两条入口（内置 agent 记忆源、插件脚本）**汇入同一条 upsert 路径**，幂等性由三元组 `(project_id, source, title)` 保证。因此重复导入是**更新**而非重复创建——重新导入不会把知识库越堆越脏。写入后由触发器同步 FTS 索引，导入的文档立刻可被 `reponest_notes_search` 命中。
+读图：两条入口（内置 agent 记忆源、插件脚本）**汇入同一条 upsert 路径**，幂等性由三元组 `(project_id, source, title)` 保证。因此重复导入是**更新**而非重复创建——重新导入不会把知识库越堆越脏。写入后由触发器同步 FTS 索引，导入的文档立刻可被 `repotory_notes_search` 命中。
 
 注意最后一条分支：**匹配不到项目的文档不会入库**，只计入 `skipped`。`openclaw` / `hermes` 未配置目标项目时全部落入此分支。
 

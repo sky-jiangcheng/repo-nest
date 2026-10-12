@@ -9,9 +9,9 @@
 # Built binaries (see scripts/build.sh) / 构建产物
 # Anchored with "/" so they only match repo-root binaries; unanchored patterns
 # also swallowed cmd/mcp/ and hid cmd/mcp/results.go from version control.
-/reponest
-/reponest-mcp
-/reponest-server
+/repotory
+/repotory-mcp
+/repotory-server
 /git-dashboard
 /mcp
 

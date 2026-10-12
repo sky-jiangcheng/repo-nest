@@ -5,8 +5,8 @@ import (
 	"log"
 	"strconv"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
+	"repotory/internal/db"
+	"repotory/internal/domain"
 )
 
 // defaultDailyCodeStandard is the fallback daily line standard used when the

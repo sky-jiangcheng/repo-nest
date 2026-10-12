@@ -5,7 +5,7 @@ order: 22
 
 # API 参考
 
-RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露给前端（`window.go.main.App.<方法名>`），方法名与 JSON 载荷即契约。桌面应用默认不监听 HTTP 端口；需要 HTTP 形态时由 `cmd/server` 提供仅限 loopback 的 JSON API（复用同一 service 层）。
+Repotory 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露给前端（`window.go.main.App.<方法名>`），方法名与 JSON 载荷即契约。桌面应用默认不监听 HTTP 端口；需要 HTTP 形态时由 `cmd/server` 提供仅限 loopback 的 JSON API（复用同一 service 层）。
 
 > 绑定层是薄委托（`internal/app`），实现全部在 `internal/service`；CLI 与 MCP 复用同一实现。
 
@@ -16,7 +16,7 @@ RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 
 ---
 
-## Headless HTTP 服务（`reponest server`）
+## Headless HTTP 服务（`repotory server`）
 
 面向 DeepSeek Harness dsh-plugin 等外部运行时的 JSON API，与桌面应用、CLI、MCP 共用同一 `internal/service` 实现和同一个 SQLite 数据库。
 

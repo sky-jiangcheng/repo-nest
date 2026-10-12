@@ -8,11 +8,11 @@ import (
 	"runtime"
 	"strings"
 
-	"repo-nest/internal/app"
-	"repo-nest/internal/db"
-	"repo-nest/internal/platform"
-	"repo-nest/internal/service"
-	"repo-nest/internal/version"
+	"repotory/internal/app"
+	"repotory/internal/db"
+	"repotory/internal/platform"
+	"repotory/internal/service"
+	"repotory/internal/version"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -24,7 +24,7 @@ var assets embed.FS
 
 func main() {
 	platform.SetPrivateUmask() // owner-only files: DB sidecars, logs, exports
-	log.Printf("RepoNest %s starting...", version.Version)
+	log.Printf("Repotory %s starting...", version.Version)
 
 	// Open database
 	database, err := db.InitDB(platform.GetDbPath())
@@ -45,7 +45,7 @@ func main() {
 
 	// Launch Wails
 	err = wails.Run(&options.App{
-		Title:     "RepoNest: Local Git Knowledge Base",
+		Title:     "Repotory: Local Git Knowledge Base",
 		Width:     1280,
 		Height:    800,
 		MinWidth:  800,
@@ -162,7 +162,7 @@ func setupLogging() {
 		log.SetOutput(f)
 	}
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Printf("=== RepoNest log started ===")
+	log.Printf("=== Repotory log started ===")
 	log.Printf("log file: %s", logFile)
 	log.Printf("PATH=%s", os.Getenv("PATH"))
 }

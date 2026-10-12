@@ -69,11 +69,11 @@ flowchart TB
     class R read
 ```
 
-读图：**写一次，读两路**。笔记落库时由触发器同时维护 FTS 索引（检索侧）与版本快照（历史侧），应用层零维护代码——索引不可能与正文失配，除非触发器被破坏（这正是 `reponest_integrity` 的检查项，见[AI 集成](features/ai-integration.md#就绪度-vs-数据可信度)）。检索侧读 trigram 索引拿相关性与 snippet，历史侧读快照算 LCS diff。细节见 [ADR-0003](adr/0003-fts5-search.md)。
+读图：**写一次，读两路**。笔记落库时由触发器同时维护 FTS 索引（检索侧）与版本快照（历史侧），应用层零维护代码——索引不可能与正文失配，除非触发器被破坏（这正是 `repotory_integrity` 的检查项，见[AI 集成](features/ai-integration.md#就绪度-vs-数据可信度)）。检索侧读 trigram 索引拿相关性与 snippet，历史侧读快照算 LCS diff。细节见 [ADR-0003](adr/0003-fts5-search.md)。
 
 ### 插件运行时（ADR-0002）
 
-yaegi 解释 `<config>/reponest/plugins/*/plugin.go`；事件总线 + 知识源注册表；内置 `claude` 导入器与脚本插件同一 upsert 路径。
+yaegi 解释 `<config>/repotory/plugins/*/plugin.go`；事件总线 + 知识源注册表；内置 `claude` 导入器与脚本插件同一 upsert 路径。
 
 ## 前端（web/src）
 
@@ -96,8 +96,8 @@ styles/     设计系统：tokens / reset / components / layouts / features
 
 ```mermaid
 flowchart TB
-    SRC["Go 源码"] --> B1["go build → reponest<br/>内联 web/dist"]
-    SRC --> B2["go build → reponest-mcp<br/>cmd/mcp"]
+    SRC["Go 源码"] --> B1["go build → repotory<br/>内联 web/dist"]
+    SRC --> B2["go build → repotory-mcp<br/>cmd/mcp"]
     B1 --> REL[("GitHub Releases<br/>macOS 签名公证")]
     B2 --> REL
     MD["docs/**/*.md<br/>zh + en 镜像"] --> B3["build-docs.mjs<br/>mermaid → SVG"]
@@ -111,8 +111,8 @@ flowchart TB
 
 | 产物 | 来源 | 说明 |
 |------|------|------|
-| `reponest` | 根包 | Wails 桌面应用（`scripts/build.sh`） |
-| `reponest-mcp` | `cmd/mcp` | MCP stdio 服务器（知识库查询 + agent-score 自检） |
+| `repotory` | 根包 | Wails 桌面应用（`scripts/build.sh`） |
+| `repotory-mcp` | `cmd/mcp` | MCP stdio 服务器（知识库查询 + agent-score 自检） |
 
 CI（`.github/workflows/release.yml`）多平台构建 + macOS 签名公证；文档站（`pages.yml`）由 `scripts/build-docs.mjs` 从 `docs/**/*.md` 生成后部署 GitHub Pages。
 
@@ -122,9 +122,9 @@ CI（`.github/workflows/release.yml`）多平台构建 + macOS 签名公证；�
 
 | 层 | 取值 | 说明 |
 |------|------|------|
-| 品牌名 | `RepoNest` | `productName`、应用内 Logo、文档文案 |
-| 完整展示名 | `RepoNest: Local Git Knowledge Base` | 窗口标题（`main.go` 的 Wails `options.Title`）与 HTML `<title>` |
-| 仓库与包标识 | `repo-nest` | GitHub 仓库名、Go module 名、npm 包名 |
-| 冻结标识 | `reponest` | 二进制/命令名、用户数据目录（`internal/platform` 的 `dirName`）、MCP server 名与工具前缀 |
+| 品牌名 | `Repotory` | `productName`、应用内 Logo、文档文案 |
+| 完整展示名 | `Repotory: Local Git Knowledge Base` | 窗口标题（`main.go` 的 Wails `options.Title`）与 HTML `<title>` |
+| 仓库与包标识 | `repotory` | GitHub 仓库名、Go module 名、npm 包名 |
+| 冻结标识 | `repotory` | 二进制/命令名、用户数据目录（`internal/platform` 的 `dirName`）、MCP server 名与工具前缀 |
 
-冻结标识不参与「品牌统一」：数据目录已经历 gitboard → gitbuddy → reponest 两轮迁移（`internal/platform/platform.go` 的 legacy 迁移逻辑），MCP 工具名是对 AI 客户端的对外契约。
+冻结标识不参与「品牌统一」：数据目录已经历 gitboard → gitbuddy → repotory 两轮迁移（`internal/platform/platform.go` 的 legacy 迁移逻辑），MCP 工具名是对 AI 客户端的对外契约。

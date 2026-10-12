@@ -1,4 +1,4 @@
-// Command vector-init is RepoNest's vector-store onboarding guide (ADR-0013).
+// Command vector-init is Repotory's vector-store onboarding guide (ADR-0013).
 // It defaults to the LOCAL sqlite-vec store (already the app's storage layer),
 // verifies it works with a health check, records the chosen embedding provider,
 // and then points the user at Settings → Plugins to review / enable / rebuild.
@@ -15,8 +15,8 @@
 //
 // Usage:
 //
-//	reponest vector-init                      # local Ollama default
-//	reponest vector-init -provider openai -api-key $KEY
+//	repotory vector-init                      # local Ollama default
+//	repotory vector-init -provider openai -api-key $KEY
 package main
 
 import (
@@ -27,11 +27,11 @@ import (
 	"os"
 	"strings"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/platform"
-	"repo-nest/internal/search/hybrid"
-	"repo-nest/internal/search/vectordb"
-	"repo-nest/internal/service"
+	"repotory/internal/db"
+	"repotory/internal/platform"
+	"repotory/internal/search/hybrid"
+	"repotory/internal/search/vectordb"
+	"repotory/internal/service"
 )
 
 type providerDefaults struct {
@@ -58,7 +58,7 @@ func main() {
 	store := flag.String("store", "local", "vector store (axis B); default local; remote opt-in")
 	storeURL := flag.String("store-url", "", "Qdrant base URL when -store=qdrant (e.g. http://localhost:6333)")
 	storeKey := flag.String("store-api-key", "", "Qdrant api-key (stored masked)")
-	storeColl := flag.String("store-collection", "reponest_vecs", "Qdrant collection name")
+	storeColl := flag.String("store-collection", "repotory_vecs", "Qdrant collection name")
 	flag.Parse()
 
 	path := *dbPath

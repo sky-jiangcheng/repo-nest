@@ -18,7 +18,7 @@ func TestWeaviateLiveRoundTrip(t *testing.T) {
 	if url == "" {
 		url = "http://localhost:8080"
 	}
-	w, err := NewWeaviate(url, os.Getenv("WEAVIATE_API_KEY"), "reponest_smoketest")
+	w, err := NewWeaviate(url, os.Getenv("WEAVIATE_API_KEY"), "repotory_smoketest")
 	if err != nil {
 		t.Fatalf("new: %v", err)
 	}

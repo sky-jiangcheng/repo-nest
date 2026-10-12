@@ -3,11 +3,11 @@ package vectordb
 import (
 	"database/sql"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // Local is the default store: sqlite-vec `note_embeddings` living inside the
-// app's dashboard.db (wraps the internal/db vec helpers, ADR-0013).
+// app's repotory.db (wraps the internal/db vec helpers, ADR-0013).
 type Local struct{ database *sql.DB }
 
 // NewLocal binds the sqlite-vec store to an opened database.

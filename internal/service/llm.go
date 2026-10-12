@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
+	"repotory/internal/db"
+	"repotory/internal/domain"
 )
 
 // llmsNotesScanLimit caps how many recent knowledge notes llms.txt scans to
@@ -53,8 +53,8 @@ func (s *Service) GenerateLLMsTxt() string {
 	}
 
 	var b strings.Builder
-	b.WriteString("# RepoNest Knowledge Base\n\n")
-	b.WriteString("This file is an AI-readable summary of the local RepoNest knowledge base. ")
+	b.WriteString("# Repotory Knowledge Base\n\n")
+	b.WriteString("This file is an AI-readable summary of the local Repotory knowledge base. ")
 	b.WriteString("It catalogs discovered projects, their inferred technology stacks, README excerpts, and notable knowledge notes.\n\n")
 
 	// Project catalog

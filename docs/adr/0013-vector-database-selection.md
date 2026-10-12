@@ -22,14 +22,14 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
 
 **轴 B 选：sqlite-vec（`modernc.org/sqlite/vec`，纯 Go）作为唯一默认向量存储。**
 
-1. **同库同文件**：向量存进既有 `dashboard.db` 的 `vec0` 虚拟表 `note_embeddings`（rowid=note id），与 notes / FTS5 同库、同事务、同备份。
+1. **同库同文件**：向量存进既有 `repotory.db` 的 `vec0` 虚拟表 `note_embeddings`（rowid=note id），与 notes / FTS5 同库、同事务、同备份。
 2. **派生缓存**：向量是可从 `project_notes` 全量重算的缓存（`RebuildEmbeddings`），换 embedding 模型/维度即 drop+重建；SQLite 主库仍是唯一事实源。dim 记在自管 `note_embeddings_meta`，不读 sqlite-vec `_info` 影子表列名（跨版本不稳）。
 3. **默认关**：语义检索仅 `semantic_search=1` 且向量索引就绪且配好 embedding provider 才生效；任何未配/失败一律优雅退回纯 FTS5（ADR-0012）。
 4. **远程向量库经 `VectorStore` 接缝以 Qdrant 实现、默认本地 + 自动退回**：`internal/search/vectordb` 定义 `Store` 接口（`Ensure/Clear/Upsert/Search`），两实现——`Local`（sqlite-vec，默认）与 `Qdrant`（REST：建集合 / 写点 / `points/search`，`api-key` 可选）。`vectordb.Open` 按 `vector_store`(local|qdrant)/`vector_store_url`/`vector_store_api_key`/`vector_store_collection` 选择；**选了 qdrant 但未配/不可达则静默退回本地**。默认仍本地（个人库够用），远程面向 >百万向量/多端共享的 B 端；**Qdrant 与 Weaviate 均已实现**，再换 Pinecone/Milvus 只需再加一个 `Store` 实现。REST 契约带 build-tag 门控的**真实服务冒烟测试**（`ollamalive`/`qdrantlive`/`aelive`，CI 默认不跑），已在本地真 Ollama + 真 Qdrant 容器跑通（含全链路语义召回）。云端 Qdrant / 其它厂商未测。
 
 ## 安装引导（新增，落地「引导用户到设置」）
 
-`cmd/vector-init`（对外的 `reponest vector-init`）——**默认本地、引导式、远程为显式可选**：
+`cmd/vector-init`（对外的 `repotory vector-init`）——**默认本地、引导式、远程为显式可选**：
 
 1. 环境自检：SQLite 版本 + `vec_version()`（确认 vec0 扩展已装载）。
 2. 存储层健康检查：建 vec0 → 写测试向量 → KNN 往返 → 清理，逐条打勾（就是本 ADR 决策 1/2 的最小验证）。
@@ -72,9 +72,9 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
 ## 展望：对齐开放记忆标准（回应用户"OpenAI/各 IDE 都在公开存储格式"）
 
 - **现状风险**：codex/opencode/openclaw/hermes importer 都是**对各家未公开、随版本漂移的落盘格式**做逆向（已用宽松解析 + golden-file + allowlist 兜底，但仍脆）。
-- **可对齐标准 = OMP（Open Memory Protocol）**：厂商中立的开放 AI 记忆规范（Memory Object：id/content/type∈{episodic,semantic,procedural}/source/tags/created_at；`/v1/handoff`、`/v1/conversations`；可移植 JSON 导入导出；已有 Claude Code/Cursor/Copilot/Codex CLI 等适配宣称）。**若成熟，RepoNest 可把它作为导入/导出契约，取代逐工具逆向**。
+- **可对齐标准 = OMP（Open Memory Protocol）**：厂商中立的开放 AI 记忆规范（Memory Object：id/content/type∈{episodic,semantic,procedural}/source/tags/created_at；`/v1/handoff`、`/v1/conversations`；可移植 JSON 导入导出；已有 Claude Code/Cursor/Copilot/Codex CLI 等适配宣称）。**若成熟，Repotory 可把它作为导入/导出契约，取代逐工具逆向**。
 - **但**：OMP 现 **v0.4、pre-1.0、社区早期（~85 star）**，兼容多靠各家适配器。**不现在硬依赖**。
-- **导出接缝已实现（provisional）**：`service.ExportMemoryJSON` 把知识库导出为 OMP 风格 Memory Object 数组（id=`urn:reponest:note:<id>`、content=标题+正文、type 由 kind/handoff 投影为 episodic/procedural/semantic、source.tool=reponest、tags、created_at/updated_at），desktop binding `App.ExportMemoryJSON` + 前端 `exportMemoryJSON`。**仅导出向**，OMP 导入向 + 字段映射待其 v1 稳定再对齐（type 映射是尽力投影、非规范）。
+- **导出接缝已实现（provisional）**：`service.ExportMemoryJSON` 把知识库导出为 OMP 风格 Memory Object 数组（id=`urn:repotory:note:<id>`、content=标题+正文、type 由 kind/handoff 投影为 episodic/procedural/semantic、source.tool=repotory、tags、created_at/updated_at），desktop binding `App.ExportMemoryJSON` + 前端 `exportMemoryJSON`。**仅导出向**，OMP 导入向 + 字段映射待其 v1 稳定再对齐（type 映射是尽力投影、非规范）。
 
 ## 后端接入现状（截至本次）
 

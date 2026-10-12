@@ -6,7 +6,7 @@
 
 ## Background
 
-The code shape before 1.7.0: the root `package main` piled up 14 handler files (roughly 1900 lines of business logic); the CLI (`cmd/reponest`) and MCP (`cmd/mcp`) each re-implemented "the same query + the same formatting" on top of `internal/db`; two competing scan pipelines existed, 5 nearly identical stats refresh loops, and a 1195-line monolithic `queries.go`. Exploratory digging also uncovered two production bugs hidden by the duplicated code (a repository ghost column, a go.mod block parsing panic).
+The code shape before 1.7.0: the root `package main` piled up 14 handler files (roughly 1900 lines of business logic); the CLI (`cmd/repotory`) and MCP (`cmd/mcp`) each re-implemented "the same query + the same formatting" on top of `internal/db`; two competing scan pipelines existed, 5 nearly identical stats refresh loops, and a 1195-line monolithic `queries.go`. Exploratory digging also uncovered two production bugs hidden by the duplicated code (a repository ghost column, a go.mod block parsing panic).
 
 ## Decision
 
@@ -37,8 +37,8 @@ Row types move into `internal/domain`, with db keeping type aliases for compatib
 ### 5. Version and data paths
 
 - Version number SSOT: `internal/version.Version` (shared by app/CLI/MCP/agent-score)
-- **User data paths unchanged** (DB/log file names/plugin directory keep the `reponest` directory name) — the brand rename (RepoNest) does not migrate data
-- Go module path stays `reponest` (avoiding a repo-wide import rewrite; see the rename plan in TODO.md)
+- **User data paths unchanged** (DB/log file names/plugin directory keep the `repotory` directory name) — the brand rename (Repotory) does not migrate data
+- Go module path stays `repotory` (avoiding a repo-wide import rewrite; see the rename plan in TODO.md)
 
 ## Consequences
 

@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // chatStub answers one OpenAI-style /chat/completions request with `content`,

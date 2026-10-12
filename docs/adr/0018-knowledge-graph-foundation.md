@@ -1,9 +1,9 @@
 # ADR-0018: 知识图谱底座——受控关系词表让图可查，图感知取证让图被读
 
-- 状态：**Lane 1 Accepted（2026-10-12）**；Lane 2 Proposed（页面向量 + 图感知取证，schema v22，尚未开工，前置 = lane 1 已 Accepted ✅ + Phase 0 delta 达标）。（lane 1 内容：schema v21 关系词表（CHECK 由 `wikiRelations` 派生，Go/DDL 单一事实源）+ 编译器选词 + approve 抽取 `mentions` + `lintRelationShape` 三查，契约测试全绿。**晋升依据**：条件 1 真库副本演练 PASS——用户于 2026-10-12 以 `cmd/wiki-rehearse` 对真实 `dashboard.db` 只读副本跑通（v20→v21，2 边 0 丢 0 增，`related_to`/`used_in` 各 1 条折叠入 `ref`），产物留档 `v21-rehearse/`；条件 2-4 已随代码落地；条件 5（词表定稿 + 双语文档 + 状态行更新）随本行完成。）
+- 状态：**Lane 1 Accepted（2026-10-12）**；Lane 2 Proposed（页面向量 + 图感知取证，schema v22，尚未开工，前置 = lane 1 已 Accepted ✅ + Phase 0 delta 达标）。（lane 1 内容：schema v21 关系词表（CHECK 由 `wikiRelations` 派生，Go/DDL 单一事实源）+ 编译器选词 + approve 抽取 `mentions` + `lintRelationShape` 三查，契约测试全绿。**晋升依据**：条件 1 真库副本演练 PASS——用户于 2026-10-12 以 `cmd/wiki-rehearse` 对真实 `repotory.db` 只读副本跑通（v20→v21，2 边 0 丢 0 增，`related_to`/`used_in` 各 1 条折叠入 `ref`），产物留档 `v21-rehearse/`；条件 2-4 已随代码落地；条件 5（词表定稿 + 双语文档 + 状态行更新）随本行完成。）
 - 日期：2026-10-09
 - 关联：[ADR-0014](0014-llm-wiki-knowledge-compiler.md)（本文兑现其"先补结构"承诺的下半段——结构有了但要能查询；并兑现其决策 5 lint"数据缺口"一查的具体形状、并收口其待决"语义融合是否扩到 wiki_pages"）、[ADR-0015](0015-w3-minimal-compile-loop.md)（本文不违反其"编译器永不修改已批准页"——新增只发生在边/待审面）、[ADR-0016](0016-async-batch-jobs.md)（lane 2 若慢，复用一表两内核）、[ADR-0012](0012-semantic-search.md)（RRF 语义融合）、[ADR-0013](0013-vector-database-selection.md)（零 CGO 向量存储）、[ADR-0010](0010-session-auto-capture.md)（敏感能力默认关的纪律）；TODO **M6** 的收口 + 新增 **M7**；起点 schema v20
-- 配套实施计划：`RepoNest-知识图谱实施计划-2026-10-09.md`（本 ADR = 其 Phase 1 + Phase 2；Phase 3 实体消歧、Phase 4 社区摘要与时态图各自单开 ADR-0019/0020/0021）
+- 配套实施计划：`Repotory-知识图谱实施计划-2026-10-09.md`（本 ADR = 其 Phase 1 + Phase 2；Phase 3 实体消歧、Phase 4 社区摘要与时态图各自单开 ADR-0019/0020/0021）
 
 ## 背景
 
@@ -17,7 +17,7 @@ ADR-0014 的第一条决策是"先补结构，再让 LLM 写"，理由是"没有
 
 ## 参照物（抄机制、不抄实现）
 
-- **Karpathy LLM Wiki**：`index.md` 是人肉导航，`[[wikilink]]` 是边。他自承"index 导航在几百页内好，更大才需真检索"——RepoNest 的规模终会越过那条线，所以"图可查询"是为"图可遍历检索"铺路。
+- **Karpathy LLM Wiki**：`index.md` 是人肉导航，`[[wikilink]]` 是边。他自承"index 导航在几百页内好，更大才需真检索"——Repotory 的规模终会越过那条线，所以"图可查询"是为"图可遍历检索"铺路。
 - **Microsoft GraphRAG**：两条核心机制值得抄思想——**local search**（以命中实体为种子在图上做带个性化的随机游走选证据，≈本 ADR 的 PPR）与 **community summaries**（对图做社区检测、逐社区摘要，填 synthesis 空层——本 ADR **不做**，见 Phase 4）。它的实现绑 Neo4j + Leiden + 全局摘要 map-reduce，违背本仓 local-first / 零 CGO / 单 SQLite，**只借判据不借栈**。
 - **TencentDB-Agent-Memory**：分层蒸馏里"要具体事实才回落到 BM25 + 向量 + RRF"，正是本 ADR lane 2"向量粗筛 → 图精排"的分层思路。
 

@@ -37,8 +37,8 @@ function TodoSection({ projectId }: Props) {
   // Listen for todo-changed events (e.g. after delete from TodoDeleteButton)
   useEffect(() => {
     const handler = () => fetchTodos()
-    window.addEventListener('reponest:todos-changed', handler)
-    return () => window.removeEventListener('reponest:todos-changed', handler)
+    window.addEventListener('repotory:todos-changed', handler)
+    return () => window.removeEventListener('repotory:todos-changed', handler)
   }, [fetchTodos])
 
   const handleAdd = async () => {
@@ -147,7 +147,7 @@ function TodoDeleteButton({ todoId }: { todoId: number }) {
   const { armed, click } = useConfirmClick(async () => {
     try {
       await deleteTodo(todoId)
-      window.dispatchEvent(new CustomEvent('reponest:todos-changed'))
+      window.dispatchEvent(new CustomEvent('repotory:todos-changed'))
     } catch { /* ignore */ }
   })
   return (

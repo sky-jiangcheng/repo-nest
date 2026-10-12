@@ -41,7 +41,7 @@ function brandMarkSvg(size) {
   let svg = readFileSync(svgPath, 'utf8')
   // Keep only the geometry: drop the outer <svg> wrapper, the <title> (the
   // sidebar h1 already names the product, so a second title makes screen
-  // readers announce "RepoNest" twice) and the XML preamble. The <title>
+  // readers announce "Repotory" twice) and the XML preamble. The <title>
   // sits *after* the opening <svg> tag, so the wrapper strip cannot catch it.
   svg = svg
     .replace(/<\?xml[^>]*\?>/g, '')
@@ -275,7 +275,7 @@ const locales = {
     srcRoot: join(docsDir, 'en'),
     outRoot: docsDir,
     htmlLang: 'en',
-    titleSuffix: 'RepoNest Docs',
+    titleSuffix: 'Repotory Docs',
     brandSmall: `Docs · v${version}`,
     backLabel: '← GitHub repository',
     switcher: { self: 'English', other: '中文' },
@@ -285,7 +285,7 @@ const locales = {
     srcRoot: docsDir,
     outRoot: join(docsDir, 'zh'),
     htmlLang: 'zh-CN',
-    titleSuffix: 'RepoNest 文档',
+    titleSuffix: 'Repotory 文档',
     brandSmall: `用户文档 · v${version}`,
     backLabel: '← 返回 GitHub 仓库',
     switcher: { self: '中文', other: 'English' },
@@ -435,7 +435,7 @@ function page(title, activeFile, contentHtml, locale, base, extraHead = '') {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title && !title.includes('RepoNest') ? title + ' · ' : ''}${loc.titleSuffix}</title>
+  <title>${title && !title.includes('Repotory') ? title + ' · ' : ''}${loc.titleSuffix}</title>
 ${extraHead}  <style>
     :root { --bg: #f8f9fa; --text: #1a1a2e; --muted: #6c757d; --accent: #4caf50; --border: #e2e8f0; --sidebar-w: 240px; }
     * { margin: 0; padding: 0; box-sizing: border-box; }

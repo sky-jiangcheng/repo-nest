@@ -8,7 +8,7 @@
 //	~/.codex/archived_sessions/rollout-<ts>-<uuid>.jsonl
 //
 // This importer turns each session into one compact "log" note — the project's
-// working directory (matched to a RepoNest project via memsrc), the first user
+// working directory (matched to a Repotory project via memsrc), the first user
 // instruction and the last assistant reply — and hands it to the plugin runtime
 // which upserts it idempotently by (project, source="codex", title).
 //
@@ -30,9 +30,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"repo-nest/internal/core/plugin"
-	"repo-nest/internal/db"
-	"repo-nest/internal/importers/memsrc"
+	"repotory/internal/core/plugin"
+	"repotory/internal/db"
+	"repotory/internal/importers/memsrc"
 )
 
 // SourceName is the stable knowledge-source identifier for Codex sessions.
@@ -273,7 +273,7 @@ func titleFor(p parsed) string {
 // assistant reply, and a provenance footer.
 func renderNote(p parsed) string {
 	var b strings.Builder
-	b.WriteString("> 由 RepoNest 从 Codex 会话记录自动导入（source: codex）\n\n")
+	b.WriteString("> 由 Repotory 从 Codex 会话记录自动导入（source: codex）\n\n")
 	if p.cwd != "" {
 		b.WriteString("**工作目录**：`" + p.cwd + "`\n\n")
 	}

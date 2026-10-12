@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // slowChatStub answers like a local LLM: correctly, but slowly. The whole point of

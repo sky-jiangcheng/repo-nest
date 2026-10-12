@@ -6,7 +6,7 @@
 
 ## Background
 
-RFC 0001 planned the product as a "plugin platform" with B-end deployment capabilities: a resident HTTP Server / RBAC / AK-SK (M2), a plugin protocol gateway + scope permissions (M3), and PG/ES / K8s / reponest-server (M4).
+RFC 0001 planned the product as a "plugin platform" with B-end deployment capabilities: a resident HTTP Server / RBAC / AK-SK (M2), a plugin protocol gateway + scope permissions (M3), and PG/ES / K8s / repotory-server (M4).
 
 Market and user feedback evaluation concluded that this positioning was overly complex and drifted away from the core value of a desktop tool. The real differentiation lies in: a visualization tool for local Git repositories that also accumulates into the user's "second brain for code projects" — cross-project notes, todos, and repository knowledge mining.
 
@@ -16,7 +16,7 @@ Market and user feedback evaluation concluded that this positioning was overly c
 2. **Plugin form**: adopt in-process plugins (loaded within the process, interfaces in `internal/core/plugin`) rather than an external plugin protocol gateway.
    - Rationale: an external gateway (M3) requires network protocols, authentication, and deployment — high complexity; a C-end desktop tool needs no multi-process isolation.
    - Plugins load inside the application process and access the knowledge base and storage, registering events and knowledge sources, through `PluginContext`.
-3. **Deprecate M2/M3/M4**: the resident HTTP Server, RBAC, AK-SK, plugin protocol gateway, scope permissions, PG/ES, K8s, and reponest-server are all dropped.
+3. **Deprecate M2/M3/M4**: the resident HTTP Server, RBAC, AK-SK, plugin protocol gateway, scope permissions, PG/ES, K8s, and repotory-server are all dropped.
 4. **Keep the M1 abstraction layer**: as the foundation supporting additional plugin extension interfaces. Abstractions already landed, such as `storage.Stores`, `ScanTxer`, and the KB Facade, are retained and provide base capabilities for plugins.
 
 ## Impact
@@ -37,7 +37,7 @@ Two in-process plugin loading approaches were validated via prototypes:
 | Missing directory | Handle it yourself | Skipped gracefully (verified) |
 | Ecosystem | Standard library, stable long-term | Actively maintained, interpreted execution |
 
-**Decision: adopt yaegi.** The decisive factor is cross-platform support — RepoNest explicitly ships to Windows / macOS / Linux, and Go plugin is unavailable on Windows, failing the acceptance criteria. yaegi is a pure Go interpreter that loads `.go` plugin scripts consistently on every target platform and requires no strict version binding between plugin and host.
+**Decision: adopt yaegi.** The decisive factor is cross-platform support — Repotory explicitly ships to Windows / macOS / Linux, and Go plugin is unavailable on Windows, failing the acceptance criteria. yaegi is a pure Go interpreter that loads `.go` plugin scripts consistently on every target platform and requires no strict version binding between plugin and host.
 
 ## Rationale
 

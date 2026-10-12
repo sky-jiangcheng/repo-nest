@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
-	"repo-nest/internal/search/hybrid"
-	"repo-nest/internal/search/vectordb"
+	"repotory/internal/db"
+	"repotory/internal/domain"
+	"repotory/internal/search/hybrid"
+	"repotory/internal/search/vectordb"
 )
 
 // M3-A semantic search wiring (ADR-0012). Default OFF: nothing here runs unless

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"repo-nest/internal/importers/claude"
+	"repotory/internal/importers/claude"
 )
 
 func TestHandoffFromSessionFillsSections(t *testing.T) {

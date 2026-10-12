@@ -1,4 +1,4 @@
-// Package plugin defines the extension interfaces for RepoNest plugins.
+// Package plugin defines the extension interfaces for Repotory plugins.
 //
 // Plugins are loaded in-process at startup. Each plugin implements Plugin,
 // receives a PluginContext during Init, and may register event handlers and
@@ -14,7 +14,7 @@ import (
 	"database/sql"
 )
 
-// Plugin is the base interface every RepoNest plugin must implement.
+// Plugin is the base interface every Repotory plugin must implement.
 type Plugin interface {
 	// Name returns the stable identifier of the plugin.
 	Name() string
@@ -49,7 +49,7 @@ type Event struct {
 type EventHandler func(event Event) error
 
 // KnowledgeImporter imports knowledge (e.g. notes) from an external source
-// into the RepoNest knowledge base.
+// into the Repotory knowledge base.
 type KnowledgeImporter interface {
 	// Source returns a stable source identifier, e.g. "claude".
 	Source() string

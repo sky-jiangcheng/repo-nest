@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // buildExportFixture seeds pages across kinds, links between them, and one note
@@ -100,10 +100,10 @@ func TestExportWikiTree_WritesReadableTree(t *testing.T) {
 			t.Fatalf("expected %s: %v", p, err)
 		}
 		body := string(raw)
-		if !strings.HasPrefix(body, "---\n") || !strings.Contains(body, "source: reponest-export") {
+		if !strings.HasPrefix(body, "---\n") || !strings.Contains(body, "source: repotory-export") {
 			t.Errorf("%s lacks the export frontmatter", p)
 		}
-		if !strings.Contains(body, fmt.Sprintf("reponest_page_id: %d", pages[slug])) {
+		if !strings.Contains(body, fmt.Sprintf("repotory_page_id: %d", pages[slug])) {
 			t.Errorf("%s does not carry its page id", p)
 		}
 	}

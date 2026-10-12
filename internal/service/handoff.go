@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // handoffTag is the reserved tag marking a note as a structured session
@@ -17,7 +17,7 @@ const handoffTag = "handoff"
 // Handoff write bounds. A handoff is agent-authored JSON arriving over MCP,
 // so it is untrusted input: without caps a runaway agent could write a
 // multi-megabyte summary or thousands of bullets in one call, and the next
-// reponest_context would embed all of it. The note-level bounds still apply
+// repotory_context would embed all of it. The note-level bounds still apply
 // on top of these (the rendered Markdown is written through CreateNoteWithMeta).
 const (
 	maxHandoffSummaryLen = 4_000
@@ -44,7 +44,7 @@ type HandoffInput struct {
 
 // CreateHandoffNote persists a session handoff as a knowledge note rendered
 // from a fixed Markdown template. A stable template matters: the note is
-// consumed by both humans (desktop UI) and agents (reponest_context), and the
+// consumed by both humans (desktop UI) and agents (repotory_context), and the
 // section headings are the contract between the writer and every future
 // reader.
 func (s *Service) CreateHandoffNote(in HandoffInput) (*HandoffResult, error) {

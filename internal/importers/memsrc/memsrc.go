@@ -13,10 +13,10 @@ import (
 	"strconv"
 	"strings"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
-// MatchProject finds the RepoNest project id for a display name, preferring an
+// MatchProject finds the Repotory project id for a display name, preferring an
 // exact name, then a repository path ending with /name (or /name.git), then a
 // project-name containment. Returns 0 when nothing matches; importers set
 // ImportDoc.ProjectID = 0 in that case and the runtime counts it as skipped.
@@ -73,7 +73,7 @@ func LastPathSegment(p string) string {
 	return filepath.Base(p)
 }
 
-// TargetProject resolves the RepoNest project a source whose memory is
+// TargetProject resolves the Repotory project a source whose memory is
 // agent-global (not per-project) should attach its notes to, from a config
 // value naming a project by name or numeric id. Empty/unreadable/unknown -> 0,
 // which the runtime counts as skipped: a misconfigured source therefore lands

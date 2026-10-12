@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
+	"repotory/internal/db"
+	"repotory/internal/domain"
 )
 
 // SearchNotes searches note content/title/tags across all projects,

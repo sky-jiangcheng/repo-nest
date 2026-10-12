@@ -1,4 +1,4 @@
-# RepoNest 产品深度评估 — 2026-08-26（第二轮）
+# Repotory 产品深度评估 — 2026-08-26（第二轮）
 
 > 评估视角：AI 产品架构 | 基于 Sprint 1 & 2 清理后状态 | 代码量：Go ~6,200 行 + TS/TSX ~5,400 行 | 210 文件 / 1.9 MB
 
@@ -55,9 +55,9 @@
 
 | ID | 内容 | 理由 | 优先级 | 估时 |
 |----|------|------|--------|------|
-| P10 | **MCP 笔记搜索增强**：`reponest_notes_search` 返回结果当前是文本拼接，应返回结构化 JSON（含 note_id, project, score, snippet） | AI Agent 无法精确定位搜索结果去调用 `notes_read`，当前是盲猜 | **高** | 1h |
+| P10 | **MCP 笔记搜索增强**：`repotory_notes_search` 返回结果当前是文本拼接，应返回结构化 JSON（含 note_id, project, score, snippet） | AI Agent 无法精确定位搜索结果去调用 `notes_read`，当前是盲猜 | **高** | 1h |
 | P11 | **MCP 工具链闭环**：`notes_create` 返回 note_id，让 AI 可以紧接着调用 `notes_update` 或 `notes_read` 验证 | 当前 create 返回文本提示，AI 无法确认写入是否成功 | **高** | 30min |
-| P12 | **`reponest_ask` 上下文增强**：当前 `ask` 工具只做全文搜索，应补充项目上下文（如传入 project_id 参数限定范围） | AI 在多项目环境下搜索容易命中无关结果 | **中** | 1h |
+| P12 | **`repotory_ask` 上下文增强**：当前 `ask` 工具只做全文搜索，应补充项目上下文（如传入 project_id 参数限定范围） | AI 在多项目环境下搜索容易命中无关结果 | **中** | 1h |
 | P13 | **笔记 Markdown → 知识图谱**：从笔记中自动提取实体（项目名、技术栈、人物）建立关联 | 当前知识库是扁平列表，缺少知识间的关联，AI 缺少推理路径 | **中** | 3h |
 | P14 | **前端组件 Storybook 隔离**：为核心组件（GoalRing, Heatmap, KnowledgeCard, ProjectCard）建立 Storybook stories | 当前组件只能在完整页面中看到，交互测试成本高 | 低 | 2h |
 | P15 | **`db/db.go` → `db/migrate.go` 拆分**：432 行中 250+ 行是迁移逻辑 | 迁移逻辑独立性强，拆分后可单独测试 | 中 | 1h |
@@ -65,11 +65,11 @@
 | P17 | **搜索结果排序优化**：FTS5 的 bm25 排序对中文笔记效果有限，应引入笔记更新时间、pin 状态、最近访问等因素 | 搜索是核心闭环的出口，排序质量直接影响 AI 和用户体验 | **高** | 2h |
 | P18 | **`cmd/mcp/main.go` 拆分**：415 行单文件包含 9 个工具定义 | 按域拆为 `tools_notes.go` / `tools_projects.go` / `tools_search.go` / `tools_score.go` | 低 | 1h |
 | P19 | **笔记版本 diff 可视化**：`diff.go` 已实现行级 diff，但前端 `VersionHistoryPanel` 55 行过于简略 | 版本历史是知识管理的差异化能力，当前 UI 仅显示版本列表 + 纯文本 diff | 中 | 2h |
-| P20 | **MCP 健康检查工具**：新增 `reponest_status` 工具返回数据库状态、笔记/项目数量、最后扫描时间 | AI Agent 无法判断 RepoNest 实例是否正常运行 | 中 | 30min |
+| P20 | **MCP 健康检查工具**：新增 `repotory_status` 工具返回数据库状态、笔记/项目数量、最后扫描时间 | AI Agent 无法判断 Repotory 实例是否正常运行 | 中 | 30min |
 | P21 | **`llms.txt` 优化**：当前生成的 llms.txt 是纯文本，应支持 JSON-LD 结构化输出 | 不同 AI 工具对 llms.txt 格式有不同偏好 | 低 | 1h |
 | P22 | **前端错误边界**：页面组件无 ErrorBoundary，API 失败时整个页面白屏 | 当前依赖 ErrorBanner 组件逐个处理，但未捕获渲染异常 | **高** | 1h |
 | P23 | **API 响应缓存策略**：`useApiData` hook 有内存缓存但无 TTL 配置项，不同数据新鲜度需求不同 | 项目列表 vs 笔记内容 vs 摘要的缓存策略应该不同 | 中 | 1h |
-| P24 | **`SKILL.md` 可发现性增强**：当前 SKILL.md 是静态文档，应支持 MCP 工具 `reponest_help` 动态返回当前版本能力 | AI Agent 无法感知 SKILL.md 的存在，只有通过 MCP 协议才能发现工具 | 低 | 30min |
+| P24 | **`SKILL.md` 可发现性增强**：当前 SKILL.md 是静态文档，应支持 MCP 工具 `repotory_help` 动态返回当前版本能力 | AI Agent 无法感知 SKILL.md 的存在，只有通过 MCP 协议才能发现工具 | 低 | 30min |
 
 ---
 

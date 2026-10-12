@@ -1,4 +1,4 @@
-// Package runtime implements the in-process plugin runtime for RepoNest.
+// Package runtime implements the in-process plugin runtime for Repotory.
 //
 // Plugins are Go scripts loaded via the yaegi interpreter (see ADR 0002 and
 // issue #33). Each plugin lives in its own directory under the plugins dir
@@ -9,7 +9,7 @@
 //	func Source() string                                   // optional, defaults to Name
 //	func Import(ctx *plugin.Context) ([]plugin.ImportDoc, error) // optional knowledge source
 //
-// Scripts import "repo-nest/internal/core/plugin" for the host-provided types.
+// Scripts import "repotory/internal/core/plugin" for the host-provided types.
 // All plugin calls are wrapped in recover() so a panicking plugin can never
 // crash the host process.
 package runtime
@@ -24,8 +24,8 @@ import (
 	"strings"
 	"sync"
 
-	"repo-nest/internal/core/plugin"
-	"repo-nest/internal/db"
+	"repotory/internal/core/plugin"
+	"repotory/internal/db"
 
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
@@ -496,10 +496,10 @@ func (r *Runtime) registerSource(name string, importer plugin.KnowledgeImporter,
 // ---------------------------------------------------------------------------
 
 // exportedTypes is the set of host symbols exposed to plugin scripts via the
-// import path "repo-nest/internal/core/plugin". Scripts use plugin.Context and
+// import path "repotory/internal/core/plugin". Scripts use plugin.Context and
 // plugin.ImportDoc.
 var exportedTypes = interp.Exports{
-	"repo-nest/internal/core/plugin/plugin": {
+	"repotory/internal/core/plugin/plugin": {
 		"Context":   reflect.ValueOf((*Context)(nil)),
 		"Event":     reflect.ValueOf(plugin.Event{}),
 		"ImportDoc": reflect.ValueOf(plugin.ImportDoc{}),
@@ -511,7 +511,7 @@ var exportedTypes = interp.Exports{
 // A plugin already holds full host authority by design: it receives
 // plugin.Context with direct database access, and loading it is an explicit
 // act of trust in its source. But the interpreter must not ALSO hand out the
-// packages that reach past RepoNest entirely — os/os/exec/syscall/unsafe
+// packages that reach past Repotory entirely — os/os/exec/syscall/unsafe
 // escape to the filesystem and process table, net*/net/http reach the
 // network — because then a single dropped-in plugin.go becomes arbitrary
 // code execution in the app process with no product-level gate.

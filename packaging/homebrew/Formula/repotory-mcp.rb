@@ -1,4 +1,4 @@
-# RepoNest MCP server (Linux)
+# Repotory MCP server (Linux)
 #
 # The desktop app has no Linux installer artifact (it ships as a bare tarball),
 # but the MCP server is a pure Go / zero-CGO binary and installs cleanly, so the
@@ -6,32 +6,32 @@
 #
 # Version is stamped by scripts/update-manifests.sh from wails.json
 # (info.productVersion) — never edit it by hand.
-class ReponestMcp < Formula
-  desc "MCP stdio server exposing the RepoNest local knowledge base to AI agents"
+class RepotoryMcp < Formula
+  desc "MCP stdio server exposing the Repotory local knowledge base to AI agents"
   homepage "https://github.com/sky-jiangcheng/repo-nest"
   version "1.16.2"
   license "MIT"
 
   if OS.mac? && Hardware::CPU.arm?
-    url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/reponest-mcp-darwin-arm64.tar.gz"
+    url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/repotory-mcp-darwin-arm64.tar.gz"
     sha256 "c6bbdb6469f585d341a633a4beb24233f9a554329830beb8df29cbd32c8b1811"
   elsif OS.mac? && Hardware::CPU.is_64_bit?
-    url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/reponest-mcp-darwin-amd64.tar.gz"
+    url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/repotory-mcp-darwin-amd64.tar.gz"
     sha256 "550a296a03ad98f7aebbcf2b184b96d4391de23c4814cc9fa2fdac0643dba67f"
   else
-    url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/reponest-mcp-linux-amd64.tar.gz"
+    url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/repotory-mcp-linux-amd64.tar.gz"
     sha256 "2868e454ffd2b93062df1f569cd813ee73939b12b476b6edb31dea64d150495b"
   end
 
   def install
-    bin.install "reponest-mcp"
+    bin.install "repotory-mcp"
   end
 
   # The binary is a stdio MCP server: running it with no stdin makes it block
   # on the JSON-RPC loop, so it cannot be executed as a test. Assert the file
   # landed and is executable instead of pretending to run it.
   test do
-    assert_path_exists bin/"reponest-mcp"
-    assert_predicate bin/"reponest-mcp", :executable?
+    assert_path_exists bin/"repotory-mcp"
+    assert_predicate bin/"repotory-mcp", :executable?
   end
 end

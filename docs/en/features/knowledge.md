@@ -173,8 +173,8 @@ Three points: the classification is a **provenance heuristic** — it says where
 ### Export to Obsidian (a read-only bypass)
 
 ```
-go build -o reponest-wiki-export ./cmd/wiki-export
-./reponest-wiki-export -out ./vault            # refused if the target holds foreign files
+go build -o repotory-wiki-export ./cmd/wiki-export
+./repotory-wiki-export -out ./vault            # refused if the target holds foreign files
 ```
 
 It renders `vault/wiki/<entities|concepts|sources|synthesis|queries>/<slug>.md` with YAML frontmatter (including `status` and `source`), `[[wikilink]]` outgoing and back links, a `wiki/index.md` catalogue and `EXPORT-MANIFEST.json`. Its purpose is **to look at the graph**: Obsidian's graph view answers whether this taxonomy is actually the shape of your knowledge. Two deliberate properties:

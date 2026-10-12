@@ -1,4 +1,4 @@
-module repo-nest
+module repotory
 
 go 1.26.0
 

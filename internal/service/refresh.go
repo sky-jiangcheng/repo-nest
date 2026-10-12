@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
+	"repotory/internal/db"
+	"repotory/internal/domain"
 )
 
 // statsBackfillDays is how far back the range refreshers query git history.

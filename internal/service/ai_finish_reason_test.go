@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // finish_reason used to be dropped on the floor, so a reply the server cut off

@@ -69,11 +69,11 @@ flowchart TB
     class R read
 ```
 
-How to read it: **one write, two read paths**. When a note is persisted, triggers maintain the FTS index (the retrieval side) and the version snapshot (the history side) at the same time — the application layer has zero maintenance code, so the index cannot drift out of sync with the content unless the triggers are broken (which is exactly what `reponest_integrity` checks, see [AI integration](features/ai-integration.md#readiness-vs-data-trust)). The retrieval side reads the trigram index for relevance and snippets; the history side reads snapshots to compute the LCS diff. Details in [ADR-0003](adr/0003-fts5-search.md).
+How to read it: **one write, two read paths**. When a note is persisted, triggers maintain the FTS index (the retrieval side) and the version snapshot (the history side) at the same time — the application layer has zero maintenance code, so the index cannot drift out of sync with the content unless the triggers are broken (which is exactly what `repotory_integrity` checks, see [AI integration](features/ai-integration.md#readiness-vs-data-trust)). The retrieval side reads the trigram index for relevance and snippets; the history side reads snapshots to compute the LCS diff. Details in [ADR-0003](adr/0003-fts5-search.md).
 
 ### Plugin runtime (ADR-0002)
 
-yaegi interprets `<config>/reponest/plugins/*/plugin.go`; event bus + knowledge source registry; the built-in `claude` importer and script plugins share the same upsert path.
+yaegi interprets `<config>/repotory/plugins/*/plugin.go`; event bus + knowledge source registry; the built-in `claude` importer and script plugins share the same upsert path.
 
 ## Frontend (web/src)
 
@@ -96,8 +96,8 @@ Single-file SQLite (WAL + foreign keys), 12 versioned migrations applied automat
 
 ```mermaid
 flowchart TB
-    SRC["Go source"] --> B1["go build → reponest<br/>inlines web/dist"]
-    SRC --> B2["go build → reponest-mcp<br/>cmd/mcp"]
+    SRC["Go source"] --> B1["go build → repotory<br/>inlines web/dist"]
+    SRC --> B2["go build → repotory-mcp<br/>cmd/mcp"]
     B1 --> REL[("GitHub Releases<br/>macOS signing + notarization")]
     B2 --> REL
     MD["docs/**/*.md<br/>zh + en mirrors"] --> B3["build-docs.mjs<br/>mermaid → inline SVG"]
@@ -111,8 +111,8 @@ How to read it: two artifact lines — the desktop app inlines `web/dist` into t
 
 | Artifact | Source | Description |
 |------|------|------|
-| `reponest` | Root package | Wails desktop app (`scripts/build.sh`) |
-| `reponest-mcp` | `cmd/mcp` | MCP stdio server (knowledge base queries + agent-score self-check) |
+| `repotory` | Root package | Wails desktop app (`scripts/build.sh`) |
+| `repotory-mcp` | `cmd/mcp` | MCP stdio server (knowledge base queries + agent-score self-check) |
 
 CI (`.github/workflows/release.yml`) builds for multiple platforms plus macOS signing and notarization; the docs site (`pages.yml`) is generated from `docs/**/*.md` by `scripts/build-docs.mjs` and deployed to GitHub Pages.
 
@@ -122,9 +122,9 @@ The brand presentation layer and the machine identity layer are **intentionally 
 
 | Layer | Value | Notes |
 |------|------|------|
-| Brand name | `RepoNest` | `productName`, in-app logo, documentation copy |
-| Full display name | `RepoNest: Local Git Knowledge Base` | Window title (the Wails `options.Title` in `main.go`) and the HTML `<title>` |
-| Repository and package identity | `repo-nest` | GitHub repo name, Go module name, npm package name |
-| Frozen identifiers | `reponest` | Binary/command name, user data directory (the `dirName` in `internal/platform`), MCP server name and tool prefix |
+| Brand name | `Repotory` | `productName`, in-app logo, documentation copy |
+| Full display name | `Repotory: Local Git Knowledge Base` | Window title (the Wails `options.Title` in `main.go`) and the HTML `<title>` |
+| Repository and package identity | `repotory` | GitHub repo name, Go module name, npm package name |
+| Frozen identifiers | `repotory` | Binary/command name, user data directory (the `dirName` in `internal/platform`), MCP server name and tool prefix |
 
-Frozen identifiers are exempt from "brand unification": the data directory has already gone through two migrations (gitboard → gitbuddy → reponest; see the legacy migration logic in `internal/platform/platform.go`), and MCP tool names are an external contract with AI clients.
+Frozen identifiers are exempt from "brand unification": the data directory has already gone through two migrations (gitboard → gitbuddy → repotory; see the legacy migration logic in `internal/platform/platform.go`), and MCP tool names are an external contract with AI clients.

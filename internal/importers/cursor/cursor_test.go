@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // The fixtures below mirror the shapes verified against a real macOS install
@@ -44,7 +44,7 @@ func newFixture(t *testing.T) (appDB *sql.DB, statePath string) {
 	if err := os.WriteFile(filepath.Join(wsDir, "workspace.json"), body, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// A second workspace with no matching RepoNest project: its sessions must
+	// A second workspace with no matching Repotory project: its sessions must
 	// skip rather than be guessed onto one.
 	other := filepath.Join(userDir, "workspaceStorage", wsHashUnknown)
 	if err := os.MkdirAll(other, 0o755); err != nil {
@@ -363,7 +363,7 @@ func mustExec(t *testing.T, path, stmt string) {
 }
 
 // TestImportAgainstRealInstall is an opt-in smoke test against the developer's
-// own Cursor database (REPONEST_REAL_CURSOR_DB=1). It exists because every other
+// own Cursor database (REPOTORY_REAL_CURSOR_DB=1). It exists because every other
 // test in this file runs on a fixture I wrote from observation, and the whole
 // point of ADR-0011's "don't guess at live formats" rule is that the observation
 // has to be executed against occasionally.
@@ -372,8 +372,8 @@ func mustExec(t *testing.T, path, stmt string) {
 // importer's test must not become a way to dump someone's chat history into a
 // test log.
 func TestImportAgainstRealInstall(t *testing.T) {
-	if os.Getenv("REPONEST_REAL_CURSOR_DB") != "1" {
-		t.Skip("set REPONEST_REAL_CURSOR_DB=1 to run against this machine's Cursor install")
+	if os.Getenv("REPOTORY_REAL_CURSOR_DB") != "1" {
+		t.Skip("set REPOTORY_REAL_CURSOR_DB=1 to run against this machine's Cursor install")
 	}
 	// No project seeding: every session is expected to skip for attribution, and
 	// that is itself the assertion (the run completes, nothing is invented).

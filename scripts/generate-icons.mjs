@@ -3,7 +3,7 @@
 //   node scripts/generate-icons.mjs          # (re)generate all derivatives
 //   node scripts/generate-icons.mjs --check  # verify derivatives are in sync
 //
-// build/icon.svg is the single source of truth for the RepoNest brand mark.
+// build/icon.svg is the single source of truth for the Repotory brand mark.
 // Everything else — the Wails appicon, the Windows .ico, the size ladder in
 // build/icons/, the VS Code extension icon and the docs favicons — is a
 // derived artifact. When the SSOT changes without regenerating, `--check`
@@ -22,8 +22,8 @@ const outDir = path.join(root, 'build/icons')
 // Favicon variant of the mark: same construction as the SSOT but with
 // heavier strokes and no interior lines — at 16×16 a favicon reads by
 // silhouette, and hairline strokes disappear.
-const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="RepoNest">
-  <title>RepoNest</title>
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Repotory">
+  <title>Repotory</title>
   <defs>
     <linearGradient id="rn-bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#1F2C4D"/>

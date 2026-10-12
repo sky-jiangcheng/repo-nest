@@ -37,7 +37,7 @@ func NewWeaviate(base, apiKey, collection string) (*Weaviate, error) {
 	}
 	class := normaliseClass(collection)
 	if class == "" {
-		class = "RepoNestVec"
+		class = "RepotoryVec"
 	}
 	return &Weaviate{Base: base, APIKey: apiKey, Class: class, HTTP: &http.Client{Timeout: 20 * time.Second}}, nil
 }

@@ -1,15 +1,15 @@
-// Command server runs RepoNest as a headless HTTP service, exposing the shared
+// Command server runs Repotory as a headless HTTP service, exposing the shared
 // internal/service business logic over a JSON API. It is the bridge that lets
 // the DeepSeek Harness dsh-plugin (and any other HTTP client) reuse the exact
 // same analysis code the desktop App uses, without duplicating logic.
 //
 // Usage:
 //
-//	go build -o reponest-server ./cmd/server
-//	./reponest-server --port 18765
-//	REPONEST_HTTP_PORT=18765 ./reponest-server
+//	go build -o repotory-server ./cmd/server
+//	./repotory-server --port 18765
+//	REPOTORY_HTTP_PORT=18765 ./repotory-server
 //
-// (This is its own binary, not a subcommand: the desktop `reponest` executable at
+// (This is its own binary, not a subcommand: the desktop `repotory` executable at
 // the repo root has no argument dispatch — it launches Wails and returns.)
 //
 // The server binds to 127.0.0.1 only — it is a local agent, not a public
@@ -26,12 +26,12 @@ import (
 	"syscall"
 	"time"
 
-	"repo-nest/internal/app"
-	"repo-nest/internal/db"
-	"repo-nest/internal/httpapi"
-	"repo-nest/internal/platform"
-	"repo-nest/internal/service"
-	"repo-nest/internal/version"
+	"repotory/internal/app"
+	"repotory/internal/db"
+	"repotory/internal/httpapi"
+	"repotory/internal/platform"
+	"repotory/internal/service"
+	"repotory/internal/version"
 )
 
 // Server timeouts. ReadHeaderTimeout bounds how long a local process can hold
@@ -61,10 +61,10 @@ const (
 func main() {
 	platform.SetPrivateUmask() // owner-only files: DB sidecars, logs, exports
 
-	port := flag.String("port", envOr("REPONEST_HTTP_PORT", "18765"), "HTTP port for the headless API (loopback only)")
+	port := flag.String("port", envOr("REPOTORY_HTTP_PORT", "18765"), "HTTP port for the headless API (loopback only)")
 	flag.Parse()
 
-	log.Printf("RepoNest headless server %s starting on 127.0.0.1:%s", version.Version, *port)
+	log.Printf("Repotory headless server %s starting on 127.0.0.1:%s", version.Version, *port)
 
 	database, err := db.InitDB(platform.GetDbPath())
 	if err != nil {
@@ -118,7 +118,7 @@ func main() {
 	serverErr := make(chan error, 1)
 	go func() { serverErr <- srv.ListenAndServe() }()
 
-	log.Printf("RepoNest headless API listening at http://127.0.0.1:%s", *port)
+	log.Printf("Repotory headless API listening at http://127.0.0.1:%s", *port)
 	select {
 	case err := <-serverErr:
 		if err != nil && err != http.ErrServerClosed {
@@ -137,7 +137,7 @@ func main() {
 	if err := svc.Close(); err != nil {
 		log.Printf("close database: %v", err)
 	}
-	log.Printf("RepoNest headless server stopped")
+	log.Printf("Repotory headless server stopped")
 }
 
 func envOr(key, def string) string {

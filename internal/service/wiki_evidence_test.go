@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/search/abeval"
+	"repotory/internal/db"
+	"repotory/internal/search/abeval"
 )
 
 // The W2 acceptance gate, run on a fixture corpus.

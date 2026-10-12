@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"log"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
-	"repo-nest/internal/knowledge"
-	"repo-nest/internal/stats"
+	"repotory/internal/db"
+	"repotory/internal/domain"
+	"repotory/internal/knowledge"
+	"repotory/internal/stats"
 )
 
 // ErrProjectNotFound marks the "no such project" case distinctly from a

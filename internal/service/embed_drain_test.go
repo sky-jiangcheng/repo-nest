@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // countedEmbedServer is stubEmbedServer with a hit counter, because several

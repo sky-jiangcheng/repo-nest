@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // Async compilation (ADR-0016).

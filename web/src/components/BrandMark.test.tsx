@@ -35,8 +35,8 @@ describe('BrandMark', () => {
     // default — announcing it would double the name for screen readers.
     expect(container.querySelector('svg')!.getAttribute('aria-hidden')).toBe('true')
 
-    rerender(<BrandMark title="RepoNest" />)
-    const named = screen.getByRole('img', { name: 'RepoNest' })
+    rerender(<BrandMark title="Repotory" />)
+    const named = screen.getByRole('img', { name: 'Repotory' })
     expect(named).toBeTruthy()
     expect(named.getAttribute('aria-hidden')).toBeNull()
   })

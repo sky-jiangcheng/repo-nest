@@ -1,6 +1,6 @@
 // Package claude implements the built-in Claude memory KnowledgeImporter
 // (issue #35). It reads notes from ~/.claude/projects/*/memory/*.md, matches
-// each to a RepoNest project by name or repository path, and produces
+// each to a Repotory project by name or repository path, and produces
 // plugin.ImportDoc values that the plugin runtime upserts into the knowledge
 // base. Imports are idempotent: the runtime updates existing notes rather than
 // duplicating them.
@@ -14,9 +14,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"repo-nest/internal/core/plugin"
-	"repo-nest/internal/db"
-	"repo-nest/internal/importers/memsrc"
+	"repotory/internal/core/plugin"
+	"repotory/internal/db"
+	"repotory/internal/importers/memsrc"
 )
 
 // SourceName is the stable knowledge-source identifier registered by this
@@ -44,7 +44,7 @@ func New(database *sql.DB) *Importer {
 func (i *Importer) Source() string { return SourceName }
 
 // Import scans ~/.claude/projects/*/memory/*.md and returns documents to
-// upsert. Files whose project cannot be matched to a RepoNest project are
+// upsert. Files whose project cannot be matched to a Repotory project are
 // returned with ProjectID 0, which the runtime counts as skipped.
 func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 	home, err := os.UserHomeDir()
@@ -136,7 +136,7 @@ func NoteTitle(filename string) string {
 	}
 }
 
-// MatchProject finds the RepoNest project id for a Claude memory dir name. It
+// MatchProject finds the Repotory project id for a Claude memory dir name. It
 // is a thin wrapper over the shared memsrc matcher, kept exported so the Claude
 // importer's own tests and callers remain stable while the matching rules stay
 // common across all built-in importers.

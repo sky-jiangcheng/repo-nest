@@ -4,7 +4,7 @@ import zhCommon from '../locales/zh-CN/common.json'
 import enCommon from '../locales/en/common.json'
 
 const detected = navigator.language.startsWith('zh') ? 'zh-CN' : 'en'
-const stored = localStorage.getItem('reponest-language')
+const stored = localStorage.getItem('repotory-language')
 const lng = stored === 'zh-CN' || stored === 'en' ? stored : detected
 
 i18n
@@ -24,9 +24,9 @@ i18n
 
 export function setLanguage(lng: string) {
   i18n.changeLanguage(lng)
-  localStorage.setItem('reponest-language', lng)
+  localStorage.setItem('repotory-language', lng)
   document.documentElement.lang = lng === 'zh-CN' ? 'zh-CN' : 'en'
-  window.dispatchEvent(new Event('reponest-lang-change'))
+  window.dispatchEvent(new Event('repotory-lang-change'))
 }
 
 export function getCurrentLanguage() {

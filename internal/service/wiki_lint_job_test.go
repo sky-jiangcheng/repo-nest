@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // ADR-0016 待决 ① resolved as "yes": the lint model pass joins the compile job

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // Evidence gathering for AI Q&A (ADR-0014 决策 3 / TODO M6-W2).

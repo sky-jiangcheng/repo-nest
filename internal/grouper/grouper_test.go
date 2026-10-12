@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"repo-nest/internal/scanner"
+	"repotory/internal/scanner"
 )
 
 func TestGroupRepositories_Empty(t *testing.T) {

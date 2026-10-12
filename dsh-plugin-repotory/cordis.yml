@@ -1,19 +1,19 @@
-# Cordis patch entry — register the reponest plugin as a temporary overlay.
+# Cordis patch entry — register the repotory plugin as a temporary overlay.
 #
 # Load with (from the repo root):
-#   pnpm dsh web --patch ./dsh-plugin-reponest/cordis.yml
+#   pnpm dsh web --patch ./dsh-plugin-repotory/cordis.yml
 #
 # NOTE: dsh resolves `name` against the *profile* directory, so a relative path
 # in the patch file does NOT work for a plugin that lives elsewhere. Point
 # `name` at an absolute path (or, once published, the npm package name):
 #
 #   - insert:
-#     - id: reponest
-#       name: '/absolute/path/to/RepoNest/dsh-plugin-reponest/src/index.ts'
+#     - id: repotory
+#       name: '/absolute/path/to/Repotory/dsh-plugin-repotory/src/index.ts'
 #
-# For a permanent install, prefer `pnpm dsh plugin add ./dsh-plugin-reponest`
+# For a permanent install, prefer `pnpm dsh plugin add ./dsh-plugin-repotory`
 # (or `github:sky-jiangcheng/repo-nest` once the plugin is its own repo), which
 # installs it as an npm package instead of a transient --patch overlay.
 - insert:
-  - id: reponest
-    name: '/REPLACE/WITH/ABSOLUTE/PATH/TO/dsh-plugin-reponest/src/index.ts'
+  - id: repotory
+    name: '/REPLACE/WITH/ABSOLUTE/PATH/TO/dsh-plugin-repotory/src/index.ts'

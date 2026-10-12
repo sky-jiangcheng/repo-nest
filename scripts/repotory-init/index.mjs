@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// reponest-init — one-command MCP registration for RepoNest.
-// ADR-0009 step one / TODO M4: detect the reponest-mcp binary, register it with
+// repotory-init — one-command MCP registration for Repotory.
+// ADR-0009 step one / TODO M4: detect the repotory-mcp binary, register it with
 // the MCP clients found in this project (Claude Code / Cursor / VS Code /
 // Windsurf), and optionally install the Claude Code SessionEnd handoff hook.
 // Zero dependencies. Node >= 18.
@@ -9,21 +9,21 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-const SERVER_NAME = "reponest";
-const BINARY_NAME = process.platform === "win32" ? "reponest-mcp.exe" : "reponest-mcp";
-const HOOK_SCRIPT_REL = path.join(".claude", "hooks", "reponest-handoff.sh");
-const BACKUP_SUFFIX = ".reponest-init.bak";
+const SERVER_NAME = "repotory";
+const BINARY_NAME = process.platform === "win32" ? "repotory-mcp.exe" : "repotory-mcp";
+const HOOK_SCRIPT_REL = path.join(".claude", "hooks", "repotory-handoff.sh");
+const BACKUP_SUFFIX = ".repotory-init.bak";
 
 const RELEASES_URL = "https://github.com/sky-jiangcheng/repo-nest/releases";
 
-const USAGE = `reponest-init — register RepoNest's MCP server with your AI clients (ADR-0009)
+const USAGE = `repotory-init — register Repotory's MCP server with your AI clients (ADR-0009)
 
 Usage: node index.mjs [options]
 
 Options:
   --client <name>  Comma-separated subset of: claude,cursor,vscode,windsurf,jetbrains
                    Default: every supported client (config files land only where the client dir exists)
-  --bin <path>     Explicit path to the reponest-mcp binary (skips detection)
+  --bin <path>     Explicit path to the repotory-mcp binary (skips detection)
   --with-hook      Also install the Claude Code SessionEnd handoff hook
   --yes            Non-interactive: assume yes where a prompt would appear
   --dry-run        Show what would be written, change nothing
@@ -88,8 +88,8 @@ function findBinary() {
     if (fs.existsSync(options.bin)) return path.resolve(options.bin);
     die(`--bin ${options.bin} does not exist`);
   }
-  if (process.env.REPONEST_MCP_BIN && fs.existsSync(process.env.REPONEST_MCP_BIN)) {
-    return path.resolve(process.env.REPONEST_MCP_BIN);
+  if (process.env.REPOTORY_MCP_BIN && fs.existsSync(process.env.REPOTORY_MCP_BIN)) {
+    return path.resolve(process.env.REPOTORY_MCP_BIN);
   }
   const fromPath = searchPathFor(BINARY_NAME);
   if (fromPath) return fromPath;
@@ -98,12 +98,12 @@ function findBinary() {
     process.platform === "win32"
       ? [
           path.join(home, "scoop", "shims", BINARY_NAME),
-          path.join(home, "scoop", "apps", "reponest-mcp", "current", BINARY_NAME),
+          path.join(home, "scoop", "apps", "repotory-mcp", "current", BINARY_NAME),
         ]
       : [
-          "/opt/homebrew/bin/reponest-mcp",
-          "/usr/local/bin/reponest-mcp",
-          "/usr/local/opt/reponest-mcp/bin/reponest-mcp",
+          "/opt/homebrew/bin/repotory-mcp",
+          "/usr/local/bin/repotory-mcp",
+          "/usr/local/opt/repotory-mcp/bin/repotory-mcp",
         ];
   return common.find((p) => fs.existsSync(p)) ?? null;
 }
@@ -112,13 +112,13 @@ function printBinaryGuidance() {
   console.log(`
 Could not find the ${BINARY_NAME} binary. Install it with one of:
 
-  macOS   brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/reponest-mcp
-  Linux   brew tap sky-jiangcheng/repo && brew install reponest-mcp
-  Windows scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/reponest-mcp
-  Anywhere: download reponest-mcp-<target> from ${RELEASES_URL}
+  macOS   brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/repotory-mcp
+  Linux   brew tap sky-jiangcheng/repo && brew install repotory-mcp
+  Windows scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/repotory-mcp
+  Anywhere: download repotory-mcp-<target> from ${RELEASES_URL}
 
 Then re-run with --bin /path/to/${BINARY_NAME}, or re-run with --yes to write
-the config with the bare command name "reponest-mcp" (works once installed).`);
+the config with the bare command name "repotory-mcp" (works once installed).`);
 }
 
 // ------------------------------------------------------------ registrations
@@ -183,14 +183,14 @@ function registerJetBrains() {
 // ---------------------------------------------------------------- hook (M4)
 
 const HOOK_SCRIPT = `#!/bin/sh
-# RepoNest SessionEnd hook: write the handoff note when a session ends.
-# Installed by reponest-init. Delete this file and the matching
+# Repotory SessionEnd hook: write the handoff note when a session ends.
+# Installed by repotory-init. Delete this file and the matching
 # .claude/settings.json entry to uninstall.
 command -v claude >/dev/null 2>&1 || exit 0
 cd "\${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}" || exit 0
 [ -f .mcp.json ] || exit 0
 claude -p --mcp-config .mcp.json \\
-  'This session ended. Call reponest_handoff for the current project: a concise summary plus next_steps. If the project cannot be resolved, call reponest_context once first. Do nothing else.' \\
+  'This session ended. Call repotory_handoff for the current project: a concise summary plus next_steps. If the project cannot be resolved, call repotory_context once first. Do nothing else.' \\
   >/dev/null 2>&1 || true
 `;
 
@@ -301,7 +301,7 @@ function main() {
     }
   }
 
-  console.log("reponest-init — RepoNest MCP registration (ADR-0009 / TODO M4)\n");
+  console.log("repotory-init — Repotory MCP registration (ADR-0009 / TODO M4)\n");
 
   // --with-hook only makes sense for Claude Code; keep it regardless of --client.
   let bin = findBinary();
@@ -311,7 +311,7 @@ function main() {
     console.log(`--yes given: writing configs with the bare command name "${BINARY_NAME}".\n`);
     bin = BINARY_NAME;
   } else {
-    console.log(`Found reponest-mcp: ${bin}\n`);
+    console.log(`Found repotory-mcp: ${bin}\n`);
   }
 
   const requested = options.client ?? ALL_CLIENTS;
@@ -332,7 +332,7 @@ function main() {
   }
 
   console.log(`\nDone. Reload the client window, then start a session with
-reponest_context and end it with reponest_handoff (see SKILL.md).`);
+repotory_context and end it with repotory_handoff (see SKILL.md).`);
 }
 
 main();

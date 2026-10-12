@@ -5,7 +5,7 @@ order: 22
 
 # API Reference
 
-RepoNest's external interface is the **Wails binding surface**: Go methods are exposed to the frontend via Wails Bind (`window.go.main.App.<MethodName>`), and the method names plus JSON payloads are the contract. The desktop app does not listen on an HTTP port by default; when an HTTP shape is needed, `cmd/server` provides a loopback-only JSON API (reusing the same service layer).
+Repotory's external interface is the **Wails binding surface**: Go methods are exposed to the frontend via Wails Bind (`window.go.main.App.<MethodName>`), and the method names plus JSON payloads are the contract. The desktop app does not listen on an HTTP port by default; when an HTTP shape is needed, `cmd/server` provides a loopback-only JSON API (reusing the same service layer).
 
 > The binding layer is a thin delegation (`internal/app`); all implementations live in `internal/service`, shared by the CLI and MCP.
 
@@ -16,7 +16,7 @@ RepoNest's external interface is the **Wails binding surface**: Go methods are e
 
 ---
 
-## Headless HTTP server (`reponest server`)
+## Headless HTTP server (`repotory server`)
 
 A JSON API for external runtimes such as the DeepSeek Harness dsh-plugin. It shares the same `internal/service` implementation and the same SQLite database as the desktop app, CLI, and MCP.
 

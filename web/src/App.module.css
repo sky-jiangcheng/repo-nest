@@ -178,7 +178,7 @@
     gap: 12px;
   }
 
-  /* Drop only the "RepoNest" word. font-size:0 collapses the gap too, so the
+  /* Drop only the "Repotory" word. font-size:0 collapses the gap too, so the
      mark's own margin has to be re-added — .navBrand keeps its flex gap. */
   .navBrandName {
     display: none;

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/core/plugin"
-	"repo-nest/internal/db"
+	"repotory/internal/core/plugin"
+	"repotory/internal/db"
 )
 
 // fakeHome redirects os.UserHomeDir via HOME env var.

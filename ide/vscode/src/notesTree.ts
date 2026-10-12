@@ -1,6 +1,6 @@
-// Knowledge search sidebar (tree view "reponest.notesSearch").
-// Thin client: renders hits from reponest_notes_search (MCP) or /api/search
-// (headless HTTP) — all business logic stays in the RepoNest service layer.
+// Knowledge search sidebar (tree view "repotory.notesSearch").
+// Thin client: renders hits from repotory_notes_search (MCP) or /api/search
+// (headless HTTP) — all business logic stays in the Repotory service layer.
 import * as vscode from "vscode";
 import { excerpt, extractNotes, type NoteHit } from "./headless.js";
 
@@ -72,7 +72,7 @@ export class NoteItem extends vscode.TreeItem {
       title: "Read Note",
       arguments: [
         vscode.Uri.from({
-          scheme: "reponest-notes",
+          scheme: "repotory-notes",
           path: `/note-${String(hit.id ?? "0")}.md`,
           query: Buffer.from(body || `note ${String(hit.id ?? "?")} (content unavailable)`).toString("base64"),
         }),

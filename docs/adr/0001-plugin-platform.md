@@ -3,10 +3,10 @@ status: Superseded（已被 ADR-0002 取代）
 date: 2026-08（原 RFC 0001）
 ---
 
-# RFC 0001: RepoNest 架构演进 & 插件平台化
+# RFC 0001: Repotory 架构演进 & 插件平台化
 
 > **⚠️ Superseded by [ADR 0002](../adr/0002-c-end-repositioning.md)**
-> 本 RFC 中的 M2（常驻 HTTP Server / RBAC / AK-SK）、M3（插件协议网关 + scope 权限）、M4（PG/ES / K8s / reponest-server）均已废弃。
+> 本 RFC 中的 M2（常驻 HTTP Server / RBAC / AK-SK）、M3（插件协议网关 + scope 权限）、M4（PG/ES / K8s / repotory-server）均已废弃。
 > M1 抽象层保留，作为附加插件扩展接口的底层支撑。
 
 | 项 | 值 |
@@ -18,13 +18,13 @@ date: 2026-08（原 RFC 0001）
 
 ## 1. 背景与目标
 
-当前 RepoNest 是 **Wails + SQLite 单二进制桌面应用**，代码高度耦合：
+当前 Repotory 是 **Wails + SQLite 单二进制桌面应用**，代码高度耦合：
 
 - `main.App` 持有 `*sql.DB`，所有 handler（`handlers_*.go`）直接调用 `internal/db/*.go` 的函数式 API；
 - Git 操作在 `internal/stats/`、`internal/knowledge/` 中以包级函数形式实现，无法切换远程 Git 服务商；
 - 存储层（SQLite）与业务逻辑强绑定，未来无法扩展到 PG/ES。
 
-用户目标是将 RepoNest 演进为「**核心底座 + 协议网关 + 插件生态**」的分层解耦架构，支持独立插件、多 Git 服务商适配、远端部署等场景。
+用户目标是将 Repotory 演进为「**核心底座 + 协议网关 + 插件生态**」的分层解耦架构，支持独立插件、多 Git 服务商适配、远端部署等场景。
 
 本 RFC 固化 **M1（抽象解耦）→ M2（服务化底座）→ M3（插件协议闭环）→ M4（生态规模化）** 四个阶段的关键决策，作为后续 Issue 落地的蓝本。
 
@@ -35,7 +35,7 @@ date: 2026-08（原 RFC 0001）
 - **不废弃 Wails**：桌面版继续是主力发布形态（零依赖、双击即用，对应当前用户核心价值）。
 - **内核拆分**：`main.App` + `handlers_*.go` 的业务逻辑下沉到 `internal/core/`，Wails Bind 层仅做薄包装。
 - **内嵌 HTTP 服务**：同一进程中，只要启动参数 `-server` 或桌面模式下**总是**监听 `127.0.0.1:18731`，对外暴露 `/api/v1/*` RESTful API。插件协议与前端 API 共享这套 HTTP。
-- **独立后端部署**：后续提供 `reponest-server` 构建目标（去掉 Wails 启动、保留 HTTP + 插件宿主），复用 90%+ 代码。
+- **独立后端部署**：后续提供 `repotory-server` 构建目标（去掉 Wails 启动、保留 HTTP + 插件宿主），复用 90%+ 代码。
 
 ### 2.2 存储升级时机：M4 引入，做成可插拔后端
 

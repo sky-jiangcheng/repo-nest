@@ -1,14 +1,14 @@
-// Command wiki-export renders RepoNest's derived wiki layer into a Markdown tree
+// Command wiki-export renders Repotory's derived wiki layer into a Markdown tree
 // (ADR-0014 决策 2: one-way export; TODO M6-W1b).
 //
-// It is its own binary because the desktop `reponest` executable has no
-// subcommand dispatch at all — it launches Wails and returns — so the "reponest
+// It is its own binary because the desktop `repotory` executable has no
+// subcommand dispatch at all — it launches Wails and returns — so the "repotory
 // wiki export" phrasing in the ADR would be a lie. Same pattern as cmd/vector-init
 // and cmd/abeval.
 //
-//	go build -o reponest-wiki-export ./cmd/wiki-export
-//	./reponest-wiki-export -out ./wiki-out            # refuses a non-empty target
-//	./reponest-wiki-export -out ./wiki-out -force     # overwrite our own subtree
+//	go build -o repotory-wiki-export ./cmd/wiki-export
+//	./repotory-wiki-export -out ./wiki-out            # refuses a non-empty target
+//	./repotory-wiki-export -out ./wiki-out -force     # overwrite our own subtree
 package main
 
 import (
@@ -17,10 +17,10 @@ import (
 	"log"
 	"os"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/platform"
-	"repo-nest/internal/service"
-	"repo-nest/internal/version"
+	"repotory/internal/db"
+	"repotory/internal/platform"
+	"repotory/internal/service"
+	"repotory/internal/version"
 )
 
 func main() {
@@ -52,7 +52,7 @@ func main() {
 		log.Fatalf("export failed: %v", err)
 	}
 
-	fmt.Printf("RepoNest %s — exported %d page(s) to %s\n", version.Version, report.Pages, report.Root)
+	fmt.Printf("Repotory %s — exported %d page(s) to %s\n", version.Version, report.Pages, report.Root)
 	fmt.Printf("  files=%d skipped_pages=%d dangling_links=%d\n",
 		len(report.Files), report.SkippedPages, report.DanglingLinks)
 	for _, f := range report.Files {

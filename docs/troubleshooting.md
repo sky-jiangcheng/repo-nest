@@ -70,15 +70,15 @@ FTS5 trigram 索引最短匹配 3 字符；更短的查询自动降级为 LIKE �
 
 | 平台 | 日志路径 |
 |------|---------|
-| macOS | `~/Library/Logs/reponest.log` |
-| Linux | `$XDG_STATE_HOME/reponest/reponest.log`（默认 `~/.local/state/reponest/reponest.log`） |
-| Windows | `%APPDATA%\reponest\logs\reponest.log` |
+| macOS | `~/Library/Logs/repotory.log` |
+| Linux | `$XDG_STATE_HOME/repotory/repotory.log`（默认 `~/.local/state/repotory/repotory.log`） |
+| Windows | `%APPDATA%\repotory\logs\repotory.log` |
 
 日志同时记录 PATH 环境与插件运行时状态，报告问题时请附带。
 
 ## 数据安全须知
 
-- RepoNest 是**本地优先**桌面应用：不监听网络端口、不上传任何数据；统计通过本机 `git` CLI 读取
+- Repotory 是**本地优先**桌面应用：不监听网络端口、不上传任何数据；统计通过本机 `git` CLI 读取
 - 数据库与配置存储在用户应用数据目录（位置见[快速开始](getting-started.md)），卸载不会自动删除；备份、迁移与彻底清除见[数据与备份](data-management.md)
 - 桌面 WebView 响应带 CSP 等安全头（`default-src 'self'` 等）
 

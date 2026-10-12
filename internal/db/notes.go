@@ -12,7 +12,7 @@ import (
 // plugin runtime's import upserts (runtime.upsertDoc calls this package
 // directly), and script plugins holding ctx.DB(). Validating only in the
 // service layer left the import path unbounded — a plugin could upsert a
-// multi-megabyte doc that the next reponest_context would embed in full.
+// multi-megabyte doc that the next repotory_context would embed in full.
 // The limits are generous enough for real Markdown notes.
 const (
 	MaxNoteContentLen = 100_000 // ~100 KB of Markdown per note

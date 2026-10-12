@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // lintFixture seeds a store with each defect the checks are meant to catch, so a

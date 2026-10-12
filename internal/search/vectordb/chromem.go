@@ -12,7 +12,7 @@ import (
 
 // Chromem is a local, embedded, pure-Go vector store (chromem-go) — the third
 // backend (ADR-0013 candidate matrix: "本地·纯 Go 库…向量入内存，适合小数据").
-// Unlike Local (sqlite-vec) it lives OUTSIDE dashboard.db in its own
+// Unlike Local (sqlite-vec) it lives OUTSIDE repotory.db in its own
 // directory, so it neither shares the notes transaction nor the backup; its
 // niche is a user who wants a second isolated store (e.g. comparing two
 // embedding models side by side) without touching the primary index.
@@ -34,11 +34,11 @@ type Chromem struct {
 	name    string // collection name, sanitised
 }
 
-const chromemCollectionDefault = "reponest_vecs"
+const chromemCollectionDefault = "repotory_vecs"
 
 // NewChromem opens (or creates) a persistent chromem store under dir. An
 // empty dir yields an in-memory store — acceptable for tests, and for prod
-// the caller passes a real directory next to dashboard.db.
+// the caller passes a real directory next to repotory.db.
 func NewChromem(dir, collection string) (*Chromem, error) {
 	name := sanitizeCollection(collection)
 	if name == "" {

@@ -3,9 +3,9 @@ package service
 import (
 	"fmt"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/importers/claude"
-	"repo-nest/internal/importers/memsrc"
+	"repotory/internal/db"
+	"repotory/internal/importers/claude"
+	"repotory/internal/importers/memsrc"
 )
 
 // claudeCaptureConfigKey gates M1 session auto-capture. Default OFF: capture
@@ -23,7 +23,7 @@ func (s *Service) claudeCaptureEnabled() bool {
 // CaptureClaudeHandoff performs an ON-DEMAND M1 capture: it reads the newest
 // Claude Code session transcript for the given project and persists a
 // machine-generated handoff note through the shared CreateHandoffNote path
-// (tagged "handoff", so reponest_context surfaces it first next session).
+// (tagged "handoff", so repotory_context surfaces it first next session).
 //
 // It is gated by the `claude_session_capture` config (default off) and is
 // deliberately triggered only explicitly (no startup/hook automation on this
@@ -50,9 +50,9 @@ func (s *Service) CaptureClaudeHandoff(projectID int64) (*HandoffResult, error) 
 }
 
 // CaptureClaudeSessionByCwd resolves the project for a working directory (its
-// last path segment matched against RepoNest projects/repos via the shared
+// last path segment matched against Repotory projects/repos via the shared
 // matcher) and runs the same gated on-demand capture. It exists for the B-end
-// SessionEnd hook: Claude Code runs `reponest-capture` with the closing
+// SessionEnd hook: Claude Code runs `repotory-capture` with the closing
 // session's cwd; this turns that into a handoff without the caller needing the
 // numeric project id. Still honours the `claude_session_capture` default-off gate.
 func (s *Service) CaptureClaudeSessionByCwd(cwd string) (*HandoffResult, error) {
@@ -60,7 +60,7 @@ func (s *Service) CaptureClaudeSessionByCwd(cwd string) (*HandoffResult, error) 
 	repos, _ := db.GetAllRepositories(s.db)
 	pid := memsrc.MatchProject(memsrc.LastPathSegment(cwd), projects, repos)
 	if pid == 0 {
-		return nil, fmt.Errorf("no RepoNest project matches cwd %q", cwd)
+		return nil, fmt.Errorf("no Repotory project matches cwd %q", cwd)
 	}
 	return s.CaptureClaudeHandoff(pid)
 }

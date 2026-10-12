@@ -8,8 +8,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"repo-nest/internal/core/plugin"
-	"repo-nest/internal/db"
+	"repotory/internal/core/plugin"
+	"repotory/internal/db"
 )
 
 func fakeHome(t *testing.T) string {

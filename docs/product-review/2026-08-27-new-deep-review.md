@@ -1,4 +1,4 @@
-# RepoNest 产品深度评估 — 2026-08-27（第四轮）
+# Repotory 产品深度评估 — 2026-08-27（第四轮）
 
 > 评估视角：AI 产品架构 · 从用户价值到代码熵的全链路审计
 > 代码量：Go 9,479 行（含测试 2,733）+ TS/TSX 6,706 行 + CSS 4,055 行 | 396 文件 | 23 篇文档
@@ -134,10 +134,10 @@
 - **问题**：AI Agent 首次接入时缺乏「推荐工作流」，不知道先调哪个工具
 - **建议**：在 SKILL.md 开头增加「推荐工作流」段落：
   ```
-  1. reponest_search_projects(query) → 发现相关项目
-  2. reponest_ask(query) → 搜索知识库
-  3. reponest_read_notes(note_id) → 读取详情
-  4. reponest_create_note(...) → 沉淀新知识
+  1. repotory_search_projects(query) → 发现相关项目
+  2. repotory_ask(query) → 搜索知识库
+  3. repotory_read_notes(note_id) → 读取详情
+  4. repotory_create_note(...) → 沉淀新知识
   ```
 - **优先级**：🔸中
 - **估时**：30min

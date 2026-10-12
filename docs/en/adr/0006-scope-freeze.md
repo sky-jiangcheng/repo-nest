@@ -6,11 +6,11 @@
 
 ## Background
 
-RepoNest simultaneously carries multiple product lines: commit statistics, knowledge base, block editor, plugin platform, PWA, SEO, CLI, MCP, agent-score, etc. (Issues #73/#74). The core value gets obscured by feature count, while peripheral capabilities keep adding maintenance cost. This ADR converges the product main line to:
+Repotory simultaneously carries multiple product lines: commit statistics, knowledge base, block editor, plugin platform, PWA, SEO, CLI, MCP, agent-score, etc. (Issues #73/#74). The core value gets obscured by feature count, while peripheral capabilities keep adding maintenance cost. This ADR converges the product main line to:
 
 > **A cross-agent project memory layer**: providing project-level context injection for AI sessions and structured handoff at session end, letting knowledge flow between agents.
 
-"Local-first" remains the deployment and data boundary (data never leaves this machine, see ADR-0002), but the product value proposition upgrades from "a knowledge base both humans and AI can query" to "memory flowing between agents": `reponest_context` injects the full context with one call at session start, and `reponest_handoff` deposits it at zero cost at session end — the two ends close into a memory loop (protocol details in ADR-0007).
+"Local-first" remains the deployment and data boundary (data never leaves this machine, see ADR-0002), but the product value proposition upgrades from "a knowledge base both humans and AI can query" to "memory flowing between agents": `repotory_context` injects the full context with one call at session start, and `repotory_handoff` deposits it at zero cost at session end — the two ends close into a memory loop (protocol details in ADR-0007).
 
 Core loop (every new feature must fit at least one stage):
 
@@ -28,7 +28,7 @@ Discover project → Understand project → Record knowledge → Retrieve knowle
 
 | Tier | Definition | Current features |
 |------|-----------|------------------|
-| **Core** | Directly constitutes the "Discover → Understand → Record → Retrieve → Inject → Deposit" loop | Automatic repo discovery, project grouping, repository knowledge mining, Markdown notes, FTS5 search, version history, global search, session context injection (reponest_context), session-end handoff (reponest_handoff), AI-ready interfaces (CLI/MCP/llms.txt) |
+| **Core** | Directly constitutes the "Discover → Understand → Record → Retrieve → Inject → Deposit" loop | Automatic repo discovery, project grouping, repository knowledge mining, Markdown notes, FTS5 search, version history, global search, session context injection (repotory_context), session-end handoff (repotory_handoff), AI-ready interfaces (CLI/MCP/llms.txt) |
 | **Core support** | Serves the comprehensibility of the loop without overshadowing it | Dashboard and statistics, workday checks, status bar, i18n, single-file cross-platform, Claude memory import |
 | **Experimental** | Kept for real scenarios but **no further platform infrastructure expansion** | yaegi plugin system, block editor advanced blocks (Callout/Tabs/Mermaid and other structured blocks), OpenAPI/HTTP API spec (contract documentation, not a usable HTTP server) |
 | **Deferred / to remove** | No further investment; evaluate removal from the desktop main build | PWA deep capabilities, SEO artifacts, Web-only interactions |

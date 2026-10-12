@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // Wiki lint (ADR-0014 决策 5 / TODO M6-W4) — the anti-corruption layer.

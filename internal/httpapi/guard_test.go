@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/service"
+	"repotory/internal/db"
+	"repotory/internal/service"
 )
 
 // newLocalRequest is httptest.NewRequest with the Host a real local client

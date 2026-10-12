@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/service"
+	"repotory/internal/db"
+	"repotory/internal/service"
 )
 
 // The streaming endpoint must not be exercised over a real listen socket in

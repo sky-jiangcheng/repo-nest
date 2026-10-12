@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"time"
 
-	pluginruntime "repo-nest/internal/core/plugin/runtime"
-	"repo-nest/internal/db"
-	"repo-nest/internal/domain"
-	"repo-nest/internal/service"
-	"repo-nest/internal/stats"
+	pluginruntime "repotory/internal/core/plugin/runtime"
+	"repotory/internal/db"
+	"repotory/internal/domain"
+	"repotory/internal/service"
+	"repotory/internal/stats"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // --- Wails binding ↔ MCP tool audit (P32, 2026-10-02) -----------------------
 //
-// Every binding below is intentional — either backed by a reponest_* MCP tool
+// Every binding below is intentional — either backed by a repotory_* MCP tool
 // (the agent-facing surface) or a deliberate desktop-only GUI/admin affordance.
 // No dead or duplicate bindings were found. Sections map to the groups below.
 //
@@ -57,8 +57,8 @@ import (
 //   IDE chrome: LatestHandoff (timestamp/title only; content stays behind notes_read)
 //
 // Conversely these MCP tools have no binding (agent-only flows, served straight
-// off the service layer): reponest_ask, reponest_handoff, reponest_agent_score,
-// reponest_integrity, reponest_notes_read.
+// off the service layer): repotory_ask, repotory_handoff, repotory_agent_score,
+// repotory_integrity, repotory_notes_read.
 
 // --- Projects ---------------------------------------------------------------
 
@@ -295,7 +295,7 @@ func (a *App) ImportClaudeMemory() (*service.ImportResult, error) {
 
 // CaptureClaudeHandoff runs an on-demand M1 session capture for one project
 // (gated by the `claude_session_capture` config, default off). Desktop-only:
-// agents push handoffs via reponest_handoff instead.
+// agents push handoffs via repotory_handoff instead.
 func (a *App) CaptureClaudeHandoff(projectID int64) (*service.HandoffResult, error) {
 	return a.svc.CaptureClaudeHandoff(projectID)
 }

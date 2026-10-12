@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	pluginruntime "repo-nest/internal/core/plugin/runtime"
-	"repo-nest/internal/importers/claude"
-	"repo-nest/internal/importers/codex"
-	"repo-nest/internal/importers/cursor"
-	"repo-nest/internal/importers/hermes"
-	"repo-nest/internal/importers/openclaw"
-	"repo-nest/internal/importers/opencode"
-	"repo-nest/internal/platform"
+	pluginruntime "repotory/internal/core/plugin/runtime"
+	"repotory/internal/importers/claude"
+	"repotory/internal/importers/codex"
+	"repotory/internal/importers/cursor"
+	"repotory/internal/importers/hermes"
+	"repotory/internal/importers/openclaw"
+	"repotory/internal/importers/opencode"
+	"repotory/internal/platform"
 )
 
 // pluginsDir resolves the plugin directory; a thin seam over platform so the
@@ -134,7 +134,7 @@ type ImportResult struct {
 }
 
 // ImportClaudeMemory imports notes from Claude's per-project memory directory
-// (~/.claude/projects/*/memory/*.md) into RepoNest, matching each to a project
+// (~/.claude/projects/*/memory/*.md) into Repotory, matching each to a project
 // by name or repository path. The import is delegated to the built-in Claude
 // KnowledgeImporter through the plugin runtime, so it is idempotent and shares
 // the same upsert and statistics path as script plugins (issue #35).

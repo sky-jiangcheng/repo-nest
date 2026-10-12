@@ -1,24 +1,24 @@
 # ADR-0009: IDE 存在感——薄客户端分发策略（一键注册 → VS Code 扩展 → JetBrains 缓议）
 
-- 状态：Accepted（M4 `reponest-init` 已落地：`scripts/reponest-init/`，2026-10-02）
+- 状态：Accepted（M4 `repotory-init` 已落地：`scripts/repotory-init/`，2026-10-02）
 - 日期：2026-10-02
 - 关联：[ADR-0006](0006-scope-freeze.md)（范围冻结的调和条款）、[ADR-0007](0007-session-memory-protocol.md)（MCP 单一执行接口）、TODO 会话记忆路线（M4-M5）
 
 ## 背景
 
-RepoNest 现有的分发资产——MCP server、dsh Harness 插件、llms.txt——服务的对象全部是 agent，没有一样「跟人见面」：MCP 工具只出现在 agent 的聊天面板里，命令面板、状态栏、侧边栏这些 IDE 原生界面上，RepoNest 不存在。这个盲区构成传播上的硬限制：
+Repotory 现有的分发资产——MCP server、dsh Harness 插件、llms.txt——服务的对象全部是 agent，没有一样「跟人见面」：MCP 工具只出现在 agent 的聊天面板里，命令面板、状态栏、侧边栏这些 IDE 原生界面上，Repotory 不存在。这个盲区构成传播上的硬限制：
 
-1. **agent 不会主动发现我们的插件**。没有任何机制让一个新用户的 AI agent 主动说「你应该装 reponest-mcp」——分发必须由人来完成，而人只在自己天天打开的界面里发现工具。
+1. **agent 不会主动发现我们的插件**。没有任何机制让一个新用户的 AI agent 主动说「你应该装 repotory-mcp」——分发必须由人来完成，而人只在自己天天打开的界面里发现工具。
 2. **口口相传需要可见的货架**。「你用什么管理项目记忆？」——如果答案是 IDE 里的一个面板、一条命令，对话有落点；如果答案是「一个装完就隐形的 MCP server」，传播链在第一步就断了。
 
-能力侧并不缺：VS Code（Copilot Chat）与 JetBrains（AI Assistant / 内置 MCP 客户端）均已原生支持 MCP 注册，`docs/features/ai-integration.md` 也已写明手动接入路径。缺的是**接入摩擦**（手动改 JSON）与 **IDE 内「人」的体验**（零原生 UI）。TODO 会话记忆路线的 M4（`npx reponest-init` 一键注册）已立项未做，正是该缺口的第一优先解。
+能力侧并不缺：VS Code（Copilot Chat）与 JetBrains（AI Assistant / 内置 MCP 客户端）均已原生支持 MCP 注册，`docs/features/ai-integration.md` 也已写明手动接入路径。缺的是**接入摩擦**（手动改 JSON）与 **IDE 内「人」的体验**（零原生 UI）。TODO 会话记忆路线的 M4（`npx repotory-init` 一键注册）已立项未做，正是该缺口的第一优先解。
 
 同时必须正面调和 ADR-0006：范围冻结冻结的是「平台化基础设施」（插件 SPI、HTTP server、多后端存储），不是「跟人见面的分发面」。本 ADR 以薄客户端纪律确保新分发资产不重启平台化。
 
 ## 决策
 
-1. **薄客户端纪律**：MCP 保持唯一执行接口（ADR-0007），`internal/service` 保持单一事实源。一切新 IDE 资产（init 脚本、扩展、插件）都是薄壳——经 headless HTTP 或 MCP stdio 调共享服务层，零逻辑复制（与 `dsh-plugin-reponest` 同一范式）。违反此纪律的方案默认不进入路线图。
-2. **第一步：M4 `reponest-init`**：一条命令完成 MCP 注册——写 `.mcp.json` / 客户端配置、探测 reponest-mcp 二进制、提示可选的 SessionEnd hook 配置——覆盖 VS Code 与 JetBrains 两大 IDE 家族的全部 MCP 客户端。纯脚本 + 文档，不新增基础设施，不与 ADR-0006 冲突。
+1. **薄客户端纪律**：MCP 保持唯一执行接口（ADR-0007），`internal/service` 保持单一事实源。一切新 IDE 资产（init 脚本、扩展、插件）都是薄壳——经 headless HTTP 或 MCP stdio 调共享服务层，零逻辑复制（与 `dsh-plugin-repotory` 同一范式）。违反此纪律的方案默认不进入路线图。
+2. **第一步：M4 `repotory-init`**：一条命令完成 MCP 注册——写 `.mcp.json` / 客户端配置、探测 repotory-mcp 二进制、提示可选的 SessionEnd hook 配置——覆盖 VS Code 与 JetBrains 两大 IDE 家族的全部 MCP 客户端。纯脚本 + 文档，不新增基础设施，不与 ADR-0006 冲突。
 3. **第二步：VS Code 扩展（唯一的 IDE 扩展）**：命令面板三条命令（context / handoff / search）、状态栏显示上次交接时间、侧边栏笔记检索并跳转文件、首次使用引导一键注册 MCP。一个 VSIX 同时覆盖 VS Code / Cursor / Windsurf 整个 fork 家族——这是「一次投入、全家族见面」的唯一形态。
 4. **JetBrains 插件缓议**：独立 Kotlin/Gradle 代码库，双倍维护面；在收到真实需求信号（issue/star）并补写 ADR 论证前不立项、不写代码。
 5. **传播原则（新增评估项）**：今后每个分发资产立项时必须回答「人在哪个界面上看见它」；只有 agent 能消费、人不可见的资产，需说明其服务的是存量用户的深度而非获客。

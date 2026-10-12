@@ -6,7 +6,7 @@
 
 ## 背景
 
-RFC 0001 将产品规划为「插件平台」，包含常驻 HTTP Server / RBAC / AK-SK（M2）、插件协议网关 + scope 权限（M3）、PG/ES / K8s / reponest-server（M4）等面向 B 端部署的能力。
+RFC 0001 将产品规划为「插件平台」，包含常驻 HTTP Server / RBAC / AK-SK（M2）、插件协议网关 + scope 权限（M3）、PG/ES / K8s / repotory-server（M4）等面向 B 端部署的能力。
 
 经过市场与用户反馈评估，该定位过于复杂且偏离桌面工具的核心价值。产品真正差异化在于：作为本地 Git 仓库的可视化工具，同时沉淀成为用户的「代码项目第二大脑」——跨项目的笔记、待办与仓库知识挖掘。
 
@@ -16,7 +16,7 @@ RFC 0001 将产品规划为「插件平台」，包含常驻 HTTP Server / RBAC 
 2. **插件形态**：采用 in-process 插件（进程内加载，接口见 `internal/core/plugin`），而非外部插件协议网关。
    - 选择理由：外部网关（M3）需要网络协议、鉴权与部署，复杂度高；C 端桌面工具无需多进程隔离。
    - 插件在应用进程内加载，通过 `PluginContext` 访问知识库、存储并注册事件与知识源。
-3. **废弃 M2/M3/M4**：常驻 HTTP Server、RBAC、AK-SK、插件协议网关、scope 权限、PG/ES、K8s、reponest-server 均不再实施。
+3. **废弃 M2/M3/M4**：常驻 HTTP Server、RBAC、AK-SK、插件协议网关、scope 权限、PG/ES、K8s、repotory-server 均不再实施。
 4. **保留 M1 抽象层**：作为附加插件扩展接口的底层支撑，例如 `storage.Stores`、`ScanTxer`、KB Facade 中已落地的抽象，继续保留并为插件提供基础能力。
 
 ## 影响
@@ -37,7 +37,7 @@ RFC 0001 将产品规划为「插件平台」，包含常驻 HTTP Server / RBAC 
 | 目录缺失 | 需自行处理 | 正常跳过（已验证） |
 | 生态 | 标准库，长期稳定 | 活跃维护，解释执行 |
 
-**决策：采用 yaegi。** 决定性因素是跨平台支持——RepoNest 明确面向 Windows / macOS / Linux 三平台分发，Go plugin 在 Windows 上不可用，无法满足验收。yaegi 为纯 Go 解释器，可在所有目标平台以一致方式加载 `.go` 插件脚本，且不要求插件与宿主版本严格绑定。
+**决策：采用 yaegi。** 决定性因素是跨平台支持——Repotory 明确面向 Windows / macOS / Linux 三平台分发，Go plugin 在 Windows 上不可用，无法满足验收。yaegi 为纯 Go 解释器，可在所有目标平台以一致方式加载 `.go` 插件脚本，且不要求插件与宿主版本严格绑定。
 
 ## 理由
 

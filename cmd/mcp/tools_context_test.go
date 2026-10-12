@@ -16,7 +16,7 @@ func TestContextToolSingleProject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res := ts.call("reponest_context", nil)
+	res := ts.call("repotory_context", nil)
 	text := ts.text(res)
 	for _, want := range []string{
 		"# Project Context: auth-service",
@@ -34,7 +34,7 @@ func TestContextToolMultipleProjectsReturnsCatalog(t *testing.T) {
 	ts.seedProject("alpha", "/home/me/alpha")
 	ts.seedProject("beta", "/home/me/beta")
 
-	text := ts.text(ts.call("reponest_context", nil))
+	text := ts.text(ts.call("repotory_context", nil))
 	if !strings.Contains(text, "| 1 | alpha |") || !strings.Contains(text, "| 2 | beta |") {
 		t.Errorf("ambiguous context call should return a project catalog\n%s", text)
 	}
@@ -45,7 +45,7 @@ func TestContextToolFuzzyNameMatch(t *testing.T) {
 	ts.seedProject("payments-core", "/home/me/payments-core")
 	ts.seedProject("web", "/home/me/web")
 
-	text := ts.text(ts.call("reponest_context", map[string]any{"project_name": "payments"}))
+	text := ts.text(ts.call("repotory_context", map[string]any{"project_name": "payments"}))
 	if !strings.Contains(text, "# Project Context: payments-core") {
 		t.Errorf("fuzzy name should resolve to payments-core\n%s", text)
 	}
@@ -55,7 +55,7 @@ func TestHandoffToolCreatesNote(t *testing.T) {
 	ts := newTestServer(t)
 	pid := ts.seedProject("demo", "/home/me/demo")
 
-	res := ts.call("reponest_handoff", map[string]any{
+	res := ts.call("repotory_handoff", map[string]any{
 		"project_id": float64(pid),
 		"agent":      "claude-code",
 		"summary":    "fixed the FTS drift bug",
@@ -69,7 +69,7 @@ func TestHandoffToolCreatesNote(t *testing.T) {
 
 	// The handoff must be visible to the very next context call, tagged
 	// first — that ordering is the whole point of the memory loop.
-	text := ts.text(ts.call("reponest_context", map[string]any{"project_id": float64(pid)}))
+	text := ts.text(ts.call("repotory_context", map[string]any{"project_id": float64(pid)}))
 	if !strings.Contains(text, "Session Handoff") || !strings.Contains(text, "fixed the FTS drift bug") {
 		t.Errorf("context should surface the fresh handoff\n%s", text)
 	}
@@ -84,13 +84,13 @@ func TestHandoffToolValidation(t *testing.T) {
 	ts := newTestServer(t)
 	pid := ts.seedProject("demo", "/home/me/demo")
 
-	if got := ts.text(ts.call("reponest_handoff", map[string]any{
+	if got := ts.text(ts.call("repotory_handoff", map[string]any{
 		"project_id": float64(pid),
 	})); !strings.Contains(got, "summary is required") {
 		t.Errorf("missing summary should be reported\n%s", got)
 	}
 
-	if got := ts.text(ts.call("reponest_handoff", map[string]any{
+	if got := ts.text(ts.call("repotory_handoff", map[string]any{
 		"project_id": float64(pid),
 		"summary":    "only a summary",
 	})); !strings.Contains(got, "at least one") {

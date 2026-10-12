@@ -2,9 +2,11 @@
 // user data locations (database, plugins, log file) and git user detection.
 //
 // User data paths are stable across versions: an installation that already
-// has a legacy data directory (gitboard, then gitbuddy) is renamed to dirName
-// ("reponest") on first launch after the rename, so the database, plugins and
-// logs carry over instead of being orphaned.
+// has a legacy data directory (gitboard -> gitbuddy -> reponest) is renamed to
+// dirName ("repotory") on first launch after the rename, and the database file
+// itself (dashboard.db, a name carried over from the git-dashboard era) is
+// renamed to repotory.db, so the database, plugins and logs carry over
+// instead of being orphaned.
 package platform
 
 import (
@@ -18,13 +20,14 @@ import (
 )
 
 // dirName is the user data directory and the log file basename.
-const dirName = "reponest"
+const dirName = "repotory"
 
-// legacyDirName is the data directory used before the GitBuddy -> RepoNest
-// rename (which itself succeeded the GitBoard era). The spelling is
-// intentional: it names data written by older builds and is only read by the
-// migration below.
-const legacyDirName = "gitbuddy"
+// legacyDirName is the data directory used before the RepoNest -> Repotory
+// rename (which itself succeeded the GitBuddy era, and before that GitBoard).
+// One generation back is handled per migration, exactly as each earlier
+// rename did in its day. The spelling is intentional: it names data written
+// by older builds and is only read by the migration below.
+const legacyDirName = "reponest"
 
 // DefaultScanRoots returns platform-specific default scan root directories.
 // Windows: all drive letters except C: (the system drive).
@@ -93,7 +96,7 @@ func GetGitUserName() string {
 
 var migrateLegacyOnce sync.Once
 
-// migrateLegacyData renames the pre-rename "gitboard" data directory to
+// migrateLegacyData renames the pre-rename "reponest" data directory to
 // dirName, moving the database and plugins across. It is a no-op on a fresh
 // install or once the rename has happened. Failures are ignored on purpose:
 // a move that cannot complete (permissions, cross-device) must not stop the
@@ -117,7 +120,7 @@ func migrateLegacyData() {
 // fallbackDir returns a private (0700) directory for degraded environments
 // where the platform config dir is unavailable. os.MkdirTemp creates the
 // directory with an unpredictable name, so another local process cannot
-// pre-create it to plant files (a fixed /tmp/reponest* path could be —
+// pre-create it to plant files (a fixed /tmp/repotory* path could be —
 // CWE-379). It is created once per process and reused, so the DB and plugin
 // paths stay stable within a run.
 var fallbackDirOnce struct {
@@ -148,10 +151,32 @@ func GetDbPath() string {
 	if configDir, err := os.UserConfigDir(); err == nil {
 		dir := filepath.Join(configDir, dirName)
 		if err := os.MkdirAll(dir, 0750); err == nil {
-			return filepath.Join(dir, "dashboard.db")
+			migrateLegacyDbFile(dir)
+			return filepath.Join(dir, "repotory.db")
 		}
 	}
-	return filepath.Join(fallbackDir(), "dashboard.db")
+	return filepath.Join(fallbackDir(), "repotory.db")
+}
+
+// migrateLegacyDbFile renames the database file left behind by earlier
+// versions (dashboard.db) to repotory.db, including any SQLite sidecar files
+// (-wal/-shm). It runs after the data directory is known and is a no-op on a
+// fresh install, once the rename has happened, or when a repotory.db already
+// exists (the new name always wins; the old file is left in place to be
+// removed by hand). Same failure posture as migrateLegacyData: a rename that
+// cannot complete must not stop the app from starting.
+func migrateLegacyDbFile(dir string) {
+	current := filepath.Join(dir, dirName+".db")
+	if _, err := os.Stat(current); err == nil {
+		return
+	}
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		old := filepath.Join(dir, "dashboard.db"+suffix)
+		if _, err := os.Stat(old); err != nil {
+			continue
+		}
+		_ = os.Rename(old, filepath.Join(dir, dirName+".db"+suffix))
+	}
 }
 
 // GetPluginsDir returns the directory that holds plugin directories
@@ -170,7 +195,7 @@ func GetPluginsDir() string {
 }
 
 // migrateLegacyLog renames the log file left behind by earlier versions
-// (gitboard.log -> reponest.log). It runs after the log directory is known,
+// (gitboard.log -> repotory.log). It runs after the log directory is known,
 // which covers every platform: on Windows the log lives inside the config
 // directory that migrateLegacyData already renamed, so only the file name is
 // left to fix there.
@@ -188,9 +213,9 @@ func migrateLegacyLog(dir string) {
 
 // GetLogPath returns the platform-appropriate log file path.
 //
-//	darwin:  ~/Library/Logs/reponest.log
-//	windows: %APPDATA%\reponest\logs\reponest.log
-//	linux:   $XDG_STATE_HOME/reponest/reponest.log (default ~/.local/state/...)
+//	darwin:  ~/Library/Logs/repotory.log
+//	windows: %APPDATA%\repotory\logs\repotory.log
+//	linux:   $XDG_STATE_HOME/repotory/repotory.log (default ~/.local/state/...)
 func GetLogPath() string {
 	var dir string
 	switch runtime.GOOS {

@@ -6,7 +6,7 @@
 
 ## Background
 
-RepoNest already has a clean pipeline: a `plugin.KnowledgeImporter` yields `[]plugin.ImportDoc` → registered via `Runtime.RegisterSource` → `upsertDoc` idempotently upserts notes keyed by (project, source, title). Originally only Claude was implemented. M2 extends it to other agents, whose on-disk formats are undocumented and drift.
+Repotory already has a clean pipeline: a `plugin.KnowledgeImporter` yields `[]plugin.ImportDoc` → registered via `Runtime.RegisterSource` → `upsertDoc` idempotently upserts notes keyed by (project, source, title). Originally only Claude was implemented. M2 extends it to other agents, whose on-disk formats are undocumented and drift.
 
 ## Decision
 

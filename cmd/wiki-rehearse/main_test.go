@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 func TestReconcile_Pure(t *testing.T) {
@@ -143,7 +143,7 @@ func buildPreV21DB(t *testing.T, path string) {
 // read-only.
 func TestRehearse_Synthetic_PreV21(t *testing.T) {
 	dir := t.TempDir()
-	src := filepath.Join(dir, "dashboard.db")
+	src := filepath.Join(dir, "repotory.db")
 	buildPreV21DB(t, src)
 
 	rep, hadNoTable, err := rehearse(src, filepath.Join(dir, "rehearse-copy.db"))

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/core/plugin"
-	"repo-nest/internal/db"
-	"repo-nest/internal/importers/memsrc"
+	"repotory/internal/core/plugin"
+	"repotory/internal/db"
+	"repotory/internal/importers/memsrc"
 )
 
 // fakeHome points os.UserHomeDir at an empty temp dir via $HOME.

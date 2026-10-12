@@ -25,9 +25,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"repo-nest/internal/core/plugin"
-	"repo-nest/internal/db"
-	"repo-nest/internal/importers/memsrc"
+	"repotory/internal/core/plugin"
+	"repotory/internal/db"
+	"repotory/internal/importers/memsrc"
 )
 
 // SourceName is the stable knowledge-source identifier for Hermes memory.
@@ -91,7 +91,7 @@ func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 			continue
 		}
 		name := strings.TrimSuffix(e.Name(), ".md")
-		content := "> 由 RepoNest 从 Hermes 全局记忆导入（source: hermes，allowlist: memories/*.md）\n\n" + body
+		content := "> 由 Repotory 从 Hermes 全局记忆导入（source: hermes，allowlist: memories/*.md）\n\n" + body
 		content = memsrc.ClipToBytes(content, db.MaxNoteContentLen)
 		docs = append(docs, plugin.ImportDoc{
 			ProjectID: pid,

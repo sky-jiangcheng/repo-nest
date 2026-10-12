@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // markProjectCollected mirrors what a previous scan did, so the "projects are on

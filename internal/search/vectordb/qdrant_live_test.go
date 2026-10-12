@@ -19,7 +19,7 @@ func TestQdrantLiveRoundTrip(t *testing.T) {
 	if url == "" {
 		url = "http://localhost:6333"
 	}
-	q, err := NewQdrant(url, os.Getenv("QDRANT_API_KEY"), "reponest_smoketest")
+	q, err := NewQdrant(url, os.Getenv("QDRANT_API_KEY"), "repotory_smoketest")
 	if err != nil {
 		t.Fatalf("new: %v", err)
 	}

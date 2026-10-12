@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // ADR-0018 lane 1: approving a page materializes its body [[wikilinks]] as

@@ -6,12 +6,12 @@
 package git
 
 import (
-	"repo-nest/internal/knowledge"
-	"repo-nest/internal/stats"
+	"repotory/internal/knowledge"
+	"repotory/internal/stats"
 )
 
 // Provider is the single abstraction for all Git interactions used by
-// RepoNest. Any implementation must be safe for concurrent use because the
+// Repotory. Any implementation must be safe for concurrent use because the
 // scan engine and dashboard handlers call these methods from goroutines.
 type Provider interface {
 	// QueryStats runs a shortstat query for a single repo/date/author combo.

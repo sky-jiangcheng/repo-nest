@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // setupDB mirrors internal/db's own test helper: this is package main, so those

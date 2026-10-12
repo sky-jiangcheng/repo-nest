@@ -8,7 +8,7 @@
 
 产品对外叙事已收敛为「本地优先的跨 agent 项目记忆层」（`scan → context → handoff` 闭环，见 positioning-brief），但仓库内部仍存在两套叙事残留：**agent 侧**（MCP 13 工具、CLI、init 脚本、多 agent 导入器）与**人侧界面**（桌面应用：Dashboard、项目状态、目标环、热力图、知识库编辑）。讨论「是否拆成两个产品」时，必须区分两件不同的事：
 
-1. **代码/数据是否拆分**：当前 `internal/service`（单仓库、单 SQLite schema、版本号 SSOT 为 `wails.json`）被 desktop、`mcp` 二进制、`reponest-server`、CLI 与 IDE 扩展共同复用。跨 agent 闭环（Agent A 写 handoff → 人在 GUI 读/改 → Agent B 读）依赖的正是「单一数据底座」。物理拆成两个产品 = 复制整个后端、双轨版本对齐、把闭环切成两个孤岛——直接摧毁唯一卖点。
+1. **代码/数据是否拆分**：当前 `internal/service`（单仓库、单 SQLite schema、版本号 SSOT 为 `wails.json`）被 desktop、`mcp` 二进制、`repotory-server`、CLI 与 IDE 扩展共同复用。跨 agent 闭环（Agent A 写 handoff → 人在 GUI 读/改 → Agent B 读）依赖的正是「单一数据底座」。物理拆成两个产品 = 复制整个后端、双轨版本对齐、把闭环切成两个孤岛——直接摧毁唯一卖点。
 2. **叙事/入口/界面是否分层**：这才是「拆」真正想解决的问题——首屏只讲仪表盘、记忆环在深层菜单里，对外承诺与打开所见错位（D25 指出的定位纯度消耗即源于此）。而这是可以在不新增第二个仓库、不分裂 schema 的前提下完成的。
 
 维护现实：438 个提交几乎全部由单人产出。拆成两个独立产品，会让「基础设施型产品」的双倍发布、双倍文档、双倍测试矩阵全部压到同一人身上。
@@ -23,7 +23,7 @@
 
 ### 2. 两个入口（产品分层而非产品分裂）
 
-- **Agent 侧（主叙事）**：headless 工具链——MCP server（独立单文件二进制）+ `reponest-capture` / `reponest-init` CLI。这是「记忆层」本体，面向 AI agent 与脚本，不依赖 GUI。
+- **Agent 侧（主叙事）**：headless 工具链——MCP server（独立单文件二进制）+ `repotory-capture` / `repotory-init` CLI。这是「记忆层」本体，面向 AI agent 与脚本，不依赖 GUI。
 - **人侧（查看、编辑与项目理解界面）**：桌面应用 + IDE 扩展。它既是知识的读写界面，也是「项目理解」（README/技术栈/依赖/贡献者/活跃度）这一核心能力的人侧表达。**人侧界面是产品的一半，不是附属物**——Dashboard、目标环、热力图等是用户侧的好功能，定位为「项目理解」的能力出口，本 ADR 明确保留。
 
 ### 3. 叙事分拆
@@ -36,7 +36,7 @@ README、文档站、发布说明的主叙事切到「agent 记忆层」（三�
 
 ### 5. 发布分拆（沿用现状，明确原则）
 
-`mcp` 二进制、`reponest-server`、桌面安装包、VS Code 扩展各自独立发布、独立下载，但共享同一版本号与同一 CHANGELOG；headless 路径（`node scripts/reponest-init/index.mjs --with-hook`）是文档站与 README 的第一安装路径。
+`mcp` 二进制、`repotory-server`、桌面安装包、VS Code 扩展各自独立发布、独立下载，但共享同一版本号与同一 CHANGELOG；headless 路径（`node scripts/repotory-init/index.mjs --with-hook`）是文档站与 README 的第一安装路径。
 
 ## 后果
 
@@ -49,7 +49,7 @@ README、文档站、发布说明的主叙事切到「agent 记忆层」（三�
 3. **未来可能的产品化产物**：handoff 归档导出（memory export）与知识库导出（knowledge export）是否作为不同下载物——本 ADR 只登记问题，不在此决策。
 4. **目标用户画像（外部评审启发）**：外部评审建议早期用户是「同时使用多个 agent、在多个本地仓库间切换、重视长期上下文与交接的人」，并判断该人群「更小但需求更锐利」。本 ADR 采纳该画像为对外 Persona 原型候选，但「人群更小、需求更锐利」目前**未经验证**——是否开展真实用户调研（访谈/问卷）验证其存在性与需求锐利度，再据此收敛对外叙事？本 ADR 只登记问题，不在此决策。
 5. **自动捕捉的验收口径（关联 ADR-0010）**：外部评审强调「默认自动捕捉会话收尾，不能依赖用户/agent 每次都手动 handoff」。ADR-0010 的自动捕捉目前停留在「原则上接受」未晋升——是否补充「零操作触发占比」（未做任何手动动作即被可靠捕捉的会话比例）作为验收标准，并据此推进其晋升？本 ADR 只登记问题，不在此决策。
-6. **「context 明显优于手工检索」的证据要求**：对外主张「一次调用明显优于 agent 自己翻 README、TODO、git log」目前是断言而非测量——是否建立对比评测（同一 query 下 `reponest_context` 与手工拼装上下文的检索质量标注对比）并将通过标准写入验收？本 ADR 只登记问题，不在此决策。
+6. **「context 明显优于手工检索」的证据要求**：对外主张「一次调用明显优于 agent 自己翻 README、TODO、git log」目前是断言而非测量——是否建立对比评测（同一 query 下 `repotory_context` 与手工拼装上下文的检索质量标注对比）并将通过标准写入验收？本 ADR 只登记问题，不在此决策。
 
 ## 晋升条件（Proposed → Accepted）
 
@@ -61,7 +61,7 @@ README、文档站、发布说明的主叙事切到「agent 记忆层」（三�
 ## 附录：配套发布策略清单（按执行顺序）
 
 1. **README 重构**：首屏改为三工具闭环图 + agent 接入清单（Claude Code / Cursor / OpenCode / Codex…），「Desktop App」章节改为 human-side view 小节并保留项目理解能力描述；对照 README / SKILL.md / docs 做一次失实表述清零（沿用 D24 的做法）。
-2. **文档站调整**：getting-started 重排为 headless-first（`reponest-init --with-hook` 为第一路径）；新增「Agent-side vs Human-side」对照说明；`features/dashboard` 保留为「项目理解」人侧界面文档，不再标注 legacy。
+2. **文档站调整**：getting-started 重排为 headless-first（`repotory-init --with-hook` 为第一路径）；新增「Agent-side vs Human-side」对照说明；`features/dashboard` 保留为「项目理解」人侧界面文档，不再标注 legacy。
 3. **发布物调整**：Release 产物清单将 `mcp` 二进制与桌面安装包并列列出、各自下载；CHANGELOG 保持统一。
 4. **GUI 对齐（修正 D25 倾向）**：路由默认页改为「记忆环 + 项目状态」并排首屏；Command Palette 首位动作改为新建 handoff；Dashboard 等组件测试保留且默认可见，不做隐藏处理。
 5. **验收**：现有测试（Go + 前端）+ CSS/视觉回归全绿；文档一致性检查（README/SKILL/docs 三处口径一致）；git 层面确认单仓库、单 schema、版本 SSOT 未变。

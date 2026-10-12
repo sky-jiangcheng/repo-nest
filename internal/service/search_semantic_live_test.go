@@ -14,8 +14,8 @@ import (
 	"os"
 	"testing"
 
-	"repo-nest/internal/db"
-	"repo-nest/internal/search/vectordb"
+	"repotory/internal/db"
+	"repotory/internal/search/vectordb"
 )
 
 func TestSemanticLiveEndToEnd(t *testing.T) {
@@ -27,7 +27,7 @@ func TestSemanticLiveEndToEnd(t *testing.T) {
 	if qdrant == "" {
 		qdrant = "http://localhost:6333"
 	}
-	if probe, err := vectordb.NewQdrant(qdrant, "", "reponest_aelive_smoke"); err != nil || !probe.Reachable() {
+	if probe, err := vectordb.NewQdrant(qdrant, "", "repotory_aelive_smoke"); err != nil || !probe.Reachable() {
 		t.Skipf("Qdrant not reachable at %s", qdrant)
 	}
 
@@ -47,7 +47,7 @@ func TestSemanticLiveEndToEnd(t *testing.T) {
 		"embedding_dim":           "768",
 		"vector_store":            "qdrant",
 		"vector_store_url":        qdrant,
-		"vector_store_collection": "reponest_aelive_smoke",
+		"vector_store_collection": "repotory_aelive_smoke",
 	} {
 		if err := svc.UpdateConfig(k, v); err != nil {
 			t.Fatalf("config %s: %v", k, err)

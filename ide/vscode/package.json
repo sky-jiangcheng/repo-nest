@@ -1,9 +1,9 @@
 {
-  "name": "reponest-vscode",
-  "displayName": "RepoNest",
+  "name": "repotory-vscode",
+  "displayName": "Repotory",
   "publisher": "sky-jiangcheng",
   "version": "0.1.0",
-  "description": "RepoNest inside your IDE: load session context, write session handoffs and search your local knowledge base from the command palette, status bar and sidebar. One VSIX covers VS Code, Cursor and Windsurf.",
+  "description": "Repotory inside your IDE: load session context, write session handoffs and search your local knowledge base from the command palette, status bar and sidebar. One VSIX covers VS Code, Cursor and Windsurf.",
   "license": "MIT",
   "engines": {
     "vscode": "^1.90.0"
@@ -19,41 +19,41 @@
   "contributes": {
     "commands": [
       {
-        "command": "reponest.loadContext",
-        "title": "RepoNest: Load Session Context"
+        "command": "repotory.loadContext",
+        "title": "Repotory: Load Session Context"
       },
       {
-        "command": "reponest.handoff",
-        "title": "RepoNest: Write Session Handoff"
+        "command": "repotory.handoff",
+        "title": "Repotory: Write Session Handoff"
       },
       {
-        "command": "reponest.search",
-        "title": "RepoNest: Search Knowledge"
+        "command": "repotory.search",
+        "title": "Repotory: Search Knowledge"
       },
       {
-        "command": "reponest.registerMcp",
-        "title": "RepoNest: Register MCP Server (reponest-init)"
+        "command": "repotory.registerMcp",
+        "title": "Repotory: Register MCP Server (repotory-init)"
       }
     ],
     "configuration": {
-      "title": "RepoNest",
+      "title": "Repotory",
       "properties": {
-        "reponest.serverUrl": {
+        "repotory.serverUrl": {
           "type": "string",
           "default": "http://127.0.0.1:18765",
-          "description": "RepoNest headless service URL (reponest server)."
+          "description": "Repotory headless service URL (repotory server)."
         },
-        "reponest.projectId": {
+        "repotory.projectId": {
           "type": "string",
           "default": "",
-          "description": "RepoNest project id used for context / handoff. Empty = let the service resolve the current workspace."
+          "description": "Repotory project id used for context / handoff. Empty = let the service resolve the current workspace."
         }
       }
     },
     "views": {
-      "reponest-explorer": [
+      "repotory-explorer": [
         {
-          "id": "reponest.notesSearch",
+          "id": "repotory.notesSearch",
           "name": "Knowledge Search"
         }
       ]
@@ -61,9 +61,9 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "reponest-explorer",
-          "title": "RepoNest",
-          "icon": "media/reponest.svg"
+          "id": "repotory-explorer",
+          "title": "Repotory",
+          "icon": "media/repotory.svg"
         }
       ]
     }
@@ -87,7 +87,7 @@
     "url": "https://github.com/sky-jiangcheng/repo-nest/issues"
   },
   "keywords": [
-    "reponest",
+    "repotory",
     "knowledge base",
     "session context",
     "handoff",

@@ -12,7 +12,7 @@ import (
 
 func TestChromemRoundTrip(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "chromem")
-	c, err := NewChromem(dir, "reponest_vecs")
+	c, err := NewChromem(dir, "repotory_vecs")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestChromemPersistsAcrossReopen(t *testing.T) {
 }
 
 func TestChromemClearResetsButKeepsUsable(t *testing.T) {
-	c, err := NewChromem("", "reponest_vecs") // in-memory variant
+	c, err := NewChromem("", "repotory_vecs") // in-memory variant
 	if err != nil {
 		t.Fatal(err)
 	}

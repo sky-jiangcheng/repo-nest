@@ -155,7 +155,7 @@ func TestDetectDependenciesNpm(t *testing.T) {
 
 func TestDetectDependenciesGo(t *testing.T) {
 	root := writeTemp(t, map[string]string{
-		"go.mod": "module reponest\n\ngo 1.25.5\n\nrequire (\n\tgithub.com/spf13/cobra v1.8.0\n)\n",
+		"go.mod": "module repotory\n\ngo 1.25.5\n\nrequire (\n\tgithub.com/spf13/cobra v1.8.0\n)\n",
 	})
 	deps, err := DetectDependencies(root)
 	if err != nil {
@@ -202,7 +202,7 @@ func TestDetectDependenciesNone(t *testing.T) {
 func TestDetectDependenciesGoBlock(t *testing.T) {
 	// gofmt-standard block form must parse without panicking and find deps.
 	root := writeTemp(t, map[string]string{
-		"go.mod": `module reponest
+		"go.mod": `module repotory
 
 go 1.25.5
 

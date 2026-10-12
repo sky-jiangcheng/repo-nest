@@ -9,7 +9,7 @@
 #
 # The desktop asset is faked (the goal is the script's URL/extract/install
 # logic, not Wails output), but the MCP archive is a real Go build of
-# ./cmd/mcp, so `reponest-mcp` actually runs afterwards. RELEASES /
+# ./cmd/mcp, so `repotory-mcp` actually runs afterwards. RELEASES /
 # REPO_NEST_RELEASE_BASE point the scripts at the fixture.
 name: Install smoke test
 
@@ -45,7 +45,7 @@ jobs:
       # The MCP binary is the real deliverable under test: a genuine build of
       # ./cmd/mcp packed the same way release.yml packs it.
       - name: Build MCP server
-        run: go build -o dist/reponest-mcp ./cmd/mcp/
+        run: go build -o dist/repotory-mcp ./cmd/mcp/
 
       # The desktop tarball only has to satisfy the script's download and
       # extract steps; building Wails here would need GTK/WebKit and would
@@ -53,14 +53,14 @@ jobs:
       - name: Pack fixture assets
         run: |
           mkdir -p dist
-          printf '#!/bin/sh\necho reponest fixture\n' > dist/reponest
-          chmod +x dist/reponest
-          tar -czf dist/reponest-linux-amd64.tar.gz -C dist reponest
-          tar -czf dist/reponest-mcp-linux-amd64.tar.gz -C dist reponest-mcp
-          rm -f dist/reponest
+          printf '#!/bin/sh\necho repotory fixture\n' > dist/repotory
+          chmod +x dist/repotory
+          tar -czf dist/repotory-linux-amd64.tar.gz -C dist repotory
+          tar -czf dist/repotory-mcp-linux-amd64.tar.gz -C dist repotory-mcp
+          rm -f dist/repotory
           # Same manifest shape release.yml uploads, so install.sh's verify
           # path runs for real (not just its "no manifest" skip path).
-          (cd dist && sha256sum reponest-linux-amd64.tar.gz reponest-mcp-linux-amd64.tar.gz > SHA256SUMS)
+          (cd dist && sha256sum repotory-linux-amd64.tar.gz repotory-mcp-linux-amd64.tar.gz > SHA256SUMS)
           cat dist/SHA256SUMS
 
       - name: Serve fixtures over HTTP
@@ -82,13 +82,13 @@ jobs:
       - name: Verify installed binaries execute
         run: |
           export PATH="$RUNNER_TEMP/bin:$PATH"
-          command -v reponest
-          command -v reponest-mcp
-          # reponest-mcp serves MCP over stdio; it must answer an initialize
+          command -v repotory
+          command -v repotory-mcp
+          # repotory-mcp serves MCP over stdio; it must answer an initialize
           # handshake, not just exist as a file.
           echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
-            | "$RUNNER_TEMP/bin/reponest-mcp" 2>/dev/null | grep -q 'reponest-mcp' || {
-            echo "reponest-mcp did not answer initialize" >&2; exit 1; }
+            | "$RUNNER_TEMP/bin/repotory-mcp" 2>/dev/null | grep -q 'repotory-mcp' || {
+            echo "repotory-mcp did not answer initialize" >&2; exit 1; }
 
       # The positive run above proves verification *runs*; this proves it can
       # *fail*. Without it, a bug that always skipped verification would pass
@@ -131,27 +131,27 @@ jobs:
           cache: true
 
       - name: Build MCP server
-        run: go build -o dist/reponest-mcp ./cmd/mcp/
+        run: go build -o dist/repotory-mcp ./cmd/mcp/
 
       # macOS install.sh attaches a .dmg with hdiutil; a fixture dmg built
       # with hdiutil is a real one, so the attach/detach path is exercised.
       # The .app bundle layout mirrors what Wails produces (a directory named
-      # RepoNest.app/Contents/...), which is what the script looks for inside
+      # Repotory.app/Contents/...), which is what the script looks for inside
       # the dmg.
       - name: Pack fixture assets
         run: |
           TARGET="$(uname -m | sed 's/x86_64/amd64/;s/arm64/arm64/')"
           TARGET="darwin-$TARGET"
           echo "TARGET=$TARGET" >> "$GITHUB_ENV"
-          mkdir -p stage/RepoNest.app/Contents/MacOS dist
-          printf '#!/bin/sh\necho reponest fixture\n' > stage/RepoNest.app/Contents/MacOS/reponest
-          chmod +x stage/RepoNest.app/Contents/MacOS/reponest
-          hdiutil create -volname RepoNest -srcfolder stage -ov -format UDZO \
-            "dist/reponest-$TARGET.dmg"
-          tar -czf "dist/reponest-mcp-$TARGET.tar.gz" -C dist reponest-mcp
+          mkdir -p stage/Repotory.app/Contents/MacOS dist
+          printf '#!/bin/sh\necho repotory fixture\n' > stage/Repotory.app/Contents/MacOS/repotory
+          chmod +x stage/Repotory.app/Contents/MacOS/repotory
+          hdiutil create -volname Repotory -srcfolder stage -ov -format UDZO \
+            "dist/repotory-$TARGET.dmg"
+          tar -czf "dist/repotory-mcp-$TARGET.tar.gz" -C dist repotory-mcp
           # Same manifest shape release.yml uploads, so install.sh's verify
           # path runs for real (not just its "no manifest" skip path).
-          (cd dist && shasum -a 256 "reponest-$TARGET.dmg" "reponest-mcp-$TARGET.tar.gz" > SHA256SUMS)
+          (cd dist && shasum -a 256 "repotory-$TARGET.dmg" "repotory-mcp-$TARGET.tar.gz" > SHA256SUMS)
           cat dist/SHA256SUMS
 
       - name: Serve fixtures over HTTP
@@ -175,14 +175,14 @@ jobs:
 
       - name: Verify installed artifacts
         run: |
-          test -d "$RUNNER_TEMP/Applications/RepoNest.app" || {
-            echo "RepoNest.app missing" >&2; exit 1; }
-          test -x "$RUNNER_TEMP/bin/reponest-mcp" || {
-            echo "reponest-mcp missing or not executable" >&2; exit 1; }
+          test -d "$RUNNER_TEMP/Applications/Repotory.app" || {
+            echo "Repotory.app missing" >&2; exit 1; }
+          test -x "$RUNNER_TEMP/bin/repotory-mcp" || {
+            echo "repotory-mcp missing or not executable" >&2; exit 1; }
           # The MCP binary must actually run, not just exist.
           echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
-            | "$RUNNER_TEMP/bin/reponest-mcp" 2>/dev/null | grep -q 'reponest-mcp' || {
-            echo "reponest-mcp did not answer initialize" >&2; exit 1; }
+            | "$RUNNER_TEMP/bin/repotory-mcp" 2>/dev/null | grep -q 'repotory-mcp' || {
+            echo "repotory-mcp did not answer initialize" >&2; exit 1; }
 
   windows:
     name: install.ps1 (Windows)
@@ -199,21 +199,21 @@ jobs:
           cache: true
 
       - name: Build MCP server
-        run: go build -o dist/reponest-mcp.exe ./cmd/mcp/
+        run: go build -o dist/repotory-mcp.exe ./cmd/mcp/
 
       - name: Pack fixture assets
         shell: pwsh
         run: |
           # Desktop zip: the script only checks the archive extracts and
-          # contains reponest.exe.
-          Set-Content -Path dist/reponest.exe -Value "fixture" -NoNewline
-          Compress-Archive -Path dist/reponest.exe `
-            -DestinationPath dist/reponest-windows-amd64.zip -Force
-          Compress-Archive -Path dist/reponest-mcp.exe `
-            -DestinationPath dist/reponest-mcp-windows-amd64.zip -Force
+          # contains repotory.exe.
+          Set-Content -Path dist/repotory.exe -Value "fixture" -NoNewline
+          Compress-Archive -Path dist/repotory.exe `
+            -DestinationPath dist/repotory-windows-amd64.zip -Force
+          Compress-Archive -Path dist/repotory-mcp.exe `
+            -DestinationPath dist/repotory-mcp-windows-amd64.zip -Force
           # Same manifest shape release.yml uploads, so install.ps1's verify
           # path runs for real (not just its "no manifest" skip path).
-          $lines = foreach ($f in @("dist/reponest-windows-amd64.zip", "dist/reponest-mcp-windows-amd64.zip")) {
+          $lines = foreach ($f in @("dist/repotory-windows-amd64.zip", "dist/repotory-mcp-windows-amd64.zip")) {
             "$((Get-FileHash -Path $f -Algorithm SHA256).Hash.ToLower())  $(Split-Path $f -Leaf)"
           }
           Set-Content -Path dist/SHA256SUMS -Value ($lines -join "`r`n") -Encoding ascii -NoNewline
@@ -244,9 +244,9 @@ jobs:
       - name: Verify installed artifacts
         shell: pwsh
         run: |
-          $dir = "$env:LOCALAPPDATA\RepoNest"
-          if (-not (Test-Path "$dir\reponest.exe")) { throw "reponest.exe missing" }
-          if (-not (Test-Path "$dir\reponest-mcp.exe")) { throw "reponest-mcp.exe missing" }
+          $dir = "$env:LOCALAPPDATA\Repotory"
+          if (-not (Test-Path "$dir\repotory.exe")) { throw "repotory.exe missing" }
+          if (-not (Test-Path "$dir\repotory-mcp.exe")) { throw "repotory-mcp.exe missing" }
 
       - name: Stop fixture server
         if: always()

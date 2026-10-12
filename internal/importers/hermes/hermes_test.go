@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"repo-nest/internal/core/plugin"
+	"repotory/internal/core/plugin"
 )
 
 func mustWrite(t *testing.T, path, body string) {

@@ -4,11 +4,11 @@ import type { NoteDraft } from '../components/notes/NoteEditor'
 const emptyDraft: NoteDraft = { content: '', title: '', tags: '', kind: 'knowledge' }
 
 function draftKey(projectId: number) {
-  return `reponest-note-draft-${projectId}`
+  return `repotory-note-draft-${projectId}`
 }
 
 // Spelling is intentional: this names the key written by builds before the
-// GitBoard -> RepoNest rename, and loadDraft() moves its value over.
+// GitBoard -> Repotory rename, and loadDraft() moves its value over.
 function legacyDraftKey(projectId: number) {
   return `gitboard-note-draft-${projectId}`
 }
@@ -48,7 +48,7 @@ function loadDraft(projectId: number): NoteDraft {
 /**
  * useNoteDraft manages the draft state for the current note editor, persisting
  * it to localStorage keyed by projectId. Supports migration from the old
- * `reponest-` key prefix.
+ * `repotory-` key prefix.
  */
 export function useNoteDraft(projectId: number): [NoteDraft, Dispatch<SetStateAction<NoteDraft>>, () => void] {
   const [draft, setDraft] = useState<NoteDraft>(() => loadDraft(projectId))

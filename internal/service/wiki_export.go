@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // One-way wiki export (ADR-0014 决策 2 / TODO M6-W1b).
@@ -227,7 +227,7 @@ func (s *Service) renderPage(byID map[int64]db.WikiPage, bySlug map[string]db.Wi
 	dangling := 0
 	var b strings.Builder
 	b.WriteString("---\n")
-	fmt.Fprintf(&b, "reponest_page_id: %d\nslug: %s\ntitle: %s\nkind: %s\n", p.ID, p.Slug, yamlQuote(p.Title), p.Kind)
+	fmt.Fprintf(&b, "repotory_page_id: %d\nslug: %s\ntitle: %s\nkind: %s\n", p.ID, p.Slug, yamlQuote(p.Title), p.Kind)
 	// Status is exported so the tree can be reviewed where it is read: pending
 	// pages appear here tagged pending (that is the review surface we have today),
 	// while index.md below lists approved pages only.
@@ -235,7 +235,7 @@ func (s *Service) renderPage(byID map[int64]db.WikiPage, bySlug map[string]db.Wi
 	if p.ProjectID > 0 {
 		fmt.Fprintf(&b, "project_id: %d\n", p.ProjectID)
 	}
-	b.WriteString("source: reponest-export\n---\n\n")
+	b.WriteString("source: repotory-export\n---\n\n")
 	fmt.Fprintf(&b, "# %s\n\n", p.Title)
 	body := strings.TrimSpace(p.Content)
 	if body != "" {
@@ -288,7 +288,7 @@ func (s *Service) renderPage(byID map[int64]db.WikiPage, bySlug map[string]db.Wi
 // navigate without embeddings, so it lists everything rather than a sample.
 func renderIndex(pages []db.WikiPage, byID map[int64]db.WikiPage) string {
 	var b strings.Builder
-	b.WriteString("---\ntitle: Wiki index\nsource: reponest-export\n---\n\n")
+	b.WriteString("---\ntitle: Wiki index\nsource: repotory-export\n---\n\n")
 	b.WriteString("# Wiki index\n\n")
 	order := []string{db.WikiKindEntity, db.WikiKindConcept, db.WikiKindSource, db.WikiKindSynthesis, db.WikiKindQuery}
 	for _, kind := range order {

@@ -1,8 +1,8 @@
 export type ThemeMode = 'light' | 'dark' | 'system'
 
-const STORAGE_KEY = 'reponest-theme'
+const STORAGE_KEY = 'repotory-theme'
 // Spelling is intentional: this names the key written by builds before the
-// GitBoard -> RepoNest rename, and migrateLegacyTheme() moves its value over.
+// GitBoard -> Repotory rename, and migrateLegacyTheme() moves its value over.
 // Renaming it would silently reset everyone's theme on upgrade.
 const LEGACY_STORAGE_KEY = 'gitboard-theme'
 

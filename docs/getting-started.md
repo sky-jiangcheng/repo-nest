@@ -5,11 +5,11 @@ order: 1
 
 # 快速开始
 
-RepoNest 是一款本地优先的桌面应用（Wails v2，单文件、零运行时依赖），核心价值是一层**跨 agent 的项目记忆层**：自动发现本机 Git 仓库，快速沉淀笔记、依赖、技术栈与活跃信息，便于你和任何 AI agent 检索复用。仪表盘与统计是支持能力，不是产品主入口。
+Repotory 是一款本地优先的桌面应用（Wails v2，单文件、零运行时依赖），核心价值是一层**跨 agent 的项目记忆层**：自动发现本机 Git 仓库，快速沉淀笔记、依赖、技术栈与活跃信息，便于你和任何 AI agent 检索复用。仪表盘与统计是支持能力，不是产品主入口。
 
 ## 下载安装
 
-安装脚本会同时装上桌面应用和 `reponest-mcp`（AI 客户端用的 MCP 服务器）。
+安装脚本会同时装上桌面应用和 `repotory-mcp`（AI 客户端用的 MCP 服务器）。
 
 ### macOS / Linux
 
@@ -17,7 +17,7 @@ RepoNest 是一款本地优先的桌面应用（Wails v2，单文件、零运行
 curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh | bash
 ```
 
-macOS 装到 `/Applications/RepoNest.app`，Linux 装到 `/usr/local/bin/reponest`；两者都会把 `reponest-mcp` 放进 `/usr/local/bin`。
+macOS 装到 `/Applications/Repotory.app`，Linux 装到 `/usr/local/bin/repotory`；两者都会把 `repotory-mcp` 放进 `/usr/local/bin`。
 
 ### Windows
 
@@ -31,12 +31,12 @@ iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scri
 
 启动后直接打开桌面窗口（Wails 应用，无需浏览器）。
 
-五分钟上手路径如下——前两步必做，后两步只影响仪表盘统计；纯 MCP 用户（不装桌面应用）可以让 agent 直接调一次 `reponest_scan`：
+五分钟上手路径如下——前两步必做，后两步只影响仪表盘统计；纯 MCP 用户（不装桌面应用）可以让 agent 直接调一次 `repotory_scan`：
 
 ```mermaid
 flowchart TB
     A["① 配置扫描目录<br/>首次启动已播种"] --> B["② 执行扫描<br/>发现仓库 · 挖掘知识"]
-    E["纯 MCP 用户<br/>agent 调 reponest_scan"] -.-> B
+    E["纯 MCP 用户<br/>agent 调 repotory_scan"] -.-> B
     B --> DONE["✅ 知识库已可用<br/>写笔记 · 搜索 · AI 注入"]
     B -.-> C["③ 收藏仓库（可选）"]
     C -.-> D["④ 回填 365 天历史（可选）"]
@@ -66,7 +66,7 @@ flowchart TB
 
 > 首次扫描仅登记仓库与项目，不预扫历史提交数据。
 >
-> **到这一步知识库已经可用**：可以写笔记、搜索、交给 AI（`reponest_context` / `reponest_handoff`）。下面的收藏与回填只影响仪表盘统计，不影响知识库。
+> **到这一步知识库已经可用**：可以写笔记、搜索、交给 AI（`repotory_context` / `repotory_handoff`）。下面的收藏与回填只影响仪表盘统计，不影响知识库。
 
 ### 3. 收藏仓库（可选，仪表盘统计）
 
@@ -110,9 +110,9 @@ flowchart TB
 
 | 内容 | macOS | Windows | Linux |
 |------|-------|---------|-------|
-| 数据库 | `~/Library/Application Support/reponest/dashboard.db` | `%APPDATA%\reponest\dashboard.db` | `~/.config/reponest/dashboard.db` |
-| 插件目录 | `…/reponest/plugins/` | `…/reponest\plugins\` | `…/reponest/plugins/` |
-| 日志 | `~/Library/Logs/reponest.log` | `%APPDATA%\reponest\logs\reponest.log` | `$XDG_STATE_HOME/reponest/reponest.log`（默认 `~/.local/state/reponest/`） |
+| 数据库 | `~/Library/Application Support/repotory/repotory.db` | `%APPDATA%\repotory\repotory.db` | `~/.config/repotory/repotory.db` |
+| 插件目录 | `…/repotory/plugins/` | `…/repotory\plugins\` | `…/repotory/plugins/` |
+| 日志 | `~/Library/Logs/repotory.log` | `%APPDATA%\repotory\logs\repotory.log` | `$XDG_STATE_HOME/repotory/repotory.log`（默认 `~/.local/state/repotory/`） |
 
 升级时 schema 自动迁移，数据无需手工处理。详细排障见[故障排查](troubleshooting.md)。
 
@@ -125,10 +125,10 @@ flowchart TB
 cd web && npm install && npm run build && cd ..
 
 # 桌面应用
-go build -ldflags="-s -w" -o reponest .
+go build -ldflags="-s -w" -o repotory .
 
 # MCP server
-go build -o reponest-mcp ./cmd/mcp/
+go build -o repotory-mcp ./cmd/mcp/
 ```
 
 开发模式：`wails dev`（前端热更新 + Wails 绑定注入）。测试：`go test ./...`；前端 `npm test` / `npm run build`（tsc 严格检查）。

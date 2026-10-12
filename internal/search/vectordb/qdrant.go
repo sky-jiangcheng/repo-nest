@@ -38,7 +38,7 @@ func NewQdrant(base, apiKey, collection string) (*Qdrant, error) {
 	}
 	col := sanitizeCollection(collection)
 	if col == "" {
-		col = "reponest_vecs"
+		col = "repotory_vecs"
 	}
 	return &Qdrant{Base: base, APIKey: apiKey, Collection: col, HTTP: &http.Client{Timeout: 20 * time.Second}}, nil
 }

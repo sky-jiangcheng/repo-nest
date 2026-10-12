@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"repo-nest/internal/db"
+	"repotory/internal/db"
 )
 
 // The predicate behind "does the app read other tools' memory at startup".

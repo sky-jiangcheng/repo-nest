@@ -4,7 +4,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "=== RepoNest Build Script ==="
+echo "=== Repotory Build Script ==="
 echo ""
 
 # Step 1: Build frontend
@@ -18,9 +18,9 @@ echo "  Frontend built to web/dist/"
 echo "[2/2] Building Go binary..."
 cd "$PROJECT_ROOT"
 export GOPROXY=https://goproxy.cn,direct
-go build -ldflags="-s -w" -o reponest .
-echo "  Binary: $PROJECT_ROOT/reponest"
+go build -ldflags="-s -w" -o repotory .
+echo "  Binary: $PROJECT_ROOT/repotory"
 
 echo ""
 echo "=== Build complete ==="
-ls -lh reponest
+ls -lh repotory
