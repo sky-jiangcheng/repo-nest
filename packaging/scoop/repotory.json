@@ -4,7 +4,7 @@
   "homepage": "https://github.com/sky-jiangcheng/repo-nest",
   "license": "MIT",
 "url": "https://github.com/sky-jiangcheng/repo-nest/releases/download/v2.0.0/repotory-windows-amd64.zip",
-  "hash": "sha256:778bd80756c7ffe52be48d2dc4a9fbb575d30f8439e328238b1416b68fd73783",
+  "hash": "sha256:8908e1d2e03bbe311a3ee510bb8cde12b2f442dee906c82ecc021db80d42c70a",
   "bin": "repotory.exe",
   "checkver": {
     "url": "https://api.github.com/repos/sky-jiangcheng/repo-nest/releases/latest",
