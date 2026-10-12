@@ -72,3 +72,8 @@ assets/releases/
 
 # 本地检索标注预备产物（queryset 工作表 + 真库一次性副本 + 工具二进制，含用户笔记清单）
 .annotation-prep/
+
+# 本机 MCP 客户端注册（scripts/repotory-init 写入，含机器本地绝对路径）
+.mcp.json
+.cursor/
+.vscode/mcp.json
