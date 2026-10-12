@@ -70,6 +70,17 @@ type NoteVersion struct {
 	CreatedAt string `json:"created_at"`
 }
 
+// PageVersion represents a historical snapshot of a wiki page (ADR-0021).
+// Mirrors NoteVersion: full snapshot, 50 kept per page, FK cascade.
+type PageVersion struct {
+	ID        int64  `json:"id"`
+	PageID    int64  `json:"page_id"`
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	Kind      string `json:"kind"`
+	CreatedAt string `json:"created_at"`
+}
+
 // NoteDiff represents a line-level diff between two versions.
 type NoteDiff struct {
 	VersionID int64  `json:"version_id"`

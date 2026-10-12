@@ -58,6 +58,13 @@ var allowedConfigKeys = map[string]bool{
 	// independent of wiki_lint_llm (which only reads).
 	"wiki_compile":  true,
 	"wiki_lint_llm": true,
+	// ADR-0019 决策 4: gates the model's second judgment on merge candidates —
+	// one question per pair ("same concept? which winner?"), answered off the
+	// ai_chat_* endpoint like wiki_lint_llm. Off by default: it spends money on
+	// every run and its output is only ever a todo for a human to weigh. The
+	// merge itself stays human-triggered (决策 1); this key cannot make a model
+	// merge anything.
+	"wiki_merge_suggest": true,
 	// ADR-0018 lane 2: gates the graph-aware half of evidence retrieval — the
 	// one-hop walk over page_links that widens recall beyond what FTS matches.
 	// ON by default since 2026-10-10 (measured recall@5 +0.037, zero

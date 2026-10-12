@@ -17,6 +17,7 @@ import type {
   NoteCount,
   NoteVersion,
   NoteWithProject,
+  PageVersion,
   Project,
   ProjectDetail,
   ProjectOverview,
@@ -566,6 +567,22 @@ export function rejectWikiPage(pageId: number): Promise<void> {
 
 export function deleteCompiledPage(pageId: number): Promise<void> {
   return call<void>({ method: 'DeleteCompiledPage', args: [pageId] })
+}
+
+// listPageVersions / restorePageVersion / diffPageVersions are the ADR-0021
+// page-side twin of the note version trio: full snapshots per wiki page, at
+// most 50, newest first. Restore preserves the displaced content as its own
+// version (db.RestorePageVersion), so the rollback itself is recoverable.
+export function listPageVersions(pageId: number): Promise<PageVersion[]> {
+  return call<PageVersion[]>({ method: 'ListPageVersions', args: [pageId] }).then(d => d ?? [])
+}
+
+export function restorePageVersion(pageId: number, versionId: number): Promise<void> {
+  return call<void>({ method: 'RestorePageVersion', args: [pageId, versionId] })
+}
+
+export function diffPageVersions(pageId: number, versionId: number): Promise<string> {
+  return call<string>({ method: 'DiffPageVersions', args: [pageId, versionId] }).then(d => d ?? '')
 }
 
 // startCompileJob queues a batch compile and returns the job id immediately; the

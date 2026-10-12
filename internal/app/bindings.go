@@ -395,6 +395,21 @@ func (a *App) RunWikiLint(projectID int64, wantLLM bool) (*service.WikiLintRepor
 	return a.svc.RunWikiLint(projectID, wantLLM)
 }
 
+// DiscoverMergeCandidates runs ADR-0019 决策 2's structural blocking pass over
+// projectID (0 = every page) and returns the top-K ranked near-duplicate
+// candidates. Read-only: no model, no vectors, no writes — the candidates are
+// pairs a human then weighs.
+func (a *App) DiscoverMergeCandidates(projectID int64) (*service.MergeScan, error) {
+	return a.svc.DiscoverMergeCandidates(projectID)
+}
+
+// MergeWikiPages folds loser into winner (ADR-0019 决策 5). Human-only by
+// contract: the review UI's adopt button is the only caller — no compiler,
+// lint, model or job path may reach it (决策 1).
+func (a *App) MergeWikiPages(winnerID, loserID int64) error {
+	return a.svc.MergeWikiPages(winnerID, loserID)
+}
+
 // CompileNote runs the ingest-time compile for one note. Everything it writes
 // lands as a pending page; nothing becomes searchable until a human approves it.
 func (a *App) CompileNote(noteID int64) (*service.WikiCompileReport, error) {
@@ -462,6 +477,27 @@ func (a *App) ListRejectedWikiPages(projectID int64) ([]service.WikiPendingPage,
 // DeleteCompiledPage permanently removes a never-published page (pending or
 // rejected); the escape hatch that keeps rejected tombstones from piling up.
 func (a *App) DeleteCompiledPage(pageID int64) error { return a.svc.DeleteCompiledPage(pageID) }
+
+// ListPageVersions returns the version history of a wiki page (ADR-0021):
+// full snapshots, at most 50, newest first — the page-side twin of
+// ListNoteVersions.
+func (a *App) ListPageVersions(pageID int64) []domain.PageVersion {
+	return a.svc.ListPageVersions(pageID)
+}
+
+// RestorePageVersion rolls a wiki page back to a previous version. The current
+// content is preserved as a new version first, so the rollback itself is
+// recoverable. Human-only by design: no compiler/lint/MCP path reaches it
+// (ADR-0021 决策 3/4).
+func (a *App) RestorePageVersion(pageID, versionID int64) error {
+	return a.svc.RestorePageVersion(pageID, versionID)
+}
+
+// DiffPageVersions returns a line-based diff between a historical version and
+// the page's current content.
+func (a *App) DiffPageVersions(pageID, versionID int64) (string, error) {
+	return a.svc.DiffPageVersions(pageID, versionID)
+}
 
 // LayeredProjectContext assembles project memory from most stable to least
 // (L3 cross-project profile, L2 project scenario, L1 curated notes, L0 raw

@@ -8,6 +8,7 @@ import {
 import type { CompileJob, Project, WikiPendingPage } from '../api/client'
 import ErrorBanner from '../components/ErrorBanner'
 import Icon from '../components/Icon'
+import PageVersionHistoryPanel from '../components/wiki/PageVersionHistoryPanel'
 import { useToast } from '../hooks/useToast'
 import { renderMarkdown } from '../utils/markdown'
 import s from './Review.module.css'
@@ -303,6 +304,10 @@ function ReviewCard({
 }) {
   const { t } = useTranslation()
   const p = item.page
+  // ADR-0021: the version panel is per-card local state — every card shows the
+  // same button, and a page-level panel would need a selected-page id that
+  // collides the moment two cards are opened.
+  const [versionOpen, setVersionOpen] = useState(false)
   return (
     <li className={`${s.card} ${rejected ? s.cardRejected : ''}`}>
       <div className={s.cardHead}>
@@ -350,8 +355,13 @@ function ReviewCard({
         </div>
       )}
       {/* Secondary action left, primary right — the page's whole job is the
-          approve/decline decision, so the pair reads as one dialog. */}
+          approve/decline decision, so the pair reads as one dialog. The
+          version toggle (ADR-0021) sits before them: an audit affordance,
+          not a decision. */}
       <div className={s.actions}>
+        <button className="btn btn-sm" disabled={busy} onClick={() => setVersionOpen(v => !v)}>
+          <Icon name="history" size={13} /> {t('review.pageVersions')}
+        </button>
         {!rejected && (
           <>
             <button className="btn btn-sm" disabled={busy} onClick={() => onReject?.(p.id)}>
@@ -368,6 +378,13 @@ function ReviewCard({
           </button>
         )}
       </div>
+      {versionOpen && (
+        <PageVersionHistoryPanel
+          pageId={p.id}
+          onClose={() => setVersionOpen(false)}
+          onRestored={() => setVersionOpen(false)}
+        />
+      )}
     </li>
   )
 }

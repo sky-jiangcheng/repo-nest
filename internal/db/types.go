@@ -14,6 +14,7 @@ type (
 	NoteWithProject = domain.NoteWithProject
 	NoteVersion     = domain.NoteVersion
 	NoteDiff        = domain.NoteDiff
+	PageVersion     = domain.PageVersion
 	TodoCount       = domain.TodoCount
 	NoteCount       = domain.NoteCount
 	DailyStat       = domain.DailyStat

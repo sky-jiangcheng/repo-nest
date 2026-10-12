@@ -78,9 +78,16 @@ type WikiLintReport struct {
 	LLMRan        bool `json:"llm_ran"`
 	// LLMNote says why the model half did not run. "Nothing to report" and
 	// "the feature is off" must not look identical in the output.
-	LLMNote   string `json:"llm_note,omitempty"`
-	ElapsedMS int64  `json:"elapsed_ms"`
-	CheckedAt string `json:"checked_at"`
+	LLMNote string `json:"llm_note,omitempty"`
+	// MergeSuggestions / MergeSuggestNote are ADR-0019 决策 4's model second
+	// judgment over merge candidates. They are separate from LLMRan/LLMNote
+	// because they are separately authorized (wiki_merge_suggest vs
+	// wiki_lint_llm): "the merge judge is off" and "the contradiction judge is
+	// off" are different settings and must not read the same.
+	MergeSuggestions int    `json:"merge_suggestions"`
+	MergeSuggestNote string `json:"merge_suggest_note,omitempty"`
+	ElapsedMS        int64  `json:"elapsed_ms"`
+	CheckedAt        string `json:"checked_at"`
 }
 
 // startWikiLintTicker wires the scheduled half of ADR-0014 决策 5 ("定时与手动触发
@@ -136,6 +143,14 @@ func (s *Service) RunWikiLint(projectID int64, wantLLM bool) (*WikiLintReport, e
 		report.LLMRan = note == ""
 		report.LLMNote = note
 		report.Findings = append(report.Findings, findings...)
+		// ADR-0019 决策 4: the merge candidate second judgment rides the lint
+		// model half (待决 3 — same job kernel, same findings-to-todos path),
+		// but it is gated on its own key, so the two model passes authorize
+		// independently.
+		mergeFindings, mergeNote := s.runWikiMergeSuggest(projectID, pages)
+		report.MergeSuggestions = len(mergeFindings)
+		report.MergeSuggestNote = mergeNote
+		report.Findings = append(report.Findings, mergeFindings...)
 	}
 
 	// Findings arrive from several passes; a stable order keeps the todo dedupe

@@ -48,18 +48,21 @@ func (s *Service) StartCompileJob(projectID int64, maxNotes int) (int64, error) 
 // StartLintJob enqueues the model-backed lint pass and returns the job id
 // without calling the model (ADR-0016 待决 ①).
 //
-// It refuses when the model half is switched off, rather than enqueueing a job
-// that would do nothing: wiki_lint_llm defaults to off precisely because the
-// pass sends page content to a model, and a queued job that silently no-ops is
-// harder to reason about than a refused one.
+// It refuses when BOTH model halves are switched off, rather than enqueueing a
+// job that would do nothing: wiki_lint_llm defaults to off precisely because
+// the pass sends page content to a model, and a queued job that silently no-ops
+// is harder to reason about than a refused one. ADR-0019 决策 4 adds a second,
+// independently-gated half (wiki_merge_suggest), so either key being on is
+// enough to make the job worth queueing.
 func (s *Service) StartLintJob(projectID int64) (int64, error) {
 	if projectID <= 0 {
 		// A queued lint is per-project. The all-pages pass runs on the scheduled
 		// synchronous path; see db.CreateLintJob for why a job cannot span projects.
 		return 0, fmt.Errorf("a project id is required to start a lint job")
 	}
-	if !s.wikiLintLLMEnabled() {
-		return 0, fmt.Errorf("the model-backed checks are off: set %s=1 to let lint read your pages", wikiLintLLMKey)
+	if !s.wikiLintLLMEnabled() && !s.wikiMergeSuggestEnabled() {
+		return 0, fmt.Errorf("the model-backed checks are off: set %s=1 or %s=1 to let lint read your pages",
+			wikiLintLLMKey, wikiMergeSuggestKey)
 	}
 	if _, err := s.aiChatConfig(); err != nil {
 		return 0, fmt.Errorf("no AI endpoint configured: %w", err)

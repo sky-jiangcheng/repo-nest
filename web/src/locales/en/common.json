@@ -698,6 +698,17 @@
     "loadError": "Failed to load the review queue",
     "actionError": "Action failed",
     "pagesUpdated": "updated {{n}} pages",
-    "linksCreated": "created {{n}} links"
+    "linksCreated": "created {{n}} links",
+    "pageVersions": "Version history",
+    "pageVersionHistory": "Page version history",
+    "noPageVersions": "This page has no version history yet",
+    "pageVersionRestored": "Restored. The content before the rollback was kept as a new version",
+    "confirmRestore": "Confirm restore",
+    "restorePageVersion": "Restore this version (the current content is kept as a new version first)",
+    "viewDiff": "View diff",
+    "diff": "Diff",
+    "untitled": "Untitled",
+    "restore": "Restore",
+    "restoring": "Restoring…"
   }
 }

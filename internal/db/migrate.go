@@ -317,6 +317,16 @@ func upgradeSchema(db *sql.DB) error {
 		// cannot attach a CHECK to an existing column; done in one transaction;
 		// reversible by the same DropWikiSchema/EnsureWikiSchema pair the layer uses.
 		{id: 21, fn: EnsureWikiRelationVocabulary},
+		// v23: page version history (ADR-0021). wiki_pages had only two wall
+		// clocks and UpdateWikiPage overwrote in place, so a bad edit was
+		// unrecoverable — the note side fixed this at v8/v11 and pages mirror
+		// it verbatim: full snapshot on real content change (title/content/kind;
+		// status/source/wall-clock touches do not snapshot, the v11 lesson),
+		// 50 kept per page, FK cascade on delete. A plain table with no CHECK
+		// family involved, so no rebuild — reversible by the Drop/Ensure wiki
+		// schema pair like the rest of the layer. v22 stays reserved for lane
+		// 2's page_embeddings (ADR-0018/0021 待决 1).
+		{id: 23, sql: pageVersionsStatements},
 	}
 
 	for _, m := range migrations {

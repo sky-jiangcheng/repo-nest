@@ -84,6 +84,46 @@ var wikiSchemaStatements = []string{
 	`CREATE INDEX IF NOT EXISTS idx_note_repositories_repo ON note_repositories(repository_id)`,
 }
 
+// pageVersionsStatements is ADR-0021's page-side answer to v8/v11's
+// note_versions: wiki_pages could be overwritten in place with no way back,
+// while notes had snapshot + cleanup triggers since v8. Defined once so the
+// v23 migration and a fresh create cannot drift (the page_links discipline).
+//
+// The snapshot trigger fires only when title/content/kind really change —
+// status transitions (pending→approved, reject) and source/wall-clock touches
+// do not snapshot, otherwise the version list fills with no-op entries (the
+// v11 lesson, pinned by TestPageVersions_TriggerPrecision).
+var pageVersionsStatements = []string{
+	`CREATE TABLE IF NOT EXISTS page_versions (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		page_id INTEGER NOT NULL,
+		title TEXT DEFAULT '',
+		content TEXT NOT NULL,
+		kind TEXT DEFAULT 'concept',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (page_id) REFERENCES wiki_pages(id) ON DELETE CASCADE)`,
+	`CREATE INDEX IF NOT EXISTS idx_page_versions_page_id ON page_versions(page_id, created_at DESC)`,
+	`CREATE TRIGGER IF NOT EXISTS page_versions_snap AFTER UPDATE ON wiki_pages` +
+		` FOR EACH ROW WHEN` +
+		`  new.title IS NOT old.title` +
+		`  OR new.content IS NOT old.content` +
+		`  OR new.kind IS NOT old.kind` +
+		` BEGIN` +
+		`  INSERT INTO page_versions(page_id, title, content, kind)` +
+		`  VALUES (new.id, COALESCE(new.title, ''), new.content, new.kind);` +
+		` END`,
+	// Cleanup: keep at most 50 versions per page (same budget as note_versions).
+	`CREATE TRIGGER IF NOT EXISTS page_versions_cleanup AFTER INSERT ON page_versions` +
+		` BEGIN` +
+		`  DELETE FROM page_versions WHERE id IN (` +
+		`   SELECT id FROM page_versions` +
+		`   WHERE page_id = new.page_id` +
+		`   ORDER BY created_at DESC` +
+		`   LIMIT -1 OFFSET 50` +
+		`  );` +
+		` END`,
+}
+
 // WikiKind values. Kept as constants so the CHECK constraint and the Go side
 // cannot drift apart silently (the DB rejects anything else at insert time).
 const (
@@ -508,7 +548,9 @@ func ValidWikiKind(kind string) bool {
 // the migration can share one definition (same contract as EnsureFTSIndex and
 // EnsureNoteEmbedDirty).
 func EnsureWikiSchema(db *sql.DB) error {
-	for _, stmt := range wikiSchemaStatements {
+	// pageVersionsStatements runs here too so a fresh database arrives with
+	// the ADR-0021 layer, not just one that went through the v23 migration.
+	for _, stmt := range append(append([]string{}, wikiSchemaStatements...), pageVersionsStatements...) {
 		if _, err := db.Exec(stmt); err != nil {
 			if isAlreadyExistsErr(err) {
 				continue
@@ -535,6 +577,14 @@ var wikiObjects = []struct {
 	{"TABLE", "wiki_pages"},
 	{"INDEX", "idx_wiki_pages_kind"},
 	{"INDEX", "idx_wiki_pages_project"},
+	// ADR-0021: page_versions references wiki_pages, so it drops first;
+	// its two triggers reference page_versions / wiki_pages and go before
+	// either table. SQLite would cascade these away on DROP TABLE, but
+	// listing them keeps DropWikiSchema's output explicit.
+	{"TRIGGER", "page_versions_cleanup"},
+	{"TRIGGER", "page_versions_snap"},
+	{"TABLE", "page_versions"},
+	{"INDEX", "idx_page_versions_page_id"},
 }
 
 // DropWikiSchema removes the whole derived layer, restoring the pre-v16 schema.

@@ -33,7 +33,10 @@ const schemaVersionKey = "schema_version"
 // queue ADR-0016 待决 ① asked for (the lint model pass joins it).
 // v21 constrained page_links.relation to an eight-type vocabulary (ADR-0018
 // lane 1), rebuilding the table so the graph can be queried by relation.
-const ExpectedSchemaVersion = 21
+// v23 added page_versions (ADR-0021): the page-side twin of v8/v11's
+// note_versions, so an overwritten page can be rolled back. v22 stays reserved
+// for lane 2's page_embeddings (frozen, ADR-0018/0021 待决 1).
+const ExpectedSchemaVersion = 23
 
 // StaleAfterDays is the age at which the repo_meta knowledge cache is reported
 // as stale. The cache feeds generated knowledge (tech stack, readme excerpt,

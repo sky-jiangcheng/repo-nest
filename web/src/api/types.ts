@@ -321,6 +321,17 @@ export interface WikiPendingPage {
   in_links: PageEdge[]
 }
 
+// PageVersion mirrors internal/domain.PageVersion (ADR-0021): a full snapshot
+// of a wiki page, kept per page like NoteVersion is kept per note.
+export interface PageVersion {
+  id: number
+  page_id: number
+  title: string
+  content: string
+  kind: string
+  created_at: string
+}
+
 export interface CompileJob {
   id: number
   project_id: number
