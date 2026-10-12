@@ -3,7 +3,7 @@
 - Status: Proposed (**design only, no code.** Promotion prerequisite: ADR-0018 lane 1 Accepted — community detection propagates along the controlled relation whitelist, so the vocabulary is its foundation. The trigger model (synchronous vs job) in decision 6 / open question 4 is the item most in need of a decision here.)
 - Date: 2026-10-10
 - Relates to: [ADR-0014](0014-llm-wiki-knowledge-compiler.md) (decision 1 lists synthesis among the five kinds; decision 5's lint carries the `no-synthesis` gap check), [ADR-0015](0015-w3-minimal-compile-loop.md) ("MVP does not auto-rewrite synthesis"; only create pending, never edit an approved page; review isolation), [ADR-0016](0016-async-batch-jobs.md) (async jobs, but adding a value to `compile_jobs.kind` = full table rebuild), [ADR-0018](0018-knowledge-graph-foundation.md) (lane 1's vocabulary = the edges this ADR propagates along; lane 2's PPR was "reading the graph the first time", this is the second), [ADR-0019](0019-entity-resolution-merge.md) (merging makes communities cleaner but this ADR does not block on it: split concepts can still be summarized, only at reduced quality); TODO **M7** follow-on; starting schema v21
-- Companion: Phase 4a of `Repotory-知识图谱实施计划-2026-10-09.md`. (Chinese original: `docs/adr/0020-*.md`.)
+- Companion: Phase 4a of `outputs/process-logs/Repotory-知识图谱实施计划-2026-10-09.md`. (Chinese original: `docs/adr/0020-*.md`.)
 
 ## Context
 

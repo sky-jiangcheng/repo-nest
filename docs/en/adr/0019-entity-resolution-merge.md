@@ -3,7 +3,7 @@
 - Status: Proposed (**design only, no code**. The merge execution + structural candidate discovery can start once ADR-0018 lane 1 is Accepted; the "vector similarity" branch of the blocking depends on lane 2's `page_embeddings`, and when lane 2 has not landed that signal is simply absent — it does not block the rest. See promotion criteria at the end.)
 - Date: 2026-10-10
 - Relates to: [ADR-0014](0014-llm-wiki-knowledge-compiler.md) (decision 4 "the compiler only creates"), [ADR-0015](0015-w3-minimal-compile-loop.md) (decision 3 explicitly books "concept splitting → a human merges" as an accepted cost; `reject≠delete`; the compiler never edits an approved page), [ADR-0016](0016-async-batch-jobs.md) (if judging is slow it rides the lint job kernel, not a new kind), [ADR-0018](0018-knowledge-graph-foundation.md) (lane 1's controlled relation vocabulary is the edges a merge repoints; lane 2's page vectors are this ADR's optional signal); TODO **M7** first follow-on; starting schema v21
-- Companion: Phase 3 of `Repotory-知识图谱实施计划-2026-10-09.md`. (Chinese original: `docs/adr/0019-*.md`.)
+- Companion: Phase 3 of `outputs/process-logs/Repotory-知识图谱实施计划-2026-10-09.md`. (Chinese original: `docs/adr/0019-*.md`.)
 
 ## Context
 

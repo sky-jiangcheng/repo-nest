@@ -3,7 +3,7 @@
 - 状态：Proposed（**仅设计，不落代码**。合并执行 + 结构候选发现可在 ADR-0018 lane 1 Accepted 后开工；其中「向量相似度」这一路 blocking 依赖 lane 2 的 `page_embeddings`，未落地时该信号缺席即可、不阻塞其余。晋升条件见末尾）
 - 日期：2026-10-10
 - 关联：[ADR-0014](0014-llm-wiki-knowledge-compiler.md)（决策 4「编译只新建」）、[ADR-0015](0015-w3-minimal-compile-loop.md)（决策 3 白纸黑字把「概念分裂 → 人合并」列为接受的代价；`reject≠delete`；编译器永不改批准页）、[ADR-0016](0016-async-batch-jobs.md)（判等若耗时要并入 lint 的 job 内核，不新开 kind）、[ADR-0018](0018-knowledge-graph-foundation.md)（lane 1 的受控 relation 词表是合并要重指向的边；lane 2 的页向量是本 ADR 的可选信号）；TODO **M7** 后续首条；起点 schema v21
-- 配套：`Repotory-知识图谱实施计划-2026-10-09.md` 的 Phase 3
+- 配套：`outputs/process-logs/Repotory-知识图谱实施计划-2026-10-09.md` 的 Phase 3
 
 ## 背景
 
