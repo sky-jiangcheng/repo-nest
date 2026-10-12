@@ -141,7 +141,7 @@
 ### C11: 插件运行时精简评估（669 行）
 
 - [x] **方案 A（推荐）已完成**：`loader.go`（实际 121 行，非 52）合入 `runtime.go` 末尾「yaegi script loader」段，删除 `loader.go`；`runtime.go` import 合并（+reflect/strings/interp/stdlib），符号无冲突（`exportedTypes`↔`Context`、`loadPlugin`↔`compileScript` 同包互引）；`go build ./... + go vet + go test ./internal/core/plugin/runtime/` 全绿
-- [ ] 方案 B（2.0 考虑）：评估移除 yaegi 依赖，Claude importer 改为内置函数
+- [x] 方案 B（2.0 考虑）——评估已完成（2026-10-12，结论落账于此；**移除本身仍排 2.0**）：**原表述已过时一半**——Claude importer 早已是 Go 原生 `plugin.KnowledgeImporter`（方案 A 时已确认不经 yaegi），「改为内置函数」无从谈起。yaegi 的真实租户只剩**用户脚本插件**：`internal/core/plugin/runtime/runtime.go`（605 行）底部 yaegi script loader 段（`exportedTypes` 注册表 + `safeSymbols` + `compileScript`/`script`，约 494-605 行共约 112 行）+ `:143` 一处调用点；`service.go` 仅注释提及；`go.mod` 唯一依赖 v0.16.1。本机 `plugins/` 目录自 9 月起为空——脚本插件零观测使用。**结论：移除可行且便宜（单文件 + go.mod + docs/plugins/overview.md 三处脚本插件表述），但等于砧掉 ADR-0002 的脚本插件能力**——C2 当年做过一次「插件系统降级」，这是同方向第二步，属产品决策而非纯技术活；建议 2.0 动手时顺带把插件文档改写为「内置 importer 清单」。
 - [x] Claude importer 路径确认不受影响：`internal/importers/claude` 是 Go 原生 `plugin.KnowledgeImporter`，经 `service/plugin.go:100` 的 `rt.RegisterSource` 注册，不走 yaegi `compileScript`/`script` 路径，本次合并不触碰
 
 ### C15: install 脚本评估
@@ -179,6 +179,7 @@
   - **全站归属审计已跑（2026-10-09）**：`web/src/styles/**` 24 个 CSS × 80 个 TS/TSX 的引用文件数 —— **170 个类全站仅 1 个组件引用、32 个类零引用（死代码）**。下一轮候选：`features/notes.css`（22 独占，拆 NoteEditor 与 VersionHistoryPanel，注意 `note-textarea`/`note-title-input`/`note-tags-input` 与 inputs.css 共享族重名）、`components/search.css`（22 独占，`hit-*` → Knowledge、`search-*` → ProjectSearchDropdown）、`command-palette.css`（14 独占）、`toast.css`（6 独占）、`todos.css`（6 独占）；零散残留（`.skeleton-card`/`.tech-chip`/`.badge-*`/`.toggle-*`/`.skeleton-value`/`.skip-link`/`.card-refresh-btn`+`.spin`/`.empty-section`/`.heatmap-empty-state`）可并成一轮；32 个死类建议单独清一轮并写进 CHANGELOG。审计脚本对「字符串里恰好含类名」会误报（如 `.status-bar` 被 `api/endpoints.ts` 命中），需人工过一遍。
   - **空壳类已定性收口（v1.16.2）**：10 个 markup 在用、全站无 CSS 定义的类（`ai-url-row`/`chart-simple`/`commit-log`/`commits-trend`/`knowledge-section`/`large`/`overview-empty`/`status-warn`/`knowledge`/`settings`）在对应组件里注释为预留钩子，保留不动（原「累计 4 个」清单被全站审计补全）。
   - **2026-10-12 收尾（v1.16.2）**：notes.css / search.css / command-palette.css / toast.css / todos.css 五文件的组件独占类下沉对应 module；散落 20 类 → 新建 `App.module.css`；`navbar.css` 整文件并入；`messages.css` 分发 Dashboard / ErrorBanner / ErrorBoundary / NotFound 四个 module；`tabs.css` 三个单组件类 → Settings / NoteFilterBar / ScopeToggle；共享族（buttons/cards/inputs/tabs 四文件 + `.message-banner` + search 动态类）合并为显式 `design-system/shared.css`（文件头标明设计系统 API）；8 条零引用死类删除；`main.tsx` 导入顺序调整为 index.css 先于 App（dev 注入顺序与设计系统优先级一致）。计数：全局 **2,562 → 1,227 行（12 文件）**、module 2,997 → **4,435 行（35 文件）**；顺序不变量由 `semanticInk.test.ts` 守护。剩余：人工实机复核。
+  - **2026-10-12 复审计数（agent 静态复核）**：全局 12 文件共定义 77 类，其中 7 类多文件定义（共享族）；静态零引用候选 8 个（`callout-tip`/`callout-important`/`callout-warning`/`callout-caution`/`callout-question`/`mermaid-render`/`katex-display`/`task-list`）逐一核实全部为 markdown 管线运行时生成类（`markdown.ts:118` 的 `callout-${type}` 模板拼接、KaTeX/Mermaid 渲染输出、GFM task list）——**真死类 0**，收口结论成立。
 
 ### P36: `knowledge.go` 进一步拆分评估（536 行）
 

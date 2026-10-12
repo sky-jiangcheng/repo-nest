@@ -69,3 +69,6 @@ assets/releases/
 
 # 本地 W3 编译演练产物（真库副本 + 演练工作区）
 .w3-rehearsal/
+
+# 本地检索标注预备产物（queryset 工作表 + 真库一次性副本 + 工具二进制，含用户笔记清单）
+.annotation-prep/
