@@ -32,6 +32,7 @@ export default defineConfig({
         // Ensure each page becomes its own chunk so lazy-loaded navigation
         // only fetches the code needed for the destination route.
         manualChunks(id) {
+          if (id.includes('src/pages/Home')) return 'home'
           if (id.includes('src/pages/Dashboard')) return 'dashboard'
           if (id.includes('src/pages/Knowledge')) return 'knowledge'
           if (id.includes('src/pages/ProjectDetail')) return 'projectDetail'

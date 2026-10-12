@@ -238,6 +238,18 @@ export interface ImportRun {
   skipped: number
 }
 
+// HandoffEntry is one row of the first-screen memory ring (D25): a handoff
+// note as a content-free entry point. Opening an entry routes to the project;
+// the body stays on the knowledge page. Matches Go service.HandoffEntry.
+export interface HandoffEntry {
+  note_id: number
+  project_id: number
+  project_name: string
+  title: string
+  updated_at: string
+  auto_captured: boolean
+}
+
 // HandoffResult is what a session capture persists (matches Go service.HandoffResult).
 export interface HandoffResult {
   note_id: number

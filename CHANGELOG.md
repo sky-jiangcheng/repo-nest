@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **首屏对齐（D25，[ADR-0017](docs/adr/0017-one-kernel-two-entry-points.md)）：记忆环入口 + 项目状态并排**：路由 `/` 改渲染新首页——左栏记忆环（最近 handoff 列表 + 全局检索框，检索复用 SearchAll 的笔记+todo 口径），右栏完整嵌入既有 Dashboard（目标环、热力图、工作日告警、项目卡片全部保留同屏，不删除不隐藏）。新增 `ListRecentHandoffs`：内容免费条目（note_id / 项目 / 标题 / 时间 / 自动捕捉徽章），正文永远留在知识库页；Command Palette（⌘K）首位动作改为「新建 handoff」——选项目即捕捉最近 Claude 会话，未开启捕捉时错误内联展示；知识库整体移至 `/knowledge`（能力不变），导航新增「首页」。测试新增 18 文件 118 用例全绿（Dashboard 首次有专属组件测试）。
+
 ### 变更
 
 - **移除进程内脚本插件运行时（yaegi，C11 方案 B）**：`plugins/` 目录不再加载用户脚本插件——yaegi 解释器、脚本加载（`Load`/`loadPlugin`）、插件事件总线（`Emit`，四个服务侧调用点一并删除，UI 导入通知走 `onImportEvent` 不受影响）与插件状态数据全部退役，`go.mod` 去掉 `traefik/yaegi` 依赖。**六个内置知识源（claude/codex/opencode/openclaw/hermes/cursor）不受影响**：注册、设置页手动触发、幂等 upsert 与 `auto_import` 隐私门原样保留，`GetKnowledgeSources`/`TriggerKnowledgeImport` 等 RPC 不变；`GetPluginStatuses`/`ReloadPlugins` 两个绑定此前无任何前端调用，随能力一并移除。若你曾写过脚本插件：升级后不再加载，可直接删除 `plugins/` 下的旧目录（troubleshooting 有说明）。文档双语改写为「内置 importer 清单」叙事，ADR-0002 加状态注记。

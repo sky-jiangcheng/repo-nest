@@ -54,6 +54,8 @@ import (
 //   Plugins/knowledge sources: GetKnowledgeSources, TriggerKnowledgeImport,
 //                              TriggerAllKnowledgeImports, ImportClaudeMemory,
 //                              CaptureClaudeHandoff
+//   Memory ring (D25 first screen): ListRecentHandoffs — content-free
+//                    entries; reading a handoff stays on the knowledge page
 //   IDE chrome: LatestHandoff (timestamp/title only; content stays behind notes_read)
 //
 // Conversely these MCP tools have no binding (agent-only flows, served straight
@@ -285,6 +287,13 @@ func (a *App) TriggerAllKnowledgeImports() []pluginruntime.SourceRun {
 // ImportClaudeMemory imports notes from Claude's memory directories.
 func (a *App) ImportClaudeMemory() (*service.ImportResult, error) {
 	return a.svc.ImportClaudeMemory()
+}
+
+// ListRecentHandoffs returns the first-screen memory ring's recent handoffs
+// (content-free entries, newest first; D25). Desktop-only: the ring is the
+// human entry point, agents read via repotory_notes_read / repotory_context.
+func (a *App) ListRecentHandoffs(limit int) []service.HandoffEntry {
+	return a.svc.ListRecentHandoffs(limit)
 }
 
 // CaptureClaudeHandoff runs an on-demand M1 session capture for one project

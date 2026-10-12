@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getProjects, searchAll, SearchHit } from '../api/client'
+import { getProjects, searchAll, captureClaudeHandoff, SearchHit } from '../api/client'
 import { useTranslation } from 'react-i18next'
 import DOMPurify from 'dompurify'
 import { useApiData } from '../hooks/useApiData'
@@ -23,6 +23,11 @@ export default function CommandPalette({ open, onClose }: Props) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<SearchHit[]>([])
+  // Handoff mode (D25, ADR-0017 附录 4): the palette's first action switches
+  // into project-pick for a one-click Claude-session capture, so creating a
+  // handoff is reachable from the keyboard without leaving the palette.
+  const [handoffMode, setHandoffMode] = useState(false)
+  const [handoffMsg, setHandoffMsg] = useState<{ ok: boolean; text: string } | null>(null)
   // All-projects list for the quick-jump suggestions, shared with NoteSection
   // via the same cache key so only one request is ever made.
   const { data: projectsData } = useApiData(() => getProjects(undefined, false), [], { cacheKey: 'projects:all' })
@@ -40,6 +45,8 @@ export default function CommandPalette({ open, onClose }: Props) {
       setQuery('') // eslint-disable-line react-hooks/set-state-in-effect
       setHits([])
       setActiveIndex(0)
+      setHandoffMode(false)
+      setHandoffMsg(null)
       setTimeout(() => inputRef.current?.focus(), 30)
     } else {
       // Restore focus to the triggering element when the palette closes.
@@ -52,7 +59,7 @@ export default function CommandPalette({ open, onClose }: Props) {
   }, [open])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || handoffMode) return
     const trimmed = query.trim()
     if (!trimmed) { setHits([]); setActiveIndex(0); return } // eslint-disable-line react-hooks/set-state-in-effect
     let cancelled = false
@@ -62,7 +69,7 @@ export default function CommandPalette({ open, onClose }: Props) {
       }).catch(() => { if (!cancelled) setHits([]) })
     }, 150)
     return () => { cancelled = true; clearTimeout(timer) }
-  }, [query, open])
+  }, [query, open, handoffMode])
 
   const filteredProjects = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -70,7 +77,11 @@ export default function CommandPalette({ open, onClose }: Props) {
     return projects.filter(p => p.name.toLowerCase().includes(q)).slice(0, 5)
   }, [projects, query])
 
-  const totalItems = hits.length + filteredProjects.length
+  // The memory-ring action sits at index 0 of the idle (empty-query) list:
+  // ADR-0017 附录 4 「Command Palette 首位动作改为新建 handoff」.
+  const showHandoffAction = !handoffMode && !query.trim()
+
+  const totalItems = (showHandoffAction ? 1 : 0) + hits.length + filteredProjects.length
   const activeId = totalItems > 0 ? `cmdk-opt-${activeIndex}` : undefined
 
   // Keep the active option in view as the user navigates with the arrow keys,
@@ -80,7 +91,33 @@ export default function CommandPalette({ open, onClose }: Props) {
     document.getElementById(activeId)?.scrollIntoView({ block: 'nearest' })
   }, [activeId, open])
 
+  const runCapture = (projectID: number) => {
+    captureClaudeHandoff(projectID)
+      .then(r => {
+        setHandoffMsg({ ok: true, text: t('commandPalette.handoffOk', { defaultValue: '已创建：{{title}}', title: r?.title ?? '' }) })
+        setTimeout(onClose, 1600)
+      })
+      .catch((e: unknown) => {
+        setHandoffMsg({
+          ok: false,
+          text: t('commandPalette.handoffFail', {
+            defaultValue: '捕捉失败：{{msg}}',
+            msg: e instanceof Error ? e.message : String(e),
+          }),
+        })
+      })
+  }
+
   const goto = (index: number) => {
+    if (handoffMode) {
+      const p = filteredProjects[index]
+      if (p) runCapture(p.id)
+      return
+    }
+    if (showHandoffAction) {
+      if (index === 0) { setHandoffMode(true); setActiveIndex(0); return }
+      index -= 1
+    }
     if (index < hits.length) {
       const h = hits[index]
       if (h) { navigate(`/project/${h.project_id}`); onClose() }
@@ -129,21 +166,44 @@ export default function CommandPalette({ open, onClose }: Props) {
           placeholder={t('commandPalette.placeholder')}
           className={`cmdk-input ${s.cmdkInput}`}
         />
-        <div className={s.cmdkResults} id="cmdk-results" role="listbox" aria-label={t('commandPalette.groupNotes')}>
-          {hits.length === 0 && filteredProjects.length === 0 && (
+        <div className={s.cmdkResults} id="cmdk-results" role="listbox" aria-label={handoffMode ? t('commandPalette.pickProject', { defaultValue: '选择要捕捉的项目' }) : t('commandPalette.groupNotes')}>
+          {handoffMode && filteredProjects.length > 0 && (
+            <div className={s.cmdkGroup}>{t('commandPalette.pickProject', { defaultValue: '选择要捕捉的项目' })}</div>
+          )}
+          {(handoffMode ? filteredProjects.length === 0 : hits.length === 0 && filteredProjects.length === 0) && (
             <div className={s.cmdkEmpty}>{query.trim() ? t('commandPalette.noResults', { defaultValue: 'No results' }) : t('commandPalette.startSearch', { defaultValue: 'Start searching' })}</div>
           )}
+          {showHandoffAction && (
+            <button
+              type="button"
+              id="cmdk-opt-0"
+              role="option"
+              aria-selected={activeIndex === 0}
+              tabIndex={-1}
+              className={`${s.cmdkItem} ${activeIndex === 0 ? s.cmdkItemActive : ''}`}
+              onMouseEnter={() => setActiveIndex(0)}
+              onClick={() => { setHandoffMode(true); setHits([]); setActiveIndex(0) }}
+            >
+              <span className={`${s.cmdkType} ${s.cmdkTypeNote}`}>{t('commandPalette.newHandoffMark', { defaultValue: '新建' })}</span>
+              <div className={s.cmdkItemBody}>
+                <div className={s.cmdkItemTitle}>{t('commandPalette.newHandoff', { defaultValue: '新建 handoff' })}</div>
+                <div className={s.cmdkItemSub}>{t('commandPalette.newHandoffHint', { defaultValue: '捕捉最近的 Claude 会话为交接笔记' })}</div>
+              </div>
+            </button>
+          )}
           {hits.length > 0 && <div className={s.cmdkGroup}>{t('commandPalette.groupNotes')}</div>}
-          {hits.map((h, i) => (
+          {hits.map((h, i) => {
+            const idx = i + (showHandoffAction ? 1 : 0)
+            return (
             <Link
               key={`${h.type}-${h.id}`}
-              id={`cmdk-opt-${i}`}
+              id={`cmdk-opt-${idx}`}
               to={`/project/${h.project_id}`}
-              className={`${s.cmdkItem} ${activeIndex === i ? s.cmdkItemActive : ''}`}
+              className={`${s.cmdkItem} ${activeIndex === idx ? s.cmdkItemActive : ''}`}
               role="option"
-              aria-selected={activeIndex === i}
+              aria-selected={activeIndex === idx}
               tabIndex={-1}
-              onMouseEnter={() => setActiveIndex(i)}
+              onMouseEnter={() => setActiveIndex(idx)}
               onClick={onClose}
             >
               <span className={`${s.cmdkType} ${h.type === 'note' ? s.cmdkTypeNote : s.cmdkTypeTodo}`}>{h.type === 'note' ? t('commandPalette.noteMark') : t('commandPalette.todoMark')}</span>
@@ -152,9 +212,31 @@ export default function CommandPalette({ open, onClose }: Props) {
                 <div className={s.cmdkItemSub}>{h.project_name} · <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(h.snippet.slice(0, 60)) }} /></div>
               </div>
             </Link>
-          ))}
+            )
+          })}
           {filteredProjects.map((p, i) => {
-            const idx = hits.length + i
+            const idx = hits.length + (showHandoffAction ? 1 : 0) + i
+            if (handoffMode) {
+              return (
+                <button
+                  type="button"
+                  key={p.id}
+                  id={`cmdk-opt-${i}`}
+                  className={`${s.cmdkItem} ${activeIndex === i ? s.cmdkItemActive : ''}`}
+                  role="option"
+                  aria-selected={activeIndex === i}
+                  tabIndex={-1}
+                  onMouseEnter={() => setActiveIndex(i)}
+                  onClick={() => runCapture(p.id)}
+                >
+                  <span className={`${s.cmdkType} ${s.cmdkTypeProject}`}>{t('commandPalette.projectMark')}</span>
+                  <div className={s.cmdkItemBody}>
+                    <div className={s.cmdkItemTitle}>{p.name}</div>
+                    <div className={s.cmdkItemSub}>{t('commandPalette.reposCount', { count: p.repo_count })}</div>
+                  </div>
+                </button>
+              )
+            }
             return (
               <Link
                 key={p.id}
@@ -176,6 +258,9 @@ export default function CommandPalette({ open, onClose }: Props) {
             )
           })}
         </div>
+        {handoffMsg && (
+          <div className={`${s.cmdkEmpty} ${handoffMsg.ok ? s.cmdkMsgOk : s.cmdkMsgError}`} role="status">{handoffMsg.text}</div>
+        )}
         <div className={s.cmdkFoot}>
           <span>{t('commandPalette.footSelect')}</span><span>{t('commandPalette.footOpen')}</span><span>{t('commandPalette.footClose')}</span>
         </div>

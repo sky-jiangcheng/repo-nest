@@ -1,0 +1,175 @@
+/* Home (D25 first screen, ADR-0017): memory-ring entry + project status,
+   side by side. The left column is the agent-memory entry (recent handoffs +
+   global search); the right column embeds the intact Dashboard — the ADR
+   requires it kept on the first screen, unchanged and visible by default.
+
+   Height model: .mainContent is a flex column with its own page scroller.
+   In wide mode this grid fills it exactly (height: 100%) and each column
+   scrolls internally — Dashboard brings its own .scroll container, so the
+   wrapper must hand it a definite height (min-height: 0 is load-bearing).
+   In stacked mode (<= 1080px) the page scrolls naturally again and the
+   Dashboard wrapper gets a viewport-based height so its internal scroller
+   keeps working without touching Dashboard's own CSS. */
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: 24px;
+  height: 100%;
+  min-height: 0;
+}
+
+.ring {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-right: 4px;
+}
+
+.ringHead h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.ringSub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.searchBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hits {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.hit {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.hit:hover {
+  background: var(--bg-hover);
+}
+
+.hitBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hitTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.hitSub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.noHits {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 4px 2px;
+}
+
+.handoffBlock h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.handoffList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.handoffItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.handoffItem:hover {
+  background: var(--bg-hover);
+}
+
+.handoffTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.handoffMeta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.autoBadge {
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  padding: 0 6px;
+}
+
+.dashWrap {
+  min-height: 0;
+  height: 100%;
+}
+
+@media (max-width: 1080px) {
+  .grid {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .ring {
+    overflow-y: visible;
+  }
+
+  .dashWrap {
+    height: calc(100vh - 200px);
+    min-height: 460px;
+  }
+}

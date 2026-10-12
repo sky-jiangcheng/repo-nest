@@ -35,9 +35,16 @@ function installWailsBindings() {
   // against.
   const bindings: Record<string, (...args: unknown[]) => Promise<unknown>> = {
     Health: () => Promise.resolve({ status: 'ok' }),
-    ListAllNotes: () => Promise.resolve([]),
-    ListAllTags: () => Promise.resolve([]),
+    // First screen (D25): Home calls the memory ring; the embedded Dashboard
+    // panel calls its own summary/heatmap/status endpoints on mount.
+    ListRecentHandoffs: () => Promise.resolve([]),
     ListProjects: () => Promise.resolve([]),
+    GetSummary: () => Promise.resolve(null),
+    GetTodoCounts: () => Promise.resolve([]),
+    GetNoteCounts: () => Promise.resolve([]),
+    GetHeatmapData: () => Promise.resolve([]),
+    GetStatusBar: () => Promise.resolve(null),
+    GetScanStatus: () => Promise.resolve({ running: false, backfilling: false, message: '', progress: 0, total: 0 }),
     GetConfig: () => Promise.resolve({}),
   }
   const app = new Proxy(bindings, {
@@ -90,9 +97,10 @@ describe('App desktop shell', () => {
       () => expect(screen.getAllByText(/^(Knowledge|知识库)$/).length).toBeGreaterThan(0),
       { timeout: LAZY_CHUNK_TIMEOUT },
     )
-    // The lazy Knowledge page resolves next; its h1 comes from knowledge.title.
+    // The lazy Home page resolves next; the memory ring heading comes from
+    // home.ringTitle (ADR-0017 first screen).
     await waitFor(
-      () => expect(screen.getAllByText(/Knowledge Base|知识库/).length).toBeGreaterThan(0),
+      () => expect(screen.getAllByText(/^(记忆环|Memory Ring)$/).length).toBeGreaterThan(0),
       { timeout: LAZY_CHUNK_TIMEOUT },
     )
     const body = document.body.textContent ?? ''
@@ -103,14 +111,14 @@ describe('App desktop shell', () => {
   it('routes backend calls through the Wails binding, not HTTP fetch', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
     await mountApp()
-    await waitFor(() => expect(wailsCalls).toContain('ListAllNotes'), { timeout: LAZY_CHUNK_TIMEOUT })
+    await waitFor(() => expect(wailsCalls).toContain('ListRecentHandoffs'), { timeout: LAZY_CHUNK_TIMEOUT })
     expect(fetchSpy).not.toHaveBeenCalled()
     fetchSpy.mockRestore()
   }, LAZY_CHUNK_TIMEOUT)
 
   it('shows no error banner', async () => {
     await mountApp()
-    await waitFor(() => expect(wailsCalls).toContain('ListAllNotes'), { timeout: LAZY_CHUNK_TIMEOUT })
+    await waitFor(() => expect(wailsCalls).toContain('ListRecentHandoffs'), { timeout: LAZY_CHUNK_TIMEOUT })
     const body = document.body.textContent ?? ''
     expect(body).not.toMatch(/did not match the expected pattern/)
     expect(document.querySelector('.conn-banner')).toBeNull()

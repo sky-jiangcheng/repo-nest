@@ -129,3 +129,14 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* Handoff-capture result line (D25): success confirms and auto-closes, a
+   failed capture stays visible so the gate error (claude_session_capture off)
+   is readable instead of a silent nothing. */
+.cmdkMsgOk {
+  color: var(--success);
+}
+
+.cmdkMsgError {
+  color: var(--text-danger);
+}

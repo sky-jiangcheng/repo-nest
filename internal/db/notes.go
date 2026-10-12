@@ -163,6 +163,43 @@ func LatestHandoffNote(db *sql.DB, projectID int64) (*Note, error) {
 	return note, nil
 }
 
+// ListRecentHandoffNotes returns the most recently updated handoff-tagged
+// notes joined with their project name. projectID>0 scopes to one project;
+// limit<=0 means no cap (callers clamp — the service layer does). It powers
+// the first-screen memory ring (D25): the same tag predicate as
+// LatestHandoffNote, but a window instead of a single row.
+func ListRecentHandoffNotes(db *sql.DB, projectID int64, limit int) ([]NoteWithProject, error) {
+	query := "SELECT n.id, n.project_id, n.title, n.content, n.tags, n.kind, n.pinned, n.source, n.sort_order, n.created_at, n.updated_at, p.name " +
+		"FROM project_notes n JOIN projects p ON p.id = n.project_id " +
+		"WHERE ',' || REPLACE(LOWER(n.tags), ' ', '') || ',' LIKE '%,handoff,%'"
+	args := []any{}
+	if projectID > 0 {
+		query += " AND n.project_id = ?"
+		args = append(args, projectID)
+	}
+	query += " ORDER BY n.updated_at DESC, n.id DESC"
+	if limit > 0 {
+		// limit is a validated int from Go code, not user input, so
+		// interpolating it keeps the query shape static (SQLite has no
+		// parameter placeholder for LIMIT in every build).
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var notes []NoteWithProject
+	for rows.Next() {
+		var np NoteWithProject
+		if err := rows.Scan(&np.ID, &np.ProjectID, &np.Title, &np.Content, &np.Tags, &np.Kind, &np.Pinned, &np.Source, &np.SortOrder, &np.CreatedAt, &np.UpdatedAt, &np.ProjectName); err != nil {
+			return nil, err
+		}
+		notes = append(notes, np)
+	}
+	return notes, rows.Err()
+}
+
 // UpdateNote updates the content of a note. An absent id yields an error.
 func UpdateNote(db *sql.DB, noteID int64, content string) error {
 	if err := ValidateNoteBounds("", content, ""); err != nil {

@@ -14,8 +14,10 @@ import BrandMark from './components/BrandMark'
 import { ToastContext } from './hooks/useToast'
 import s from './App.module.css'
 
-// Lazy-loaded pages. The initial route (Knowledge) is still eagerly loaded by
-// the browser, but subsequent navigations only fetch the chunks that are needed.
+// Lazy-loaded pages. The initial route (Home, the D25 memory-ring + project
+// status first screen) is still eagerly loaded by the browser, but subsequent
+// navigations only fetch the chunks that are needed.
+const Home = lazy(() => import('./pages/Home'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
 const Settings = lazy(() => import('./pages/Settings'))
@@ -74,7 +76,10 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
             <span className={`${s.NavBrandName}`}>Repotory</span>
           </Link>
           <div className={`${s.navLinks}`}>
-            <Link to="/" className={navClass(pathname === '/' || pathname === '/knowledge')}>
+            <Link to="/" className={navClass(pathname === '/')}>
+              {t('nav.home', { defaultValue: '首页' })}
+            </Link>
+            <Link to="/knowledge" className={navClass(pathname === '/knowledge')}>
               {t('nav.knowledge')}
             </Link>
             <Link to="/dashboard" className={navClass(pathname === '/dashboard' || pathname.startsWith('/project'))}>
@@ -258,7 +263,7 @@ function RoutedApp() {
     <ErrorBoundary resetKey={pathname}>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={<Knowledge />} />
+          <Route path="/" element={<Home />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/project/:id" element={<ProjectDetail />} />
           <Route path="/knowledge" element={<Knowledge />} />

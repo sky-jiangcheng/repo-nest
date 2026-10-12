@@ -3,6 +3,7 @@ package service
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -111,6 +112,60 @@ type HandoffStatus struct {
 	ProjectID int64  `json:"project_id"`
 	Title     string `json:"title"`
 	UpdatedAt string `json:"updated_at"`
+}
+
+// HandoffEntry is one row of the first-screen memory ring (D25). Like
+// HandoffStatus it is deliberately content-free: the ring is an entry point,
+// not a reader — opening an entry routes to the project it belongs to, and
+// the handoff body stays on the knowledge page.
+type HandoffEntry struct {
+	NoteID       int64  `json:"note_id"`
+	ProjectID    int64  `json:"project_id"`
+	ProjectName  string `json:"project_name"`
+	Title        string `json:"title"`
+	UpdatedAt    string `json:"updated_at"`
+	AutoCaptured bool   `json:"auto_captured"`
+}
+
+// The memory-ring window is a glanceable list, not a query result: callers
+// without an explicit limit get the default, and larger asks are clamped.
+const (
+	defaultRecentHandoffLimit = 10
+	maxRecentHandoffLimit     = 50
+)
+
+// ListRecentHandoffs returns the newest handoff notes for the first-screen
+// memory ring, newest first. limit<=0 takes the default; larger asks are
+// clamped. A database error logs and returns what was read (nil on total
+// failure): the ring degrades to its empty state instead of erroring the
+// whole first screen.
+func (s *Service) ListRecentHandoffs(limit int) []HandoffEntry {
+	if limit <= 0 {
+		limit = defaultRecentHandoffLimit
+	}
+	if limit > maxRecentHandoffLimit {
+		limit = maxRecentHandoffLimit
+	}
+	notes, err := db.ListRecentHandoffNotes(s.db, 0, limit)
+	if err != nil {
+		log.Printf("ListRecentHandoffs: %v", err)
+		return nil
+	}
+	out := make([]HandoffEntry, 0, len(notes))
+	for _, n := range notes {
+		out = append(out, HandoffEntry{
+			NoteID:      n.ID,
+			ProjectID:   n.ProjectID,
+			ProjectName: n.ProjectName,
+			Title:       n.Title,
+			UpdatedAt:   n.UpdatedAt,
+			// The auto-capture tag is written as "handoff, auto-captured"
+			// (handoff_capture.go); normalize the same way the SQL predicate
+			// does so the badge matches what actually got imported.
+			AutoCaptured: strings.Contains(strings.ReplaceAll(strings.ToLower(n.Tags), " ", ""), "auto-captured"),
+		})
+	}
+	return out
 }
 
 // LatestHandoff returns the newest handoff note's status. projectID>0 scopes

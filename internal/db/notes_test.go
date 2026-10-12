@@ -68,6 +68,65 @@ func TestNoteWriteBoundsAtDBLayer(t *testing.T) {
 // Deleting a note must not leave its embedding behind: orphaned vectors
 // consume KNN's k budget and are invisible to the inner-join materialisation,
 // so semantic recall degrades silently until a full rebuild.
+// TestListRecentHandoffNotes pins the memory-ring query (D25): the handoff
+// tag predicate, newest-first ordering (updated_at, then id as the tiebreak
+// for same-second writes), the limit, the project scope, and the join that
+// carries the project name. Decoys with lookalike tags ("handoff-ish") must
+// never match.
+func TestListRecentHandoffNotes(t *testing.T) {
+	database := setupTestDB(t)
+	defer database.Close()
+	pidA := createTestProject(t, database, "proj-a")
+	pidB := createTestProject(t, database, "proj-b")
+
+	mk := func(pid int64, title, tags string) int64 {
+		t.Helper()
+		n, err := CreateNoteEx(database, pid, title, "body of "+title, tags, "knowledge", "mcp")
+		if err != nil {
+			t.Fatalf("CreateNoteEx %s: %v", title, err)
+		}
+		return n.ID
+	}
+	mk(pidA, "handoff one", "handoff")
+	mk(pidA, "handoff auto", "handoff, auto-captured")
+	mk(pidB, "handoff two", "handoff, extra")
+	mk(pidA, "plain note", "knowledge")
+	mk(pidA, "handoff-ish decoy", "handoff-ish")
+
+	all, err := ListRecentHandoffNotes(database, 0, 0)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(all) != 3 {
+		t.Fatalf("expected 3 handoff notes, got %d: %+v", len(all), all)
+	}
+	// Same-second writes order by id DESC: the newest-created handoff first.
+	if all[0].Title != "handoff two" || all[0].ProjectID != pidB {
+		t.Fatalf("newest-first violated: %+v", all)
+	}
+	for _, n := range all {
+		if n.ProjectName == "" {
+			t.Errorf("project name not joined: %+v", n)
+		}
+	}
+
+	scoped, err := ListRecentHandoffNotes(database, pidB, 0)
+	if err != nil {
+		t.Fatalf("scoped list: %v", err)
+	}
+	if len(scoped) != 1 || scoped[0].Title != "handoff two" {
+		t.Fatalf("project scope broken: %+v", scoped)
+	}
+
+	capped, err := ListRecentHandoffNotes(database, 0, 2)
+	if err != nil {
+		t.Fatalf("capped list: %v", err)
+	}
+	if len(capped) != 2 {
+		t.Fatalf("limit ignored: got %d", len(capped))
+	}
+}
+
 func TestDeleteNoteRemovesEmbedding(t *testing.T) {
 	database := setupTestDB(t)
 	defer database.Close()
