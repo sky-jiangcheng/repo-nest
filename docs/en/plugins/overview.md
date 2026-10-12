@@ -5,13 +5,13 @@ order: 8
 
 # Knowledge Source Import
 
-> ⚠️ **Experimental**: the plugin system interface may change and is not a platform extension direction (see [ADR-0006](../adr/0006-scope-freeze.md)).
+> **Note**: knowledge-source import is not open to user scripts — the in-process script-plugin runtime (yaegi, [ADR-0002](../adr/0002-c-end-repositioning.md)) was removed in C11. The source list is entirely built in and only grows with releases.
 
-Repotory imports documents into the knowledge base idempotently. Six sources ship **built in** as ordinary Go implementations of `plugin.KnowledgeImporter`; yaegi only carries *user-authored script* plugins, so the built-in path does not depend on the interpreter at all.
+Repotory imports documents into the knowledge base idempotently. All six sources ship **built in** as ordinary Go implementations of `plugin.KnowledgeImporter`; the in-process script-plugin runtime (yaegi) was removed in C11, so there is no user-authored importer entry point.
 
 ```mermaid
 flowchart TB
-    SRC["Knowledge sources<br/>6 built-in agent-memory sources"] --> RUN["Built-in importer reads<br/>or a yaegi script plugin emits"]
+    SRC["Knowledge sources<br/>6 built-in agent-memory sources"] --> RUN["Built-in importers read"]
     RUN --> KEY["Idempotency key<br/>(project_id, source, title)"]
     KEY --> HIT{"Existing note found?"}
     HIT -->|"yes"| UPD["Update the existing note<br/>content + metadata"]
@@ -25,7 +25,7 @@ flowchart TB
     class DB store
 ```
 
-How to read it: both entry points (the built-in agent-memory sources, and plugin scripts) **converge on one upsert path**, and idempotency is guaranteed by the triple `(project_id, source, title)`. Re-importing therefore **updates** rather than creating duplicates — running the import again never makes the knowledge base dirtier. Writes go through a trigger that syncs the FTS index, so imported documents are immediately searchable via `repotory_notes_search`.
+How to read it: all sources **converge on one upsert path**, and idempotency is guaranteed by the triple `(project_id, source, title)`. Re-importing therefore **updates** rather than creating duplicates — running the import again never makes the knowledge base dirtier. Writes go through a trigger that syncs the FTS index, so imported documents are immediately searchable via `repotory_notes_search`.
 
 Note the last branch: **a document that cannot be matched to a project is not stored at all** — it is only counted in `skipped`. When `openclaw` / `hermes` have no target project configured, every one of their documents lands in this branch.
 

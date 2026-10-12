@@ -30,7 +30,7 @@ How to read it: the arrows show call direction, and the layers **thin out** as y
 
 **All three entry points — the Wails desktop app, MCP (`cmd/mcp`), and headless HTTP (`cmd/server`) — share the same service implementation**, so behavior is always consistent and every new feature is implemented only once. Two exceptions talk to db directly: `internal/core/plugin/runtime` (the upsert pipeline for plugin knowledge imports) and `internal/importers/claude` (Claude memory reads) — both are pre-existing conventions outside the service.
 
-Supporting packages: `internal/domain` (cross-layer row types), `internal/version` (version SSOT), `internal/diff` (line-level note diffs), `internal/stats` (git log parsing), `internal/knowledge` (repository knowledge mining), `internal/scanner` + `internal/grouper` (scanning and grouping), `internal/platform` (OS differences), `internal/core/plugin` (plugin SPI + yaegi runtime), `internal/integrity` (data trustworthiness audit: 6 read-only checks including FTS drift, orphan rows, and cache freshness), `internal/httpapi` (headless HTTP JSON API, the HTTP shell over the service), `internal/importers/claude` (idempotent Claude memory imports).
+Supporting packages: `internal/domain` (cross-layer row types), `internal/version` (version SSOT), `internal/diff` (line-level note diffs), `internal/stats` (git log parsing), `internal/knowledge` (repository knowledge mining), `internal/scanner` + `internal/grouper` (scanning and grouping), `internal/platform` (OS differences), `internal/core/plugin` (knowledge-source SPI), `internal/integrity` (data trustworthiness audit: 6 read-only checks including FTS drift, orphan rows, and cache freshness), `internal/httpapi` (headless HTTP JSON API, the HTTP shell over the service), `internal/importers/claude` (idempotent Claude memory imports).
 
 ## Key data flows
 
@@ -71,9 +71,9 @@ flowchart TB
 
 How to read it: **one write, two read paths**. When a note is persisted, triggers maintain the FTS index (the retrieval side) and the version snapshot (the history side) at the same time — the application layer has zero maintenance code, so the index cannot drift out of sync with the content unless the triggers are broken (which is exactly what `repotory_integrity` checks, see [AI integration](features/ai-integration.md#readiness-vs-data-trust)). The retrieval side reads the trigram index for relevance and snippets; the history side reads snapshots to compute the LCS diff. Details in [ADR-0003](adr/0003-fts5-search.md).
 
-### Plugin runtime (ADR-0002)
+### Knowledge-source runtime (ADR-0002, amended by C11)
 
-yaegi interprets `<config>/repotory/plugins/*/plugin.go`; event bus + knowledge source registry; the built-in `claude` importer and script plugins share the same upsert path.
+The script-plugin runtime (yaegi) has been removed (C11); the knowledge-source registry and the idempotent upsert pipeline remain, with the six built-in agent-memory sources (claude/codex/opencode/openclaw/hermes/cursor) registered via `RegisterSource`/`RegisterSourceManual`.
 
 ## Frontend (web/src)
 

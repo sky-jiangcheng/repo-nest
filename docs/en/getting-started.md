@@ -92,7 +92,7 @@ The first four steps only *register* your repositories; what actually makes the 
 | Project understanding and retrieval | Core | Command palette `⌘/Ctrl+K`, global search, project context navigation |
 | AI integration | Core | llms.txt, note export, MCP server (with agent-score self-check; see [AI Integration](features/ai-integration.md)) |
 | Dashboard | Supporting | Daily goal progress ring, project cards, trend line charts, commit heatmap |
-| Plugin system | Experimental | In-process Go scripts via yaegi + knowledge source import (see [Knowledge Source Import](plugins/overview.md)) |
+| Knowledge source import | Built in | Six agent-memory sources imported idempotently; no user script plugins (see [Knowledge Source Import](plugins/overview.md)) |
 
 The diagrams behind each page: the dashboard's page layering is in [Dashboard](features/dashboard.md#page-structure-top-to-bottom), the save-and-version chain of a note is in [Knowledge Base and Notes](features/knowledge.md), and why a knowledge base beats letting AI read git directly is in [Storage Optimization and AI Value](storage-optimization.md#2-advantages-over-reading-git-repositories-directly-with-ai).
 

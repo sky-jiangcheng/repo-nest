@@ -226,13 +226,6 @@ export interface ScanStatus {
   total: number
 }
 
-export interface PluginStatus {
-  name: string
-  path: string
-  loaded: boolean
-  error?: string
-}
-
 export interface SourceStatus {
   name: string
   plugin: string

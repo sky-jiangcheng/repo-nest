@@ -90,7 +90,7 @@ type Service struct {
 }
 
 // New creates a Service with production dependencies: the local git CLI
-// provider and the yaegi plugin runtime over the given database.
+// provider and the knowledge-source runtime over the given database.
 func New(database *sql.DB, gitUser string) *Service {
 	return NewWithDeps(database, git.NewLocalGitProvider(), pluginruntime.New(database), gitUser)
 }
@@ -180,13 +180,8 @@ func (s *Service) Startup() {
 		if s.rt == nil {
 			return
 		}
-		// Load script plugins first, then register the built-in importers:
-		// Runtime.Load resets the source map, so registering before it would
-		// silently drop the built-in importers.
-		s.rt.Load(pluginsDir())
 		s.registerBuiltinImporters()
-		log.Printf("plugin runtime ready: %d plugin(s), %d source(s)",
-			len(s.rt.PluginStatuses()), len(s.rt.SourceStatuses()))
+		log.Printf("knowledge-source runtime ready: %d source(s)", len(s.rt.SourceStatuses()))
 
 		// Auto-import knowledge sources on startup (issue #36) — but only on an
 		// explicit opt-in. Tracked via bgGo so Shutdown waits for it instead of

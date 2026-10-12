@@ -58,11 +58,13 @@ The FTS5 trigram index matches a minimum of 3 characters; shorter queries automa
 
 ---
 
-### Plugin not loading?
+### Knowledge sources not importing?
 
-1. Check the plugin directory layout: `<config dir>/plugins/<plugin name>/plugin.go`, exporting `Name` and `Init`
-2. Go to **Settings → Plugins → Reload** and check the load status and error messages
-3. See the [plugin guide](plugins/overview.md) for details
+1. Check the trigger mode: only `claude` runs automatically at startup with `auto_import` (off by default); the other five must be triggered manually via **Settings → Plugins**
+2. `openclaw` / `hermes` need a target project configured first (`openclaw_project` / `hermes_project`); when unset they skip silently and only show up in the `skipped` count
+3. See [Knowledge Source Import](plugins/overview.md) for details
+
+> The in-process script-plugin runtime (yaegi) was removed in C11: the `plugins/` directory is no longer loaded — delete any old script plugins it may still contain.
 
 ---
 

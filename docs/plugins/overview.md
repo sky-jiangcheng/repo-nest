@@ -5,13 +5,13 @@ order: 8
 
 # 知识源导入
 
-> ⚠️ **实验性**：插件系统接口可能变更，不作为平台扩展方向（见 [ADR-0006](../adr/0006-scope-freeze.md)）。
+> **说明**：知识源导入不对用户脚本开放——进程内脚本插件运行时（yaegi，[ADR-0002](../adr/0002-c-end-repositioning.md)）已随 C11 移除，源清单全部内置、只随版本增长。
 
-Repotory 向知识库幂等导入文档。内置 6 个源都是普通的 Go 实现（`plugin.KnowledgeImporter`），**不经过 yaegi**；yaegi 只承载用户自己写的脚本插件。
+Repotory 向知识库幂等导入文档。6 个源全部**内置**，都是普通的 Go 实现（`plugin.KnowledgeImporter`）；进程内脚本插件运行时（yaegi）已随 C11 移除，不存在用户自定义导入源的入口。
 
 ```mermaid
 flowchart TB
-    SRC["知识源<br/>6 个内置 agent 记忆源"] --> RUN["内置 importer 读取<br/>或 yaegi 脚本插件产出"]
+    SRC["知识源<br/>6 个内置 agent 记忆源"] --> RUN["内置 importer 读取"]
     RUN --> KEY["幂等键<br/>(project_id, source, title)"]
     KEY --> HIT{"命中已有笔记?"}
     HIT -->|"是"| UPD["更新既有笔记<br/>内容 + 元数据"]
@@ -25,7 +25,7 @@ flowchart TB
     class DB store
 ```
 
-读图：两条入口（内置 agent 记忆源、插件脚本）**汇入同一条 upsert 路径**，幂等性由三元组 `(project_id, source, title)` 保证。因此重复导入是**更新**而非重复创建——重新导入不会把知识库越堆越脏。写入后由触发器同步 FTS 索引，导入的文档立刻可被 `repotory_notes_search` 命中。
+读图：所有源**汇入同一条 upsert 路径**，幂等性由三元组 `(project_id, source, title)` 保证。因此重复导入是**更新**而非重复创建——重新导入不会把知识库越堆越脏。写入后由触发器同步 FTS 索引，导入的文档立刻可被 `repotory_notes_search` 命中。
 
 注意最后一条分支：**匹配不到项目的文档不会入库**，只计入 `skipped`。`openclaw` / `hermes` 未配置目标项目时全部落入此分支。
 

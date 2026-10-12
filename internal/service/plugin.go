@@ -11,26 +11,12 @@ import (
 	"repotory/internal/importers/hermes"
 	"repotory/internal/importers/openclaw"
 	"repotory/internal/importers/opencode"
-	"repotory/internal/platform"
 )
-
-// pluginsDir resolves the plugin directory; a thin seam over platform so the
-// service package stays testable without touching the real config dir in unit
-// tests that do not call Startup.
-func pluginsDir() string { return platform.GetPluginsDir() }
 
 // jsonUnmarshal decodes data into v, returning whether it succeeded. Cached
 // repo_meta payloads may be legacy or empty; failures are non-fatal.
 func jsonUnmarshal(data string, v any) bool {
 	return json.Unmarshal([]byte(data), v) == nil
-}
-
-// GetPluginStatuses returns the load status of every plugin directory.
-func (s *Service) GetPluginStatuses() []pluginruntime.PluginStatus {
-	if s.rt == nil {
-		return []pluginruntime.PluginStatus{}
-	}
-	return s.rt.PluginStatuses()
 }
 
 // GetKnowledgeSources returns registered knowledge importers with their state.
@@ -41,14 +27,9 @@ func (s *Service) GetKnowledgeSources() []pluginruntime.SourceStatus {
 	return s.rt.SourceStatuses()
 }
 
-// emitImportEvent forwards an import result both to the plugin event bus and
-// to the registered UI handler (which forwards it to the frontend).
+// emitImportEvent forwards an import result to the registered UI handler
+// (which forwards it to the frontend).
 func (s *Service) emitImportEvent(name string, run pluginruntime.ImportRun, err error) {
-	if s.rt != nil {
-		s.rt.Emit("import.completed", map[string]any{
-			"source": name, "created": run.Created, "updated": run.Updated, "skipped": run.Skipped,
-		})
-	}
 	if s.onImportEvent != nil {
 		payload := ImportEventPayload{"source": name, "created": run.Created, "updated": run.Updated, "skipped": run.Skipped}
 		if err != nil {
@@ -84,18 +65,6 @@ func (s *Service) TriggerAllKnowledgeImports() []pluginruntime.SourceRun {
 		s.emitImportEvent(r.Name, r.Run, err)
 	}
 	return results
-}
-
-// ReloadPlugins rescans the plugins directory and reloads every plugin. The
-// built-in importers are re-registered afterwards because Runtime.Load resets
-// the source map.
-func (s *Service) ReloadPlugins() []pluginruntime.PluginStatus {
-	if s.rt == nil {
-		return []pluginruntime.PluginStatus{}
-	}
-	s.rt.Load(pluginsDir())
-	s.registerBuiltinImporters()
-	return s.rt.PluginStatuses()
 }
 
 // registerBuiltinImporters registers the built-in knowledge importers with the
@@ -137,7 +106,7 @@ type ImportResult struct {
 // (~/.claude/projects/*/memory/*.md) into Repotory, matching each to a project
 // by name or repository path. The import is delegated to the built-in Claude
 // KnowledgeImporter through the plugin runtime, so it is idempotent and shares
-// the same upsert and statistics path as script plugins (issue #35).
+// the same upsert and statistics path as the other knowledge sources (issue #35).
 func (s *Service) ImportClaudeMemory() (*ImportResult, error) {
 	if s.rt == nil {
 		return &ImportResult{}, nil

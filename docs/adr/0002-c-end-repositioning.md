@@ -1,6 +1,6 @@
 # ADR 0002: 产品定位转向 C 端「代码项目第二大脑」，采用 in-process 插件形态
 
-- 状态：Accepted
+- 状态：Accepted（2026-10-12 注记：脚本插件能力已由 C11 移除——yaegi 运行时与用户脚本插件入口删除；知识源导入 SPI（`KnowledgeImporter`）与六个内置实现保留）
 - 日期：2026-08-07
 - 关联：RFC 0001（已被本 ADR Supersede）
 

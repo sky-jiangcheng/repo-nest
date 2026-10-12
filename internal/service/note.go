@@ -40,11 +40,6 @@ func (s *Service) CreateNote(projectID int64, content string) (*domain.Note, err
 		return nil, err
 	}
 	note, err := db.CreateNote(s.db, projectID, content)
-	if err == nil && s.rt != nil {
-		s.rt.Emit("note.created", map[string]any{
-			"id": note.ID, "project_id": projectID, "content": content,
-		})
-	}
 	return note, err
 }
 
@@ -57,11 +52,6 @@ func (s *Service) CreateNoteWithMeta(projectID int64, title, content, tags, kind
 		return nil, err
 	}
 	note, err := db.CreateNoteEx(s.db, projectID, title, content, tags, kind, source)
-	if err == nil && s.rt != nil {
-		s.rt.Emit("note.created", map[string]any{
-			"id": note.ID, "project_id": projectID, "title": title, "content": content, "tags": tags, "kind": kind,
-		})
-	}
 	return note, err
 }
 

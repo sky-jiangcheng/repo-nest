@@ -58,11 +58,13 @@ FTS5 trigram 索引最短匹配 3 字符；更短的查询自动降级为 LIKE �
 
 ---
 
-### 插件没有加载？
+### 知识源没有导入？
 
-1. 确认插件目录结构：`<配置目录>/plugins/<插件名>/plugin.go`，导出 `Name` 与 `Init`
-2. **设置 → 插件 → 重新加载**，查看加载状态与错误信息
-3. 详见[插件手册](plugins/overview.md)
+1. 确认该源的触发方式：只有 `claude` 随 `auto_import` 在启动时自动跑（默认关），其余五源需在 **设置 → 插件** 手动点「立即导入」
+2. `openclaw` / `hermes` 需先配置目标项目（`openclaw_project` / `hermes_project`），未配置时静默跳过、只体现在 `skipped` 计数
+3. 详见[知识源导入](plugins/overview.md)
+
+> 进程内脚本插件（yaegi）已于 C11 移除：`plugins/` 目录不再被加载，如目录里还有旧脚本插件可自行删除。
 
 ---
 

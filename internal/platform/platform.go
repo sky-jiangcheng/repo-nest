@@ -179,20 +179,10 @@ func migrateLegacyDbFile(dir string) {
 	}
 }
 
-// GetPluginsDir returns the directory that holds plugin directories
-// (one subdirectory per plugin, each containing plugin.go).
-func GetPluginsDir() string {
-	// Trigger the legacy rename here too (not only in GetDbPath): the call
-	// order of the two accessors must not determine whether the rename runs.
-	migrateLegacyOnce.Do(migrateLegacyData)
-	if configDir, err := os.UserConfigDir(); err == nil {
-		dir := filepath.Join(configDir, dirName, "plugins")
-		if err := os.MkdirAll(dir, 0750); err == nil {
-			return dir
-		}
-	}
-	return filepath.Join(fallbackDir(), "plugins")
-}
+// GetPluginsDir was removed with the yaegi script-plugin runtime (C11 方案B):
+// there are no user plugin directories anymore. The legacy-data rename it used
+// to trigger defensively is already guaranteed by GetDbPath, the only DB-path
+// entry point.
 
 // migrateLegacyLog renames the log file left behind by earlier versions
 // (gitboard.log -> repotory.log). It runs after the log directory is known,

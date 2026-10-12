@@ -30,7 +30,7 @@ flowchart TB
 
 **Wails 桌面、MCP（cmd/mcp）与 headless HTTP（cmd/server）三种入口共享同一 service 实现**——行为永远一致，新功能只需实现一次。两个例外直连 db：`internal/core/plugin/runtime`（插件知识导入的 upsert 管线）与 `internal/importers/claude`（Claude 记忆读取），均为 service 之外的既有约定。
 
-支撑包：`internal/domain`（跨层行类型）、`internal/version`（版本 SSOT）、`internal/diff`（笔记行级 diff）、`internal/stats`（git log 解析）、`internal/knowledge`（仓库知识挖掘）、`internal/scanner` + `internal/grouper`（扫描与分组）、`internal/platform`（OS 差异）、`internal/core/plugin`（插件 SPI + yaegi 运行时）、`internal/integrity`（数据可信度审计：FTS 漂移/孤儿行/缓存新鲜度等 6 项只读检查）、`internal/httpapi`（headless HTTP JSON API，service 的 HTTP 壳）、`internal/importers/claude`（Claude 记忆幂等导入）。
+支撑包：`internal/domain`（跨层行类型）、`internal/version`（版本 SSOT）、`internal/diff`（笔记行级 diff）、`internal/stats`（git log 解析）、`internal/knowledge`（仓库知识挖掘）、`internal/scanner` + `internal/grouper`（扫描与分组）、`internal/platform`（OS 差异）、`internal/core/plugin`（知识源 SPI）、`internal/integrity`（数据可信度审计：FTS 漂移/孤儿行/缓存新鲜度等 6 项只读检查）、`internal/httpapi`（headless HTTP JSON API，service 的 HTTP 壳）、`internal/importers/claude`（Claude 记忆幂等导入）。
 
 ## 关键数据流
 
@@ -71,9 +71,9 @@ flowchart TB
 
 读图：**写一次，读两路**。笔记落库时由触发器同时维护 FTS 索引（检索侧）与版本快照（历史侧），应用层零维护代码——索引不可能与正文失配，除非触发器被破坏（这正是 `repotory_integrity` 的检查项，见[AI 集成](features/ai-integration.md#就绪度-vs-数据可信度)）。检索侧读 trigram 索引拿相关性与 snippet，历史侧读快照算 LCS diff。细节见 [ADR-0003](adr/0003-fts5-search.md)。
 
-### 插件运行时（ADR-0002）
+### 知识源运行时（ADR-0002，C11 修订）
 
-yaegi 解释 `<config>/repotory/plugins/*/plugin.go`；事件总线 + 知识源注册表；内置 `claude` 导入器与脚本插件同一 upsert 路径。
+脚本插件运行时（yaegi）已移除（C11）；知识源注册表 + 幂等 upsert 管线保留，六个内置 agent 记忆源（claude/codex/opencode/openclaw/hermes/cursor）经 `RegisterSource`/`RegisterSourceManual` 注册。
 
 ## 前端（web/src）
 

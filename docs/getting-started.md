@@ -102,7 +102,7 @@ flowchart TB
 | 项目理解与检索 | 核心 | 命令面板 `⌘/Ctrl+K`、全局搜索、项目上下文跳转 |
 | AI 集成 | 核心 | llms.txt、笔记导出、MCP server（含 agent-score 自检，见[AI 集成](features/ai-integration.md)） |
 | 仪表盘 | 支持 | 每日目标进度环、项目卡片、趋势折线图、提交热力图 |
-| 插件系统 | 实验 | yaegi 进程内 Go 脚本 + 5 个内置知识源导入（见[知识源导入](plugins/overview.md)） |
+| 知识源导入 | 内置 | 6 个 agent 记忆源幂等导入，无用户脚本插件（见[知识源导入](plugins/overview.md)） |
 
 各页展开的图：仪表盘的页面分层见[仪表盘](features/dashboard.md#页面结构自上而下)，笔记的保存与版本链路见[知识库](features/knowledge.md)，知识库为何比 AI 直读 git 更划算见[存储结构优化与 AI 价值](storage-optimization.md#二比-ai-直接读-git-仓库的优势)。
 

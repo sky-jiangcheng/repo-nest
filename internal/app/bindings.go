@@ -51,9 +51,9 @@ import (
 //   Todos: ListTodos, CreateTodo, ToggleTodo, DeleteTodo, ReorderTodos
 //   Config: GetConfig, UpdateConfig, UpdateScanRoots
 //   Exports: GenerateLLMsTxt, ExportNoteAsMarkdown, ExportMemoryJSON
-//   Plugins/knowledge sources: GetPluginStatuses, GetKnowledgeSources,
-//                              TriggerKnowledgeImport, TriggerAllKnowledgeImports,
-//                              ReloadPlugins, ImportClaudeMemory, CaptureClaudeHandoff
+//   Plugins/knowledge sources: GetKnowledgeSources, TriggerKnowledgeImport,
+//                              TriggerAllKnowledgeImports, ImportClaudeMemory,
+//                              CaptureClaudeHandoff
 //   IDE chrome: LatestHandoff (timestamp/title only; content stays behind notes_read)
 //
 // Conversely these MCP tools have no binding (agent-only flows, served straight
@@ -269,9 +269,6 @@ func (a *App) ExportMemoryJSON(limit int64) string { return a.svc.ExportMemoryJS
 
 // --- Plugins / knowledge sources ----------------------------------------------
 
-// GetPluginStatuses returns the load status of every plugin directory.
-func (a *App) GetPluginStatuses() []pluginruntime.PluginStatus { return a.svc.GetPluginStatuses() }
-
 // GetKnowledgeSources returns registered knowledge importers with their state.
 func (a *App) GetKnowledgeSources() []pluginruntime.SourceStatus { return a.svc.GetKnowledgeSources() }
 
@@ -284,9 +281,6 @@ func (a *App) TriggerKnowledgeImport(name string) (pluginruntime.ImportRun, erro
 func (a *App) TriggerAllKnowledgeImports() []pluginruntime.SourceRun {
 	return a.svc.TriggerAllKnowledgeImports()
 }
-
-// ReloadPlugins rescans the plugins directory and reloads every plugin.
-func (a *App) ReloadPlugins() []pluginruntime.PluginStatus { return a.svc.ReloadPlugins() }
 
 // ImportClaudeMemory imports notes from Claude's memory directories.
 func (a *App) ImportClaudeMemory() (*service.ImportResult, error) {

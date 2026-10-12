@@ -1,6 +1,6 @@
 # ADR 0002: Product Repositioning to C-end "Second Brain for Code Projects" with In-process Plugins
 
-- Status: Accepted
+- Status: Accepted (2026-10-12 amendment: the script-plugin capability was removed by C11 — the yaegi runtime and the user script-plugin entry point are gone; the knowledge-source SPI (`KnowledgeImporter`) and its six built-in implementations remain)
 - Date: 2026-08-07
 - Related: RFC 0001 (superseded by this ADR)
 

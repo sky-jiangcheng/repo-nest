@@ -327,10 +327,5 @@ func (s *Service) runCollectedScan(ctx context.Context) (out ScanResult, err err
 	s.refreshCollectedStats(ctx, collectedIDs)
 	_ = db.SetConfig(s.db, "last_stats_backfill", s.git.GetTodayDate())
 	log.Printf("scan complete: %d repos, %d projects (%d sync errors)", len(repos), len(groups), syncErrs)
-	if s.rt != nil {
-		s.rt.Emit("project.scanned", map[string]any{
-			"repos_found": len(repos), "projects": len(groups),
-		})
-	}
 	return ScanResult{ReposFound: len(repos), Projects: len(groups), SyncErrors: syncErrs}, nil
 }
