@@ -1,6 +1,6 @@
 ---
 title: Architecture Decision Records (ADR)
-order: 21
+order: 22
 ---
 
 # Architecture Decision Records (ADR)
@@ -27,9 +27,10 @@ order: 21
 | [0018](0018-knowledge-graph-foundation.md) | Knowledge-graph foundation — a controlled relation vocabulary makes the graph queryable, graph-aware evidence makes it read | Proposed (lane 1 = relation vocabulary + wikilink + structural lint, schema v21; lane 2 = page vectors + graph-aware evidence, schema v22; the two halves promote independently) |
 | [0019](0019-entity-resolution-merge.md) | Entity resolution and concept merging — fixing "concept splitting", where merging is always human-triggered | Proposed (design only, no code; sits after ADR-0018 lane 1 is Accepted; structural blocking can proceed independently, the vector-similarity branch waits on lane 2) |
 | [0020](0020-community-synthesis.md) | Community summaries — let the synthesis layer grow on its own via Label Propagation | Proposed (design only, no code; gated on ADR-0018 lane 1 Accepted; sync-vs-job trigger is the open call) |
+| [0021](0021-temporal-graph-page-versions.md) | Temporal graph — `page_versions` snapshots make safely revising approved conclusions possible | Proposed (design only, no code; gated on ADR-0018 lane 1 Accepted and the first real revision need) |
 
 ## Conventions
 
 - One ADR per major irreversible decision: Background → Decision → Consequences
 - Superseded ADRs keep their original text and banner; they are never deleted
-- New ADRs increment from `0020`, file name `NNNN-kebab-title.md`
+- New ADRs increment from `0021`, file name `NNNN-kebab-title.md`
