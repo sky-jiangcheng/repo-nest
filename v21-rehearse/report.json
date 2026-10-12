@@ -1,0 +1,23 @@
+{
+  "source_read_only": true,
+  "schema_version_before": 20,
+  "schema_version_after": 21,
+  "before_edges": 2,
+  "after_edges": 2,
+  "collapsed_parallel_edges": 0,
+  "legacy_relation_folds": {
+    "related_to": 1,
+    "used_in": 1
+  },
+  "lost_edges": null,
+  "extra_edges": null,
+  "off_vocabulary_after": null,
+  "before_relation_histogram": {
+    "related_to": 1,
+    "used_in": 1
+  },
+  "after_relation_histogram": {
+    "ref": 2
+  },
+  "pass": true
+}

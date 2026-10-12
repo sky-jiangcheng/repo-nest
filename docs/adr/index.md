@@ -24,7 +24,7 @@ order: 22
 | [0015](0015-w3-minimal-compile-loop.md) | W3 最小编译闭环——LLM 只写 pending 页，人批准才进检索 | Accepted |
 | [0016](0016-async-batch-jobs.md) | 长时批任务的异步化——提交即返回、进度可查、结果可取 | Accepted |
 | [0017](0017-one-kernel-two-entry-points.md) | 一个内核、两个入口——产品分层而不分叉仓库 | Proposed |
-| [0018](0018-knowledge-graph-foundation.md) | 知识图谱底座——受控关系词表让图可查，图感知取证让图被读 | Proposed（lane 1 = 关系词表 + Wikilink + 结构 lint，schema v21；lane 2 = 页面向量 + 图感知取证，schema v22；两半各自晋升） |
+| [0018](0018-knowledge-graph-foundation.md) | 知识图谱底座——受控关系词表让图可查，图感知取证让图被读 | **lane 1 Accepted（2026-10-12 真库演练 PASS）**；lane 2 Proposed（页面向量 + 图感知取证，schema v22，待 Phase 0 delta） |
 | [0019](0019-entity-resolution-merge.md) | 实体消歧与概念合并——治「概念分裂」，合并永远由人触发 | Proposed（仅设计，未落码；排在 ADR-0018 lane 1 Accepted 之后；结构 blocking 可独立推进，向量相似那一路待 lane 2） |
 | [0020](0020-community-synthesis.md) | 社区摘要——用 Label Propagation 让 synthesis 层自己长出来 | Proposed（仅设计，未落码；前置 ADR-0018 lane 1 Accepted；触发同步 vs job 为待拍板项） |
 | [0021](0021-temporal-graph-page-versions.md) | 时态图——`page_versions` 快照让「修订已批准结论」可以安全发生 | Proposed（仅设计，未落码；前置 ADR-0018 lane 1 Accepted，且待第一个真实修订需求触发） |

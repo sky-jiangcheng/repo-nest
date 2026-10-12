@@ -17,7 +17,7 @@
 ### 变更
 
 - **编译器的 `add_link` 关系改为从八型枚举里选**（prompt 契约同步更新），产物默认关系由 `compiled-from` 改为 `ref`；回档问答指向证据页的链接由 `cites` 归一为 `ref`。任何未知值或旧拼写在入库前经 `db.NormalizeRelation` 折叠到词表（如 `depends-on`→`depends`、`compiled-from` / `cites`→`ref`），未知值降级为 `ref` 而非报错打断一次本来合格的写入。
-- **迁移 v21 重建 `page_links` 表**（SQLite 不能给已有列补 `CHECK`）：既有边的 relation 被规范化进词表，同一对页面因归一而产生的重复边被合并——**只改标签、不删边**。**破坏性提示**：升级前建议在真库副本上演练并留一份旧边只读导出；ADR-0018 lane 1 的晋升条件「真库副本演练」未完成前，该 ADR 仍为 Proposed。
+- **迁移 v21 重建 `page_links` 表**（SQLite 不能给已有列补 `CHECK`）：既有边的 relation 被规范化进词表，同一对页面因归一而产生的重复边被合并——**只改标签、不删边**。**真库演练已于 2026-10-12 完成**（`cmd/wiki-rehearse`：源库只读 + 一次性副本，v20→v21，2 边 0 丢 0 增、`related_to`/`used_in` 折叠入 `ref`，产物留档 `v21-rehearse/`），**ADR-0018 lane 1 自当日起升 Accepted**；lane 2（schema v22）仍待 Phase 0。
 
 ## [1.16.2] - 2026-10-09
 
