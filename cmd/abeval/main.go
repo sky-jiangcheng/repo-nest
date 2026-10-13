@@ -60,11 +60,18 @@ func main() {
 	if path == "" {
 		path = platform.GetDbPath()
 	}
-	database, err := db.InitDB(path)
+	// Work on a throwaway copy, never on the user's database. abeval is not a
+	// read-only tool in the ordinary sense — with an embedding endpoint it calls
+	// RebuildEmbeddings, which rewrites the whole index and persists embedding_dim —
+	// and even the lexical-only arm used to run InitDB against -db, whose default is
+	// the LIVE application database, so measuring retrieval silently migrated it.
+	// An A/B gate that mutates what it measures is not a measurement.
+	cp, err := db.CopyForTooling(path, db.OpenCopyOptions{})
 	if err != nil {
-		log.Fatalf("abeval: open db: %v", err)
+		log.Fatalf("abeval: copy db: %v", err)
 	}
-	defer database.Close()
+	defer func() { _ = cp.Close() }()
+	database := cp.DB
 	svc := service.New(database, "abeval")
 
 	// semanticEnabled() reads app_config on EVERY search, and db.SetConfig

@@ -61,11 +61,15 @@ func main() {
 	if path == "" {
 		path = platform.GetDbPath()
 	}
-	database, err := db.InitDB(path)
+	// Copy, not open: queryset only reads, but InitDB writes (it stamps
+	// schema_version and backfills), and -db defaults to the live application
+	// database. A labelling worksheet must not be able to migrate anyone's store.
+	cp, err := db.CopyForTooling(path, db.OpenCopyOptions{})
 	if err != nil {
-		log.Fatalf("queryset: open db: %v", err)
+		log.Fatalf("queryset: copy db: %v", err)
 	}
-	defer database.Close()
+	defer func() { _ = cp.Close() }()
+	database := cp.DB
 
 	if *seed {
 		if err := dumpWorksheet(database); err != nil {

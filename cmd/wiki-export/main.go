@@ -41,11 +41,15 @@ func main() {
 	if path == "" {
 		path = platform.GetDbPath()
 	}
-	database, err := db.InitDB(path)
+	// The export is one-way and must stay that way (ADR-0014 decision 2: the export
+	// tree is a read-only derivation). Opening through InitDB broke that promise on
+	// the DATABASE side — it migrated the live store as a side effect of exporting.
+	cp, err := db.CopyForTooling(path, db.OpenCopyOptions{})
 	if err != nil {
-		log.Fatalf("open database %s: %v", path, err)
+		log.Fatalf("copy database %s: %v", path, err)
 	}
-	defer func() { _ = database.Close() }()
+	defer func() { _ = cp.Close() }()
+	database := cp.DB
 
 	report, err := service.New(database, "").ExportWikiTree(*out, *projectID, *force)
 	if err != nil {
