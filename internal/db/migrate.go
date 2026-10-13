@@ -317,6 +317,20 @@ func upgradeSchema(db *sql.DB) error {
 		// cannot attach a CHECK to an existing column; done in one transaction;
 		// reversible by the same DropWikiSchema/EnsureWikiSchema pair the layer uses.
 		{id: 21, fn: EnsureWikiRelationVocabulary},
+		// v22: page version snapshots (ADR-0021). wiki_pages.content was overwritten
+		// in place, so unlike notes (note_versions, v8/v11) there was no way to see
+		// what a human actually approved once a page was edited or absorbed by a
+		// merge. Purely additive: one new table, three triggers (the snapshot writer
+		// plus the two append-only guards), and a per-page backfill so pages that
+		// were already approved get a baseline.
+		//
+		// It takes v22 rather than the v23 ADR-0021 决策 5 predicted: this layer needs
+		// no CHECK rebuild (the ADR's合批 idea was for compile_jobs.kind, which
+		// ADR-0019 待决 3 and ADR-0020 决策 8 both decided against for now), while
+		// ADR-0018 lane 2 (page_embeddings) is still blocked on Phase 0's labelled query
+		// set. Reserving a number for a migration that may not land for months would
+		// just leave a hole; lane 2 takes v23 and docs/adr/0018 was amended to say so.
+		{id: 22, fn: EnsurePageVersions},
 	}
 
 	for _, m := range migrations {

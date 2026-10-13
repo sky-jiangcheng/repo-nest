@@ -1,6 +1,6 @@
 # ADR-0018: 知识图谱底座——受控关系词表让图可查，图感知取证让图被读
 
-- 状态：**Lane 1 Accepted（2026-10-12）**；Lane 2 Proposed（页面向量 + 图感知取证，schema v22，尚未开工，前置 = lane 1 已 Accepted ✅ + Phase 0 delta 达标）。（lane 1 内容：schema v21 关系词表（CHECK 由 `wikiRelations` 派生，Go/DDL 单一事实源）+ 编译器选词 + approve 抽取 `mentions` + `lintRelationShape` 三查，契约测试全绿。**晋升依据**：条件 1 真库副本演练 PASS——用户于 2026-10-12 以 `cmd/wiki-rehearse` 对真实 `repotory.db` 只读副本跑通（v20→v21，2 边 0 丢 0 增，`related_to`/`used_in` 各 1 条折叠入 `ref`），产物留档 `v21-rehearse/`；条件 2-4 已随代码落地；条件 5（词表定稿 + 双语文档 + 状态行更新）随本行完成。）
+- 状态：**Lane 1 Accepted（2026-10-12）**；Lane 2 Proposed（页面向量 + 图感知取证，schema **v23**——原计划的 v22 已被 ADR-0021 的 `page_versions` 于 2026-10-13 落地时占用，尚未开工，前置 = lane 1 已 Accepted ✅ + Phase 0 delta 达标）。（lane 1 内容：schema v21 关系词表（CHECK 由 `wikiRelations` 派生，Go/DDL 单一事实源）+ 编译器选词 + approve 抽取 `mentions` + `lintRelationShape` 三查，契约测试全绿。**晋升依据**：条件 1 真库副本演练 PASS——用户于 2026-10-12 以 `cmd/wiki-rehearse` 对真实 `repotory.db` 只读副本跑通（v20→v21，2 边 0 丢 0 增，`related_to`/`used_in` 各 1 条折叠入 `ref`），产物留档 `v21-rehearse/`；条件 2-4 已随代码落地；条件 5（词表定稿 + 双语文档 + 状态行更新）随本行完成。）
 - 日期：2026-10-09
 - 关联：[ADR-0014](0014-llm-wiki-knowledge-compiler.md)（本文兑现其"先补结构"承诺的下半段——结构有了但要能查询；并兑现其决策 5 lint"数据缺口"一查的具体形状、并收口其待决"语义融合是否扩到 wiki_pages"）、[ADR-0015](0015-w3-minimal-compile-loop.md)（本文不违反其"编译器永不修改已批准页"——新增只发生在边/待审面）、[ADR-0016](0016-async-batch-jobs.md)（lane 2 若慢，复用一表两内核）、[ADR-0012](0012-semantic-search.md)（RRF 语义融合）、[ADR-0013](0013-vector-database-selection.md)（零 CGO 向量存储）、[ADR-0010](0010-session-auto-capture.md)（敏感能力默认关的纪律）；TODO **M6** 的收口 + 新增 **M7**；起点 schema v20
 - 配套实施计划：`outputs/process-logs/Repotory-知识图谱实施计划-2026-10-09.md`（本 ADR = 其 Phase 1 + Phase 2；Phase 3 实体消歧、Phase 4 社区摘要与时态图各自单开 ADR-0019/0020/0021）
@@ -39,7 +39,7 @@ ADR-0014 的第一条决策是"先补结构，再让 LLM 写"，理由是"没有
 
 **Lane 1 明确不做**：锁死 kind↔relation 全矩阵（先只定边型，矩阵留待有真实数据再收）、批量重写既有边的 relation（迁移只归一非法值，合法旧边不动）、给边加权重/属性（属 lane 2）。
 
-### Lane 2（schema v22，晋升前置见末尾）：让取证读图
+### Lane 2（schema v23，晋升前置见末尾）：让取证读图
 
 **6. 页面独立向量空间。** 仿 `note_embeddings`，新增 `page_embeddings`（vec0，keyed by `wiki_pages.id`，**只嵌 approved 页**）+ `page_embeddings_meta`。**必须独立表**——`wiki_evidence.go:104-108` 已记 `FuseRRF` 对 note/page 混合 id 会串号（`hybrid.FuseRRF` 返回的是裸 int64 列表，page#7 与 note#7 无法区分）。增量仿 v14：`page_embed_dirty` 队列 + 触发器（正文真变 / status 迁入 approved 置脏、迁出删向量）。**门控挂在既有 `semantic_search` 之后**（那是用户同意把文本发端的授权），不新设嵌入开关，避免"主开关开、页嵌关"留陈旧索引。store 走 `vectordb.Store` 注册表（local=sqlite-vec 默认，远程不可达退 local）。⚠️ `vectorStore()` 有 memo（`search_semantic.go:71`），改 `vector_store*`/`embedding_*` 或报错必须 `invalidateVectorStore()`，否则页嵌静默用旧端点。
 

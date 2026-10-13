@@ -68,7 +68,7 @@ Lexical search answers "which characters matched", not "the same fact phrased di
 - **Imported notes are indexed the same way**: queueing happens in database triggers, and every writer (UI, MCP, CLI, agent-memory importers) converges on that layer — which is precisely why this was not built into application logic.
 - **Privacy boundary**: enabling semantic search means note text is sent to the embedding endpoint you configured (local Ollama or a remote API, depending on `embedding_base_url`). That is an explicit choice, off by default; `embedding_api_key` and `vector_store_api_key` are secrets, returned masked when configuration is read and never handed to the UI.
 - **The vector index is a derived cache**; the notes themselves are the source of truth: it can be dropped and recomputed at any time, living in the same database file as the notes, in the same transactions and the same backups (pure-Go sqlite-vec, zero CGO). A remote vector store is only worth reaching for at real scale — see [AI Integration](ai-integration.md).
-- **Whether it helps is measurable before it ships**: `cmd/abeval` runs "lexical vs lexical+vector" against a live database and reports Recall@k / NDCG@k with a threshold gate. The gate comes before the switch deliberately — until there is a real labelled query set, no UI toggle ships.
+- **Whether it helps is measurable before it ships**: `cmd/abeval` runs "lexical vs lexical+vector" against a live database and reports Recall@k / NDCG@k with a threshold gate — again against a throwaway copy, so it writes nothing to your database. The gate comes before the switch deliberately — until there is a real labelled query set, no UI toggle ships.
 
 ## Version history
 
@@ -151,7 +151,10 @@ So "I generated a page but search cannot find it" is not a defect: anything a mo
 
 1. **Humans**: filing an answer as a `query` page, and future manual page creation.
 2. **The compiler** (once `wiki_compile` is on): it reads one note and proposes which pages to create, which links to add, which sources to declare — all landing as `pending`. It **can only create; it can never edit an approved page** — a revision request becomes a todo for a human instead. Every page it produces is automatically attached to the note it read.
-3. **Lint** (read-only): it inspects graph health and never edits a page.
+3. **Community synthesis** (once `wiki_community_summary` is on *and* a person clicks "Run synthesis" on the review page): it finds topics in the graph of approved pages and drafts one `pending` `synthesis` page per topic. The page, its `documents` edges and its source-note attachments are all built by code; the model only writes the body paragraph (see "Community synthesis" below).
+4. **Lint** (read-only): it inspects graph health and never edits a page.
+
+(Merge is a fifth thing, but it is a human-only graph rewrite rather than one more automated writer — see "Concept merge" below.)
 
 ### Memory layers (L3 → L0)
 
@@ -168,7 +171,43 @@ Three points: the classification is a **provenance heuristic** — it says where
 
 ### lint: five checks and what they emit
 
-`RunWikiLint` performs five checks. Three are decidable in SQL — orphan pages, missing cross-references, and data gaps (thin pages, pages without a source note, body links pointing at nonexistent pages, leaf pages with no synthesis). The other two, contradictions and stale claims, ask a model and require `wiki_lint_llm` to be explicitly enabled. Every finding becomes a project todo prefixed `[lint]`; re-running does not pile up duplicates (dedupe matches open todos with the same title; a finding that reappears after you ticked it off is new information). One rule is structural rather than advisory: lint produces suggestions, and no code path lets it rewrite a page.
+`RunWikiLint` performs five checks. Three are decidable in SQL — orphan pages, missing cross-references, and data gaps (thin pages, pages without a source note, body links pointing at nonexistent pages, leaf pages with no synthesis). The other two, contradictions and stale claims, ask a model and require `wiki_lint_llm` to be explicitly enabled. Every finding becomes a project todo prefixed `[lint]`; re-running does not pile up duplicates (dedupe matches open todos with the same title; a finding that reappears after you ticked it off is new information). One rule is structural rather than advisory: lint produces suggestions, and no code path lets it rewrite a page. (Merge judging also hangs off this lint pass's model half, as a second thing the same run does — see "Concept merge" below.)
+
+### Page version history (schema v22, [ADR-0021](../adr/0021-temporal-graph-page-versions.md))
+
+Notes have had `note_versions` all along; pages did not — `wiki_pages.content` is overwritten in place, so "what did the human actually approve, and what did it become afterwards" had no answer. v22 adds `page_versions`: a snapshot of each page's **approved** content.
+
+- **The writer is a database trigger, not application code.** It freezes a snapshot when a page becomes `approved`, and when an **already-approved** page's content, title or kind changes. `pending` drafts and `rejected` tombstones are never snapshotted — they are not conclusions. Turning an approved page into a tombstone (a merge or a reject) moves the trigger's `new.status` away from `approved`, so its WHEN clause is false and no junk version is written.
+- **Append-only is a trigger, not a policy**: `BEFORE UPDATE` / `BEFORE DELETE` both `RAISE(ABORT)`. "Cleaning up the history table" means deliberately dropping those two triggers first, editing, then re-adding them — that is the point, and what it buys is non-repudiation.
+- **There is deliberately no foreign key on `page_versions.page_id`.** This is worth writing down for users and for whoever maintains this next: SQLite fires row triggers for foreign-key CASCADE actions, so a cascading FK plus the append-only guard together makes `DELETE FROM wiki_pages` — and therefore deleting a whole project, which cascades through `wiki_pages` — fail as "append-only". You can have one, not both: an audit row that vanishes the moment the thing it records is deleted is not an audit row. So snapshots outlive the page they describe, and the history of a deleted page stays readable.
+- **The backfill**: migration v22 files one baseline snapshot for every page that was already approved, guarded per page by `NOT EXISTS`, so it is safe on every database open — it can neither overwrite nor duplicate a real snapshot.
+- The review page can list a page's versions and show a **line diff** of any snapshot against the current content (the same +/- format as note version history, in the same version → current direction).
+
+**What is NOT implemented, stated plainly**: `revise_page` — a compiler op that proposes a revision of an approved page. ADR-0021 Decision 4 defers it explicitly until a real stale-approved-page case exists; today a revision still surfaces as a `[lint] compile-revision` todo for a human rather than the system editing the page.
+
+### Concept merge ([ADR-0019](../adr/0019-entity-resolution-merge.md))
+
+The compiler writes one note at a time, so concepts split. ADR-0015 accepted "concepts will split, a human merges them" as the price of that design but shipped no merge tool. The review page now has a **merge suggestions** area.
+
+- **Candidate discovery is structural, free, with no model and no vector.** Four signals: shared source notes, slug shape (one is a prefix of the other, or they are within 2-rune edit distance), title word overlap, and an existing `ref` / `mentions` edge between the two pages. A pair needs **at least two independent signals** to be reported (the two cheapest sum to exactly the threshold). `contradicts` and `supersedes` edges are deliberately **not** similarity signals — they assert that the two pages are different things.
+- **Cost stays bounded**: pairs only ever form between pages that share a token, a slug prefix, a source note or an edge — never a full cross product; a bucket larger than 40 pages is skipped outright (that is the stopword guard — a word like `project` or `api` that appears everywhere carries no similarity information).
+- **The model is a second opinion only**, gated behind **two** switches (`wiki_lint_llm` AND `wiki_merge_suggest`, both default off). Its verdict becomes a single `[lint] merge [[loser]] → [[winner]]` todo — it cannot merge anything.
+- **Merging is human-only, from the review page, behind a two-step confirm.** It is an **absorption, not an edit**: the winner's row is byte-for-byte untouched (content, slug, `updated_at` all unchanged), the loser's edges and source notes are redirected to the winner, and the loser becomes a "merged into" tombstone — the row is kept, exactly like reject ≠ delete, because deleting it would cascade away its inbound edges and turn every page that cited it into a dead link. Cross-project merges are refused in the MVP (a global page, project_id 0, may sit on either side).
+- **No `page_merges` audit table was created**, per ADR-0019 Decision 6's own instruction not to build one until a real undo request exists. The loser's tombstone plus the version snapshot frozen while it was approved is the audit record.
+
+### Community synthesis ([ADR-0020](../adr/0020-community-synthesis.md))
+
+`synthesis` is the fifth page kind, and until now it had **no generation path at all** — which meant lint's `no-synthesis` check (a pile of leaf pages, zero syntheses) could never be turned green. This step adds the generation path, so the check can now actually pass.
+
+- **Topics are detected by Label Propagation over the page graph**, propagating only along `ref / part-of / depends / implements / documents`. `contradicts`, `mentions` and `supersedes` are excluded on purpose — conflict, a passing mention and a supersession in time each mean something other than "the same topic".
+- The implementation is **synchronous (Jacobi) with a lexicographic tie-break and one self-vote per node**, so the same graph always yields a byte-identical partition. That determinism is what makes re-running safe rather than churning the graph.
+- **Input is approved pages only, and synthesis pages are excluded from their own input** — otherwise run N's output enlarges run N+1's input, the member set grows by one each run, the stable slug stops being stable, the revision todo never fires, and a machine-written summary starts summarizing itself.
+- Each community produces one `synthesis` page with `status=pending` and `source=wiki-community`, and a stable slug `synthesis-<first 8 hex of sha256 over the sorted member slug list>`. The member → synthesis `documents` edges and the members' source-note attachments are created by code. The model writes **only the paragraph of body text** — it has no vocabulary in which to name a page or a link, so it cannot invent a page through this path.
+- If the slug is already held by an **approved** page, it is never rewritten: a `[lint] synthesis-revision` todo is filed instead.
+- **Budgets**: ≤10 communities per run, ≤24 member pages each, ≤1500 bytes per page body, wall clock bounded by the batch timeout; when a budget is hit the report says where it stopped (which communities were left for next time, which body was clipped).
+- Gated by `wiki_community_summary` (default off), **never on a timer**, and there is **no MCP tool** — an agent able to pour summaries into the library would be the human gate, bypassed. It requires an explicit project (project id 0 means the *global* tier — pages belonging to no project — not "all projects").
+- Thresholds are configurable: `community_min_size` (default 3) and `community_max_size` (default 30).
+- **An honest limitation**: Label Propagation's boundaries are fuzzy. The algorithm's own test keeps a concrete failure on record — two triangles joined by a single bridge do not split cleanly: the bridge node defects to one side, and the stranded remainder can fall *below* `community_min_size` and be discarded, so a topic silently gets no summary. The report surfaces `dropped_small` / `dropped_large` counts so "nothing found" can be told apart from "fragmented graph" and "one giant blob".
 
 ### Export to Obsidian (a read-only bypass)
 

@@ -1,6 +1,6 @@
 # ADR-0020: 社区摘要——用 Label Propagation 让 synthesis 层自己长出来
 
-- 状态：Proposed（**仅设计，不落代码**。晋升前置：ADR-0018 lane 1 Accepted（社区检测要沿受控 relation 白名单传播，词表是它的地基）。触发方式（同步 vs job）见决策 6 与待决 4，是本文最需要被拍的一条）
+- 状态：Proposed（**已落码，待真库演练后升 Accepted**。`internal/graph` 的同步 Label Propagation、白名单传播、synthesis 起草成 pending、`documents` 边与来源挂接、幂等 slug、预算与 `wiki_community_summary` 门都已实现并有测试；待决 4 按推荐落地（同步 + 硬预算，不给 `compile_jobs.kind` 加值，因此没有整表重建）。晋升条件 1、2、3、5 已满足，条件 4（真库副本演练 + 人审）待用户亲自跑，故仍 Proposed。实现期得到的事实见末尾「实现修正」节——其中两条（LP 需要 self-vote 才可用、synthesis 页不得进自己的输入）是设计稿没有预见的）
 - 日期：2026-10-10
 - 关联：[ADR-0014](0014-llm-wiki-knowledge-compiler.md)（决策 1 把 synthesis 列为五类之一、决策 5 的 lint 有 `no-synthesis` 缺口检查）、[ADR-0015](0015-w3-minimal-compile-loop.md)（"MVP 不做 synthesis 自动重写"、只新建 pending 不改批准页、审核隔离）、[ADR-0016](0016-async-batch-jobs.md)（长任务 job 化，但 `compile_jobs.kind` 加值=整表重建）、[ADR-0018](0018-knowledge-graph-foundation.md)（lane 1 受控关系词表 = 本 ADR 传播所沿的边；lane 2 PPR 是"第一次读图"，本 ADR 是"第二次"）、[ADR-0019](0019-entity-resolution-merge.md)（合并让社区更干净，但本 ADR 不阻塞在其后：分裂也能摘要，只是质量打折）；TODO **M7** 后续；起点 schema v21
 - 配套：`outputs/process-logs/Repotory-知识图谱实施计划-2026-10-09.md` 的 Phase 4a
@@ -81,3 +81,14 @@ ADR-0015 当时明确"MVP 不做 synthesis 自动重写"，ADR-0018 又把它推
 3. `wiki_community_summary` 关时零外发、零写库；开时报告里带外发字节数。
 4. 端到端真库副本演练一次，产出被人审一轮（沿用 W3 的门禁教训：机制正确 ≠ 收益真实）。
 5. 落码后 `no-synthesis` 这条 lint 能在"跑了社区摘要并批准若干 synthesis"后转绿——用它自己的检查反证生成侧通了。
+
+## 实现修正（2026-10-13 落码时得到的事实）
+
+1. **待决 4 按推荐落地：同步 + 硬预算，不 job 化。** 因此 `compile_jobs.kind` 没有加值，那次整表重建没有发生——本 ADR 决策 8 的判断（「为一个人手动触发、量又不大的动作付那次重建的代价不值」）在实现期被证实是省事的：如果当时先做 job 化，v22 就会多一张表的 rebuild。
+2. **决策 1 的 Label Propagation 需要一处教科书版本没有的修正才能用：纯邻居多数票会让二节点连通分量逐轮互换标签。** 每个节点采纳的正是对方上一轮刚采纳的值，于是一对页面永远不成社区、由小分量组成的图永远不收敛。实现给每个节点**投自己当前标签一票**（仍是多数规则——邻域有明显偏好时照样压过在任者），确定性不受影响（票箱与迭代顺序无关）。这条不是调优，是可用性前提。
+3. **决策 4「输入只含 approved 页」还差一条 ADR 没写的排除：synthesis 页自身不得进输入。** 它靠 `documents` 边连向成员，而 `documents` 正在白名单上。若让产物参与检测，第 N 轮的输出会挤进第 N+1 轮的输入，成员集合单调增长，决策 7 的幂等 slug 随之漂移——「撞已批准 synthesis → 降级待办」那条永不触发，机器写的摘要开始给自己喂料。
+4. **决策 2 的「截断 > maxCommunitySize 的巨无霸」实现为丢弃 + 计数，而不是取前 N 名。** 截取任意子集会产出一页声称综述某主题、实际只覆盖其一片的 synthesis，且读者看不出来；把次数报在 `dropped_large` 里才是可行动的信息。
+5. **决策 1 承认的「边界模糊」有一个具体代价，值得从抽象写成句子**（由 `internal/graph` 的测试钉住）：两个三角形靠一条桥边连接时不会干净二分——桥节点倒戈进对面，剩下两页低于 `minCommunitySize` 被丢弃，于是**一个主题整体拿不到摘要**。所以报告把 `dropped_small` / `dropped_large` / `isolated` 三个数分开：「图太碎」「塌成一块」「页面之间根本没有边」是三种不同的事，混成一句「没有社区」会把用户送去干错件的活（比如去重新批准页面）。
+6. **一处 lint 语义松动，记录以免被当成已收紧**：`no-synthesis` 经 `WikiPageCount` 统计**所有状态**，因此一张 pending 的 synthesis 就能让它转绿。本 ADR 的验收按「批准后转绿」测（`TestCommunitySynthesisClosesTheNoSynthesisGap`），但这个检查衡量的是「存在」而不是「已审」。收紧它等于改动 W4 既有检查的语义，不在本次范围内。
+
+**晋升状态**：条件 1（`internal/graph` 纯单测：链/两团一桥/碎片/巨块/阈值，含「同图重跑逐字节一致」的输入顺序置换测试）、条件 2（生成契约：空回复仍建页与边、重跑幂等、撞已批准降级待办、预算触顶即停）、条件 3（`wiki_community_summary` 关时零外发零写库，开时报告带外发字节数）与条件 5（批准 synthesis 后 `no-synthesis` 转绿）均已满足；条件 4（真库副本端到端演练 + 人审一轮）需用户亲自跑。故本 ADR 维持 Proposed。

@@ -33,7 +33,13 @@ const schemaVersionKey = "schema_version"
 // queue ADR-0016 待决 ① asked for (the lint model pass joins it).
 // v21 constrained page_links.relation to an eight-type vocabulary (ADR-0018
 // lane 1), rebuilding the table so the graph can be queried by relation.
-const ExpectedSchemaVersion = 21
+// v22 added page version snapshots (page_versions + the approve/mutate writer
+// and the two append-only guards, internal/db/wiki_versions.go, ADR-0021), so
+// "what exactly did a human approve" is answerable for pages as it already was
+// for notes. It deliberately carries no foreign key: SQLite fires row triggers
+// for FK CASCADE actions, so cascading out of a page delete would make deleting
+// a project fail against the append-only guard.
+const ExpectedSchemaVersion = 22
 
 // StaleAfterDays is the age at which the repo_meta knowledge cache is reported
 // as stale. The cache feeds generated knowledge (tech stack, readme excerpt,

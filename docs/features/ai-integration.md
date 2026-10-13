@@ -37,6 +37,10 @@ Repotory 面向 AI 代理提供读取通道与自检工具，全部复用同一 
 | `ai_chat_base_url` / `ai_chat_model` / `ai_chat_api_key` | 空 | 项目详情页的 AI 问答 | 提问 + 打包的项目上下文 → 你的 chat 端点 |
 | `wiki_lint_llm` | 关 | lint 五查中**只有矛盾与过时声明**两项走模型，其余三查纯 SQL、无需授权 | 若干页面摘要 → 你的 chat 端点（只读分析，不回写） |
 | `wiki_compile` | 关 | 摄入时编译：**唯一让模型往知识库写东西**的开关 | 笔记正文 → 你的 chat 端点；回写内容持久化在本机，且一律以待审核状态落库 |
+| `wiki_merge_suggest` | 关 | 让聊天模型判两张页是否同一概念（[ADR-0019](../adr/0019-entity-resolution-merge.md)）；**需 `wiki_lint_llm` 同时开**，产物只是一条待办，合并本身由人点 | 两张页的标题 + 各自有界正文摘录（约 700 字节） → 你的 chat 端点 |
+| `wiki_community_summary` | 关 | 让聊天模型起草 `synthesis` 页（第五种页，[ADR-0020](../adr/0020-community-synthesis.md)）；**绝不上定时器**，也无 MCP 工具 | 每个成员页的标题 + 有界摘录（≤900 字节） → 你的 chat 端点 |
+| `community_min_size` | `3` | 社区综述的最小页数门槛；低于它的碎片被丢弃并计入 `dropped_small` | 无——纯本地阈值，不外发 |
+| `community_max_size` | `30` | 社区综述的最大页数门槛；更大的块只报告不综述（计入 `dropped_large`） | 无——纯本地阈值，不外发 |
 
 两个密钥键（`embedding_api_key` / `vector_store_api_key`，以及 `ai_chat_api_key`）在读取配置时以掩码返回、不回传界面——后端持真值，界面只显示 `********`。
 
@@ -46,7 +50,7 @@ Repotory 面向 AI 代理提供读取通道与自检工具，全部复用同一 
 
 - **引导式配置**：`go run ./cmd/vector-init`。它会自检 sqlite-vec 是否装载（建 vec0 → 写测试向量 → KNN 往返 → 清理），让你选 embedding provider（本地 Ollama 为默认推荐，或任意 OpenAI 兼容远端），写入配置，最后指向应用内设置复核。加 `-store qdrant`（或 `weaviate`）可写远程向量库并当场探测；**不可达或未配则自动退回本地**，不会让检索变少。
 - **首次要跑一次全量重建**（O(全部笔记) 次文本送端点）。之后不需要再重建：笔记的新建、标题/正文修改、删除由数据库触发器排队，后台每 5 秒批量排空；已删除的笔记会从向量索引里移除。维度未知或索引尚未建立时排空器直接跳过且不消费队列（猜维度意味着可能 drop 整个索引），端点不可达时任务原地保留、下一轮重试。细节见[知识库与笔记](knowledge.md) 的「语义检索」。
-- **效果先量化再改默认值**：`go run ./cmd/abeval` 对活库跑「词法 vs 词法+向量」的 Recall@k / NDCG@k 与差值门判定。设置 → AI 已提供知情开启与重建索引入口；真实标注 query 集与门槛通过之前，该功能保持默认关闭——宁缺毋滥，也不默认放大隐私面。
+- **效果先量化再改默认值**：`go run ./cmd/abeval` 对活库跑「词法 vs 词法+向量」的 Recall@k / NDCG@k 与差值门判定。它读的是你的库，但**不会改动它**：工具在 `VACUUM INTO` 出的一次性副本上运行，所以评测触发的索引重建与 schema 迁移都落在副本里。设置 → AI 已提供知情开启与重建索引入口；真实标注 query 集与门槛通过之前，该功能保持默认关闭——宁缺毋滥，也不默认放大隐私面。
 
 ## AI 问答：现在怎么取证
 
@@ -75,7 +79,7 @@ go build -o repotory-server ./cmd/server
 ```
 
 - `POST /api/rpc` 用反射覆盖桌面端绑定的全部方法（JSON body 指定 method + args），与 Wails 走的是**同一份实现**；`Startup` / `Shutdown` / `Service` 本身被屏蔽。写操作与 MCP 遵守同一套协议保护（例如交接笔记拒绝被 update 覆盖）。
-- 浏览器开发模式用 `bash scripts/dev.sh`：它同时起无头 API（默认 18731）与 Vite。只跑 `npx vite` 会得到一个「页面能开、每个请求都 502」的假象——那是缺后端，不是应用坏了。
+- 浏览器开发模式用 `bash scripts/dev.sh`：它同时起无头 API（默认 18765）与 Vite。只跑 `npx vite` 会得到一个「页面能开、每个请求都 502」的假象——那是缺后端，不是应用坏了。
 - **发布资产里只有**：桌面安装包（4 平台）、`repotory-mcp-<平台>`、VS Code 扩展 VSIX。`repotory-server`、`cmd/vector-init`、`cmd/abeval`、`cmd/repotory-capture`、`cmd/wiki-export`（wiki 只读导出）都需自行 `go build`（或 `go run`），未随版本分发。
 
 ## MCP Server（`repotory-mcp`）
@@ -104,10 +108,10 @@ sequenceDiagram
 | 工具 | 说明 | 读写 |
 |------|------|------|
 | `repotory_scan` | 冷启动：播种默认扫描根目录并同步扫描，发现本地 Git 仓库（纯 MCP 安装可用，无需桌面应用） | 写 |
-| `repotory_context` | 会话开始一次注入项目全上下文（技术栈 / README / 待办 / 高相关笔记，交接笔记置顶） | 读 |
-| `repotory_handoff` | 会话结束结构化交接（summary/changes/decisions/gotchas/next_steps），落库并供下次 `repotory_context` 置顶读取；落库笔记带 `handoff` 标签，`repotory_notes_update` 拒绝覆盖 | 写 |
+| `repotory_context` | 会话开始一次注入项目全上下文（技术栈 / README / 待办 / 高相关笔记，交接笔记置顶）。可选 `path`（绝对目录 / cwd）解析归属项目，见「工作区路径解析」 | 读 |
+| `repotory_handoff` | 会话结束结构化交接（summary/changes/decisions/gotchas/next_steps），落库并供下次 `repotory_context` 置顶读取；落库笔记带 `handoff` 标签，`repotory_notes_update` 拒绝覆盖。`project_id` 可选，缺省时由 `path` 解析 | 写 |
 | `repotory_notes_list` | 全部笔记 | 读 |
-| `repotory_notes_search` | FTS5 搜索（query） | 读 |
+| `repotory_notes_search` | FTS5 搜索（query）。可选 `path`：命中仓库内的笔记排到前面——只排序，不过滤 | 读 |
 | `repotory_notes_read` | 按 ID 读笔记 | 读 |
 | `repotory_notes_create` | 新建知识笔记 | 写 |
 | `repotory_notes_update` | 更新笔记内容与元数据（部分更新；拒绝覆盖 `handoff` 协议笔记） | 写 |
@@ -129,6 +133,33 @@ sequenceDiagram
 **为什么需要第二个**：FTS5 索引一旦与 `project_notes` 失配，搜索会**静默少返回结果**，而 `agent_score` 依然会报「Search operational」——它测的是通路，不是内容。`repotory_integrity` 用 FTS5 的 `_docsize` 影子表（external-content 表的 `SELECT rowid` 读的是内容表，比不出来）对比索引真实文档数，并检查同步触发器是否齐全。详见 [`internal/integrity` 的检查清单](../../internal/integrity/integrity.go)。
 
 当 AI 发现「搜出来的东西好像不全」时，应该先跑 `repotory_integrity`，而不是直接下结论说知识库内容少。
+
+### 工作区路径解析：这个文件夹属于哪个项目
+
+「我站的这个目录是哪个项目？」是最常见却一度无法回答的问题。旧的 `ResolveProject` 用 `strings.Contains(project.RootPath, query)` 匹配——存进来的根路径必须*包含*查询串——所以一个多仓库项目的子目录（例如 `/…/CBiPay/pay-common`）永远匹配不上；而 `repositories` 表明明记录了那个目录，却根本没被查询过。VS Code 扩展更是从不把工作区路径发到任何地方，交接命令还要求先手填一个数字 `repotory.projectId` 才能运行。
+
+现在由 `Service.ResolveProjectByPath` 做**四层路径解析**，从最具体到最粗：
+
+1. 恰好存于该目录的 repository → 它的 project（scope 即那个 repository）
+2. 作为该目录*祖先*的最深 repository 路径 → 它的 project
+3. `root_path` 等于该目录的 project → 该 project
+4. 作为该目录*祖先*的最深 project `root_path` → 该 project
+
+repository 层（1、2）压过 project 层（3、4），因为命中 repository 报的是**模块**，而不只是容器。
+
+**容器限制（只作用于第 4 层）。** `is_auto_grouped = 1` 的项目是扫描期的兜底容器，**不得凭祖先关系取胜**——这个库里确实有一个根在用户 home 目录下的容器，若放开祖先匹配，home 下每个文件夹都会被它认领、注入错误项目的知识且毫无征兆，这比"未解析、请挑一个"更糟。自动归组项目仍可被第 3 层的**精确匹配**命中（主动打开那个目录本身就是一个真实答案）。调用方可显式解除这一限制。
+
+**匹配方式是上报的，不是假设的。** 每条结果都带 `MatchedOn`：`repository-exact` / `repository-ancestor` / `project-exact` / `project-ancestor` / `repository-…-orphan` / `unresolved`（大小写回退命中会附加 `-case-folded`，仓库层与项目层同时命中拼成 `repository-X+project-Y`）。什么都解析不出来时，调用方拿到项目目录加 `unresolved`，绝不静默猜一个。一个 project 行已删的 repository 报为孤儿而非"解析成功"，因为"这个文件夹是被扫过的仓库、项目已删"和"从没见过这个文件夹"是两个不同的、可行动的诊断。
+
+**路径语义。** 祖先判定按路径段判断，绝不用 `strings.HasPrefix`（`/a/b` 是 `/a/bc` 的字符串前缀，却不是它的父目录）。同层命中取最长/最深路径。大小写折叠只是**回退项**——大小写敏感的精确匹配永远优先，因为在区分大小写的文件系统上仅大小写不同的两个路径就是两个不同目录。
+
+**repository 范围：按排名，不按过滤。** `note_repositories` 从 wiki 层首个迁移起就在，却**全代码库没有任何写入方**，所以任何严格的"把笔记过滤到这个 repository"对每个既有项目都会返回空。两个后果：
+- 交接路径现在负责**写入归属**：`HandoffInput.WorkspacePath` 解析到一个 repository 时把笔记挂到它上面。归属拒绝跨项目（一个属于另一项目的 repository 不会被挂上），且归属失败绝不导致交接失败——它记在 `HandoffResult.RepositoryNote` 里，笔记本身保留。
+- 消费端**重排而非删除**：在 `repotory_context` 输出里，记录在被匹配 repository 内的笔记排在前面，其余项目笔记仍然出现，前面有一行显式的 `_Scope: repository "x" (matched by …)_`——尚未有任何归属时这行会诚实地说"下面 N 条项目笔记未经过滤"。`repotory_notes_search` 同样按此排序，且不动待办，因为归属表描述的是笔记。
+
+**挖掘不再拿任意兄弟仓库作答。** `GetProjectOverview` 过去按 `repos[0].ID` 键入缓存并在项目根目录挖掘，于是一个兄弟仓库容器展示的技术栈 / README / 提交只是排序最前的那个 repository。`GetRepositoryOverview(projectID, repositoryID)` 把挖掘、缓存与提交都收窄到该 repository（这也让挖掘有了真正的 git 根——v13 迁移过去只能做到失效）。一个不属于该项目的 repository id 会被**拒绝**而非替换。
+
+这条解析是**服务端**的，MCP 工具与 VS Code 扩展共用同一实现：`repotory_context` / `repotory_handoff` / `repotory_notes_search` 新增可选 `path`，扩展通过只读绑定 `ResolveWorkspacePath` 拿到归属显示，因此不会在 TypeScript 里重新实现一遍匹配器。注意 `repotory_context` 里 `path` 能解析到项目时**优先于** `project_id`/`project_name`，而 `repotory_handoff` 里 `project_id` 优先、`path` 仅在其缺失时兜底。（`repotory_context` 的 MCP 工具描述仍把 `project_id` 写成「preferred」，但实际是能解析的 `path` 取胜——描述与行为存在已知出入。）
 
 ### 一键注册（repotory-init，推荐）
 

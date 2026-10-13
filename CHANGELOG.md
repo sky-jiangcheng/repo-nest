@@ -8,11 +8,21 @@
 
 ### 新增
 
+- **页面版本历史（[ADR-0021](docs/adr/0021-temporal-graph-page-versions.md)，schema v22）**：`wiki_pages` 此前是就地覆盖的可变行——笔记有 `note_versions`（P19 可 diff），页面反而回答不了「当初批准的到底是哪一版」。新增 `page_versions` 快照表，写入者是 `wiki_pages` 上的一个 `AFTER UPDATE` 触发器（页被批准、或已批准页的正文/标题/kind 真变时各冻结一份），因此 importer 直写、编译器、将来的修订流都漏不掉；快照表由两条 `BEFORE UPDATE/DELETE` 触发器守成 append-only，「顺手清一下历史」从此必须先显式摘掉触发器。`page_id` **刻意不带外键**：SQLite 会为外键 CASCADE 触发行触发器，加了级联就会让「删除一个项目」直接被 append-only 守卫拒掉——审计记录比它所记录的页面活得更久，是这里的取舍。v22 为每张既存已批准页逐页回填一份基线（`NOT EXISTS` 门槛，故每次开库重跑安全且必要：触发器看不见 `INSERT`，「出生即 approved」的页只能靠回填拿到基线）。审核页可看任一页的版本列表与「快照 vs 当前」逐行 diff（复用笔记版本历史的渲染，不写第二个 diff 实现）。`revise_page` 按 ADR 原文仍未落地。
+- **概念合并（[ADR-0019](docs/adr/0019-entity-resolution-merge.md)）**：ADR-0015 让人「审核时自己合并」却没有任何合并原语，lane 1 演练把这笔债兑现了（7 张产页 3 张有局部幻觉，只能拒绝，而拒绝留下一堆语义重叠的残页）。现在：候选发现纯结构、零模型、零向量——四类信号（共享来源笔记 / slug 词形 / 标题词重叠 / 已互链），**至少两个独立信号**才上报，且只对共享某个键（词、slug 前缀、来源笔记、边）的页对做比较，绝不遍历全乘（超过 40 页的桶直接跳过，那是 stopword 不是相似度）。模型判等是第二意见，需 `wiki_lint_llm` 与 `wiki_merge_suggest` 两道门（都默认关），且**只产一条 `[lint] merge: [[loser]] → [[winner]]` 待办**。合并动作只有人在审核页点得动（`TestMergeHasNoAutoPath` 扫源码钉住这条不变量），采纳前二次确认。合并是**吸收而非编辑**：保留页的 content/slug/updated_at 一字不变，被并页的出入边与来源笔记重指向保留页，然后转成写明去向的墓碑——沿用 `reject≠delete`，删行会级联带走入链、给每个引用过它的页面留下死链。按 ADR 决策 6 的克制，未建 `page_merges` 审计表（合并史 = 墓碑正文 + v22 快照）。
+- **社区摘要（[ADR-0020](docs/adr/0020-community-synthesis.md)）**：五类页面里的 `synthesis` 从来没有生成路径（编译器一次只看一条笔记，天生做不了跨来源综述），于是 W4 的 `no-synthesis` 检查是一盏永远喊不应的红灯。现在沿 `ref/part-of/depends/implements/documents` 白名单做 Label Propagation 找主题，每社区起草一张 `synthesis` 页：`status=pending`、`source=wiki-community`、slug 为 `synthesis-` + 排序成员 slug 列表的 sha256 前 8 位（同社区重算得同 slug，重跑是更新不是堆第二张）。`documents` 边与来源笔记挂接全部由代码建，**模型只写一段正文**——权力比编译器更小，它连页名都编不出来。撞已批准 synthesis 不重写，降级为 `[lint] synthesis-revision` 待办。门 `wiki_community_summary` 默认关、绝不进定时器、不做 MCP 工具（agent 能自己往库里灌综述就等于绕过人在环）；单次预算 ≤10 社区 / 每社区 ≤24 页 / 每页 ≤1500 字节 / 墙钟封顶，触顶即在报告里写明停在哪。阈值可配：`community_min_size`(3) / `community_max_size`(30)。待决 4 定为同步执行，因此 `compile_jobs.kind` 没有加值、省下一次整表重建。
 - **首屏对齐（D25，[ADR-0017](docs/adr/0017-one-kernel-two-entry-points.md)）：记忆环入口 + 项目状态并排**：路由 `/` 改渲染新首页——左栏记忆环（最近 handoff 列表 + 全局检索框，检索复用 SearchAll 的笔记+todo 口径），右栏完整嵌入既有 Dashboard（目标环、热力图、工作日告警、项目卡片全部保留同屏，不删除不隐藏）。新增 `ListRecentHandoffs`：内容免费条目（note_id / 项目 / 标题 / 时间 / 自动捕捉徽章），正文永远留在知识库页；Command Palette（⌘K）首位动作改为「新建 handoff」——选项目即捕捉最近 Claude 会话，未开启捕捉时错误内联展示；知识库整体移至 `/knowledge`（能力不变），导航新增「首页」。测试新增 18 文件 118 用例全绿（Dashboard 首次有专属组件测试）。
 
 ### 变更
 
+- **schema 版本分配：v22 给了页面版本快照，ADR-0018 lane 2 改占 v23**。lane 2 原本预留 v22，但它的前置（Phase 0 真实标注 query 集）仍未达标、几个月内未必落地，而 ADR-0021 的地基现在就要一个号——为一个不落地的迁移预留号码只会留下空洞。`docs/adr/0018` 状态行与 Lane 2 小节标题已同步改号。
+- **`WikiLintReport.LLMRan` / `LLMNote` 语义随「lint 有了两个模型半」而变**：`LLMRan` 从「模型半跑了且没有抱怨」改为「至少一个模型半执行了」，`LLMNote` 改为把各半未跑的原因并列写出。理由不是文字偏好：合并判等默认关，若沿用旧语义，用户开了矛盾检查就永远看不到第二个门的存在（`TestWikiLint_LLMChecksAreGatedAndSkeptical` 里 `LLMNote == ""` 那条断言随之更新为新契约）。
+- **编译器 prompt 加一条硬规则（ADR-0019 决策 7，把合并债前移）**：笔记讲的是词表里已有的概念时，必须用 `add_link` + `attach_note` 指过去，不得再造近似页。此前只说「同一概念请复用已有 slug」，没有给出「那我不建页该建什么」的替代动作，模型于是宁可造一个近义 slug。
+- **`cmd/wiki-rehearse` 对 v21 的硬断言改为下界**：演练工具把副本一路迁到当前 schema，v22 落地后 `schema_version_after` 就是 22，原来的 `== 21` 会在每一次新增迁移时报警一个其实通过的检查——把「忽略这个工具的退出码」训练出来。现在断言 `>= 21`（v21 确实跑过）并在报告里明写「副本跑到了当前版本，其后的迁移是增量、不动任何 page_links 行」。
 - **移除进程内脚本插件运行时（yaegi，C11 方案 B）**：`plugins/` 目录不再加载用户脚本插件——yaegi 解释器、脚本加载（`Load`/`loadPlugin`）、插件事件总线（`Emit`，四个服务侧调用点一并删除，UI 导入通知走 `onImportEvent` 不受影响）与插件状态数据全部退役，`go.mod` 去掉 `traefik/yaegi` 依赖。**六个内置知识源（claude/codex/opencode/openclaw/hermes/cursor）不受影响**：注册、设置页手动触发、幂等 upsert 与 `auto_import` 隐私门原样保留，`GetKnowledgeSources`/`TriggerKnowledgeImport` 等 RPC 不变；`GetPluginStatuses`/`ReloadPlugins` 两个绑定此前无任何前端调用，随能力一并移除。若你曾写过脚本插件：升级后不再加载，可直接删除 `plugins/` 下的旧目录（troubleshooting 有说明）。文档双语改写为「内置 importer 清单」叙事，ADR-0002 加状态注记。
+### 修复
+
+- **Label Propagation 的振荡缺陷（ADR-0020 落码时由测试暴露）**：按教科书实现的「取邻居多数标签」会让二节点连通分量逐轮互换标签——每个节点采纳的正是对方上一轮刚采纳的值，于是相连的一对页面永远不成社区、由小分量组成的图永远不收敛。改为每个节点额外投自己当前标签一票（仍是多数规则，邻域有明显偏好时照样压过在任者），确定性不受影响：票箱与迭代顺序无关。这不是调参，是可用性前提。
 
 ## [2.0.0] - 2026-10-12
 

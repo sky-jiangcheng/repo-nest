@@ -37,6 +37,10 @@ The whitelist in `internal/service/config.go` splits into two groups. **Core con
 | `ai_chat_base_url` / `ai_chat_model` / `ai_chat_api_key` | empty | AI Q&A on the project detail page | Your question + the packaged project context → your chat endpoint |
 | `wiki_lint_llm` | off | Gates **only** the contradiction and stale-claim checks in lint; the other three are SQL and need no permission | Page excerpts → your chat endpoint (read-only analysis, writes nothing back) |
 | `wiki_compile` | off | Ingest-time compilation: the **only switch that lets a model write into the knowledge base** | Note text → your chat endpoint; returned content is persisted locally, always as pending pages |
+| `wiki_merge_suggest` | off | lets the chat model judge whether two pages are one concept ([ADR-0019](../adr/0019-entity-resolution-merge.md)); **requires `wiki_lint_llm` too**, and its only output is a todo — a human performs the merge itself | Both pages' titles + a bounded body excerpt of each (~700 bytes) → your chat endpoint |
+| `wiki_community_summary` | off | lets the chat model draft `synthesis` pages (the fifth page kind, [ADR-0020](../adr/0020-community-synthesis.md)); **never scheduled**, and there is no MCP tool for it | Each member page's title + a bounded excerpt (≤900 bytes) → your chat endpoint |
+| `community_min_size` | `3` | smallest community worth summarizing; fragments below it are dropped and counted as `dropped_small` | Nothing — a local-only threshold |
+| `community_max_size` | `30` | largest community worth summarizing; bigger blobs are reported (as `dropped_large`) and not summarized | Nothing — a local-only threshold |
 
 The three key-holding settings (`embedding_api_key`, `vector_store_api_key`, `ai_chat_api_key`) come back masked when configuration is read and are never sent to the UI — the backend holds the real value, the interface shows `********`.
 
@@ -46,7 +50,7 @@ Lexical search cannot answer "the same fact phrased differently"; vector recall 
 
 - **Guided setup**: `go run ./cmd/vector-init`. It self-checks that sqlite-vec is loaded (create vec0 → write a test vector → KNN round trip → clean up), lets you pick an embedding provider (local Ollama is the default recommendation, or any OpenAI-compatible remote), writes the configuration, and finally points you at the in-app settings to review. Adding `-store qdrant` (or `weaviate`) writes a remote vector store and probes it immediately; **unreachable or unconfigured falls back to local automatically**, so search never gets worse.
 - **The first run needs one full rebuild** (one text upload per note). After that, no more rebuilds: note creation, title/body edits and deletions are queued by database triggers and drained in the background every 5 seconds; vectors of deleted notes are removed from the index. When the dimension is unknown or the index does not exist yet, the drainer skips without consuming the queue (guessing a dimension risks dropping the whole index), and when the endpoint is unreachable the queue is kept and retried on the next tick. Details in [Knowledge Base and Notes](knowledge.md).
-- **Measure before changing the default**: `go run ./cmd/abeval` runs "lexical vs lexical+vector" against a live database, reporting Recall@k / NDCG@k with a threshold gate. Settings → AI exposes the opt-in switch and rebuild action, but until a real labelled query set passes that gate the feature stays off by default — an unproven feature is worse than a default-on one.
+- **Measure before changing the default**: `go run ./cmd/abeval` runs "lexical vs lexical+vector" against a live database, reporting Recall@k / NDCG@k with a threshold gate. It reads your database but **does not modify it**: the tool runs against a throwaway `VACUUM INTO` copy, so any index rebuild or schema migration the evaluation triggers lands on the copy. Settings → AI exposes the opt-in switch and rebuild action, but until a real labelled query set passes that gate the feature stays off by default — an unproven feature is worse than a default-on one.
 
 ## AI Q&A: how it gathers evidence now
 
@@ -75,7 +79,7 @@ go build -o repotory-server ./cmd/server
 ```
 
 - `POST /api/rpc` reflects every desktop binding (JSON body naming method + args) and runs the **same implementation** as Wails; `Startup` / `Shutdown` / `Service` itself are excluded. Write operations obey the same protocol protections as MCP (for example handoff notes refuse to be overwritten by update).
-- For browser development use `bash scripts/dev.sh`: it starts the headless API (default 18731) *and* Vite. Running `npx vite` alone yields a page that loads but 502s every request — that is a missing backend, not a broken app.
+- For browser development use `bash scripts/dev.sh`: it starts the headless API (default 18765) *and* Vite. Running `npx vite` alone yields a page that loads but 502s every request — that is a missing backend, not a broken app.
 - **Release assets contain only**: the desktop installers (4 platforms), `repotory-mcp-<platform>`, and the VS Code VSIX. `repotory-server`, `cmd/vector-init`, `cmd/abeval`, `cmd/repotory-capture` and `cmd/wiki-export` (the read-only wiki export) must be built yourself (`go build` / `go run`); they are not distributed with releases.
 
 MCP is the only AI execution interface (the `repotory` CLI is not shipped with releases). stdio protocol, the database is opened once per process, 13 tools (including 4 write operations: scan + note create/update + session handoff):
@@ -102,10 +106,10 @@ How to read it: the protocol has exactly **two entry calls** (`repotory_context`
 | Tool | Description | Read/Write |
 |------|-------------|------------|
 | `repotory_scan` | Cold start: seeds the default scan roots and scans them synchronously, discovering local Git repositories (works with a pure MCP install, no desktop app needed) | Write |
-| `repotory_context` | Injects the full project context at session start (tech stack / README / todos / highly relevant notes, with handoff notes pinned to the top) | Read |
-| `repotory_handoff` | Structured handoff at session end (summary/changes/decisions/gotchas/next_steps), persisted to the database and read back pinned-to-top by the next `repotory_context`; notes written this way carry a `handoff` tag, and `repotory_notes_update` refuses to overwrite them | Write |
+| `repotory_context` | Injects the full project context at session start (tech stack / README / todos / highly relevant notes, with handoff notes pinned to the top). Optional `path` (an absolute directory / cwd) resolves the owning project — see "Workspace path resolution" | Read |
+| `repotory_handoff` | Structured handoff at session end (summary/changes/decisions/gotchas/next_steps), persisted to the database and read back pinned-to-top by the next `repotory_context`; notes written this way carry a `handoff` tag, and `repotory_notes_update` refuses to overwrite them. `project_id` is optional and resolved from `path` when omitted | Write |
 | `repotory_notes_list` | All notes | Read |
-| `repotory_notes_search` | FTS5 search (query) | Read |
+| `repotory_notes_search` | FTS5 search (query). Optional `path`: notes recorded inside the matched repository rank first — ranking only, nothing filtered | Read |
 | `repotory_notes_read` | Read a note by ID | Read |
 | `repotory_notes_create` | Create a new knowledge note | Write |
 | `repotory_notes_update` | Update note content and metadata (partial update; refuses to overwrite `handoff` protocol notes) | Write |
@@ -127,6 +131,33 @@ The two self-check tools answer **different questions** — don't mix them up:
 **Why the second one exists**: once the FTS5 index drifts out of sync with `project_notes`, search **silently returns fewer results**, while `agent_score` still reports "Search operational" — it measures connectivity, not content. `repotory_integrity` compares the index's real document count against the FTS5 `_docsize` shadow table (with an external-content table, a plain `SELECT rowid` reads the content table, so it would never reveal the drift) and checks that the sync triggers are all in place. For details, see the [checklist in `internal/integrity`](../../../internal/integrity/integrity.go).
 
 When an AI notices that "the search results seem incomplete", it should run `repotory_integrity` first instead of jumping to the conclusion that the knowledge base has little content.
+
+### Workspace path resolution: which project owns this folder
+
+"Which project is the directory I'm standing in?" was the most common question that used to be unanswerable. The old `ResolveProject` matched with `strings.Contains(project.RootPath, query)` — the stored root had to *contain* the query — so a subdirectory of a multi-repository project (e.g. `/…/CBiPay/pay-common`) never matched, and the `repositories` table, which does record that directory, was never consulted at all. The VS Code extension additionally never sent the workspace path anywhere and required a hand-typed numeric `repotory.projectId` before the handoff command would run.
+
+`Service.ResolveProjectByPath` now does a **four-tier path resolution**, most specific first:
+
+1. a repository stored at exactly the directory → its project (scope = that repository)
+2. the deepest repository path that is an *ancestor* of the directory → its project
+3. a project whose `root_path` equals the directory → that project
+4. the deepest project `root_path` that is an ancestor → that project
+
+The repository tiers (1, 2) beat the project tiers (3, 4) because a repository match names the *module*, not just the container.
+
+**The container restriction (tier 4 only).** Projects with `is_auto_grouped = 1` are scan-time catch-all containers and **may not win by ancestry** — this database genuinely contains one rooted at the user's home directory, so an unrestricted ancestor match would claim every folder under home for it and inject the wrong project's knowledge with no signal, which is strictly worse than "unresolved, pick one". An auto-grouped project may still match **exactly** via tier 3 (deliberately opening that folder is a real answer). Callers can lift the restriction explicitly.
+
+**Matching is reported, not assumed.** Every result carries `MatchedOn`: `repository-exact` / `repository-ancestor` / `project-exact` / `project-ancestor` / `repository-…-orphan` / `unresolved` (a case-folded hit appends `-case-folded`, and a repository tier combined with a project tier reads `repository-X+project-Y`). When nothing resolves, the caller gets the project catalog plus `unresolved` — never a silent guess. A repository whose project row is gone is reported as an orphan rather than as a resolution, because "this folder is a scanned repo whose project was deleted" is a different, actionable diagnosis from "never seen this folder".
+
+**Path semantics.** An ancestor test is segment-aware, never `strings.HasPrefix` (`/a/b` is a string prefix of `/a/bc` but is not its parent directory). Longest/deepest path wins among siblings. Case folding is a **fallback only** — an exact case-sensitive match always wins, because on a case-sensitive filesystem two paths differing only in case are different directories.
+
+**Repository scoping, by rank not by filter.** `note_repositories` existed since the wiki layer's first migration but had **zero writers in the entire codebase**, so any strict "filter notes to this repository" would have returned nothing for every existing project. Two consequences:
+- The handoff path now *writes* the attribution: `HandoffInput.WorkspacePath` resolves to a repository and attaches the note to it. Attribution refuses to cross projects (a repository belonging to a different project than the handoff names is not attached), and an attribution failure never fails the handoff — it is reported in `HandoffResult.RepositoryNote` while the note itself is kept.
+- Consumers **reorder rather than remove**: in `repotory_context` output, notes recorded inside the matched repository lead and the remaining project notes still appear, preceded by an explicit `_Scope: repository "x" (matched by …)_` line that says so honestly when nothing is attributed yet ("the N project notes below are unfiltered"). `repotory_notes_search` ranks the same way and leaves todos untouched, because the attribution table describes notes.
+
+**Mining no longer answers with an arbitrary sibling.** `GetProjectOverview` keyed its cache by `repos[0].ID` and mined at the project root, so for a container of sibling repositories the tech stack / README / commits shown were whichever repository sorted first. `GetRepositoryOverview(projectID, repositoryID)` narrows mining, cache and commits to that repository (which also gives mining a real git root — the v13 case migration could only invalidate). A repository id that does not belong to the project is **refused**, not substituted.
+
+This resolution lives **server-side** and is shared by the MCP tools and the VS Code extension: `repotory_context` / `repotory_handoff` / `repotory_notes_search` gained an optional `path`, and the extension reads its scope display from the new read-only `ResolveWorkspacePath` binding, so the client never reimplements the matcher. Note that in `repotory_context` a `path` that resolves to a project takes precedence over `project_id`/`project_name`, whereas in `repotory_handoff` `project_id` wins and `path` is only the fallback when it is absent. (The tool's own MCP description still calls `project_id` "preferred"; for `repotory_context` the resolving path actually wins — a known mismatch between the description string and `ResolveWorkspace`.)
 
 ### One-command registration (repotory-init, recommended)
 

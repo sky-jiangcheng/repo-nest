@@ -159,8 +159,14 @@ func TestRehearse_Synthetic_PreV21(t *testing.T) {
 	if rep.VersionBefore != 20 {
 		t.Errorf("VersionBefore = %d, want 20", rep.VersionBefore)
 	}
-	if rep.VersionAfter != 21 {
-		t.Errorf("VersionAfter = %d, want 21 (v21 migration target)", rep.VersionAfter)
+	// The rehearsal migrates a copy all the way to the CURRENT schema, so v21 is a
+	// floor rather than an equality: the invariant being proven is "v21 actually ran
+	// and did not lose edges", and every migration after it is additive over
+	// page_links. Asserting == 21 would raise a false alarm on each future
+	// migration about a check that still passed — which is the fastest way to train
+	// a human to ignore this tool's exit code.
+	if rep.VersionAfter < 21 {
+		t.Errorf("VersionAfter = %d, want >= 21 (the v21 migration target must have run)", rep.VersionAfter)
 	}
 	if rep.BeforeCount != 4 || rep.AfterCount != 3 {
 		t.Errorf("edges %d->%d, want 4->3 (two a->b folded)", rep.BeforeCount, rep.AfterCount)

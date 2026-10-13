@@ -256,10 +256,18 @@ func TestWikiLint_LLMChecksAreGatedAndSkeptical(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !on.LLMRan || on.LLMNote != "" {
+	if !on.LLMRan {
 		// hits proves the stub was reached at all, which separates "endpoint never
 		// called" from "reply could not be parsed" without another debugging run.
 		t.Fatalf("LLM pass did not run: ran=%v note=%q hits=%d", on.LLMRan, on.LLMNote, hits.Load())
+	}
+	// This assertion used to be `on.LLMNote == ""`. It is no longer the right
+	// contract: ADR-0019's merge judgement shares the lint model half, so with that
+	// second gate left off (its default) a clean contradiction pass still has a note
+	// saying so. Requiring an empty note would mean a user who enabled one model pass
+	// could never discover the other exists.
+	if !strings.Contains(on.LLMNote, wikiMergeSuggestKey) {
+		t.Errorf("LLMNote = %q, want it to say the merge pass was skipped", on.LLMNote)
 	}
 	checks := findingsByCheck(on)
 	if checks["contradiction"] == 0 || checks["stale"] == 0 {

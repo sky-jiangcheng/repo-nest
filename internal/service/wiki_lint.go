@@ -72,12 +72,19 @@ type WikiLintReport struct {
 	Findings  []WikiFinding `json:"findings"`
 	// TodosCreated / TodosExisting separate "first run" from "idempotent re-run",
 	// which is the difference between a maintenance tool and a todo spammer.
-	TodosCreated  int  `json:"todos_created"`
-	TodosExisting int  `json:"todos_existing"`
-	TodosUnfiled  int  `json:"todos_unfiled"` // no owning project, or a write failure
-	LLMRan        bool `json:"llm_ran"`
-	// LLMNote says why the model half did not run. "Nothing to report" and
-	// "the feature is off" must not look identical in the output.
+	TodosCreated  int `json:"todos_created"`
+	TodosExisting int `json:"todos_existing"`
+	TodosUnfiled  int `json:"todos_unfiled"` // no owning project, or a write failure
+	// LLMRan says at least ONE model half executed. It used to mean "the model half
+	// ran and had no complaint", which was exact while there was exactly one model
+	// half; with ADR-0019's merge judgement sharing this pass, the two senses are
+	// genuinely different questions and this one answers "did we ask the model
+	// anything at all".
+	LLMRan bool `json:"llm_ran"`
+	// LLMNote lists, joined, why each model half did NOT run. "Nothing to report" and
+	// "the feature is off" must not look identical in the output — and neither may
+	// "contradictions ran while merge judging is switched off" read as a clean run of
+	// everything, because a user then has no way to discover the second pass exists.
 	LLMNote   string `json:"llm_note,omitempty"`
 	ElapsedMS int64  `json:"elapsed_ms"`
 	CheckedAt string `json:"checked_at"`
@@ -132,10 +139,29 @@ func (s *Service) RunWikiLint(projectID int64, wantLLM bool) (*WikiLintReport, e
 	report.Findings = append(report.Findings, s.lintRelationShape(pages)...)
 
 	if wantLLM {
+		var notes []string
 		findings, note := s.runWikiLintLLM(pages)
-		report.LLMRan = note == ""
-		report.LLMNote = note
+		if note != "" {
+			notes = append(notes, note)
+		} else {
+			report.LLMRan = true
+		}
 		report.Findings = append(report.Findings, findings...)
+
+		// ADR-0019 待决 3: merge equivalence runs INSIDE the lint model half and
+		// reuses its gate, its job and its budget — but carries its own consent key,
+		// so "let a model judge similarity" is a separate decision from "let a model
+		// judge contradictions". Its findings land in the same slice and therefore
+		// get the same treatment: a todo, never a page mutation.
+		mergeFindings, mergeNote := s.suggestMerges(pages)
+		if mergeNote != "" {
+			notes = append(notes, mergeNote)
+		} else {
+			report.LLMRan = true
+		}
+		report.Findings = append(report.Findings, mergeFindings...)
+
+		report.LLMNote = strings.Join(notes, "；")
 	}
 
 	// Findings arrive from several passes; a stable order keeps the todo dedupe

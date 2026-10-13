@@ -300,6 +300,12 @@ func writeJSONL(path string, edges []edge) {
 func printReport(r Report, outDir string, hadNoTable bool) {
 	fmt.Println("== ADR-0018 lane 1 · v21 rehearsal (ran on a throwaway copy; source untouched, opened read-only) ==")
 	fmt.Printf("  schema_version: %d -> %d\n", r.VersionBefore, r.VersionAfter)
+	if r.VersionAfter > 21 {
+		// The copy migrates to the CURRENT schema, not to v21 and stops. Saying so
+		// keeps "20 -> 22" from reading like the tool did something unasked for.
+		fmt.Printf("  note: the copy ran every migration up to the current schema (%d); "+
+			"those after v21 are additive and touch no page_links row.\n", r.VersionAfter)
+	}
 	fmt.Printf("  edges before -> after: %d -> %d\n", r.BeforeCount, r.AfterCount)
 	if hadNoTable {
 		fmt.Println("  note: source had no page_links table yet (pre-wiki db); v21 will just create it.")

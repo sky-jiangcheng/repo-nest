@@ -541,7 +541,16 @@ var wikiObjects = []struct {
 // It also drops the v17 page index first: an external-content FTS5 table whose
 // content table vanishes underneath it is exactly the broken-index state that
 // migration v12 had to repair once already for notes.
+//
+// The v22 snapshot layer goes with it (page_versions and its three triggers), which
+// is a deliberate reading of "derived": the wiki layer as a whole is discardable,
+// and a history table nobody asked for must not be the reason a user cannot drop
+// and rebuild the layer. The version-stamped migration plus InitDB's re-assert
+// recreate it, and the backfill refiles a baseline for whatever is still approved.
 func DropWikiSchema(db *sql.DB) error {
+	if err := dropPageVersions(db); err != nil {
+		return err
+	}
 	if err := dropWikiFTS(db); err != nil {
 		return err
 	}

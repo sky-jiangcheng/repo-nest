@@ -1,6 +1,6 @@
 # ADR-0021: 时态图——`page_versions` 快照让「修订已批准结论」可以安全发生
 
-- 状态：Proposed（**仅设计，不落代码**。前置：ADR-0018 lane 1 Accepted；且只在出现第一个真实的「已批准页过时需要修订」需求时才值得落码——提前实现是给没有用户的机制付维护费。触发时机见待决 4）
+- 状态：Proposed（**地基已落码（schema v22），待真库回填对账后升 Accepted**。`page_versions` 快照表、作为唯一写入者的 `AFTER UPDATE` 触发器、两条 append-only 守卫、逐页回填与 `DropWikiSchema` 可逆性均有测试；晋升条件 1、2 已满足；条件 4 已于 2026-10-13 改写为「真库落地后的回填对账」（真库当天在无演练前提下推进到 v22，原措辞失去对象，见该条修订记录），其完成需先存在 approved 页，而批准是人独有的动作；条件 3 随 `revise_page` 一起等待——决策 4 与待决 4 明确不在本 ADR 落地修订流。实现期得到的事实见末尾「实现修正」节，其中「外键 CASCADE 会触发行触发器，因此快照表不能带级联外键」与「迁移实际取 v22 而非 v23」两条与设计不同）
 - 日期：2026-10-12
 - 关联：[ADR-0014](0014-llm-wiki-knowledge-compiler.md)（页面 SSOT 落库不落导出树——快照也只能住库里）、[ADR-0015](0015-w3-minimal-compile-loop.md)（「永不修改已批准页」——本 ADR 是它的第一道受控松动通道，不动那条不变量本身）、[ADR-0016](0016-async-batch-jobs.md)（`compile_jobs.kind` 加值 = 整表重建的红线）、[ADR-0018](0018-knowledge-graph-foundation.md)（lane 1 的 `supersedes` 时间倒挂 lint 是时态语义的第一个消费者，但它只有 `updated_at` 一个可变时间戳可依）、[ADR-0019](0019-entity-resolution-merge.md) / [ADR-0020](0020-community-synthesis.md)（共享同一次 CHECK 整表重建的合批先例）；TODO **M7** 后续；起点 schema v21
 - 先例：笔记层已有 `note_versions`（P19 版本历史 diff 可视化）——页面层补齐对等的审计能力
@@ -71,4 +71,34 @@ ADR-0015 定死了一条铁律：编译器**永不修改已批准页**——撞�
 1. 迁移测试：快照表创建、approved 页回填对账（每张 approved 页恰有一条快照且内容逐字节相等）、幂等重放、`DropWikiSchema` 可逆性（沿 W1 的构造证明套路）。
 2. append-only 测试：对 `page_versions` 的 UPDATE / DELETE 必须被触发器拒绝；`ApproveWikiPage` 幂等重入不产生重复快照。
 3. 契约测试（若 revise_page 落地）：提议版本对检索 / AskAI 证据不可见；采纳后旧内容可从快照找回；拒绝后活页逐字节不变。
-4. 真库副本演练一次（`cmd/wiki-rehearse` 同款纪律：只读源库 + 一次性副本），回填对账通过。
+4. **真库落地后的回填对账**：一旦真库里存在 approved 页，核对「每张 approved 页恰有一条快照、内容与活页逐字节相等、无重复条目」，并确认两条 append-only 守卫在真数据上照样拒绝改写。
+
+   > **修订记录（2026-10-13，本条被改写）**
+   >
+   > 本条原文要求「真库副本演练一次（`cmd/wiki-rehearse` 同款纪律：只读源库 + 一次性副本），回填对账通过」，
+   > 也就是**先让 v22 碰副本，再让它碰真库**。这个顺序在同一天被打破了：真库在**没有演练**的前提下从 v21
+   > 推进到了 v22。起因是把工作树构建的 `cmd/mcp` 当作 `--help` 冒烟探针跑了一次——`cmd/mcp` 的 `main`
+   > 第一件事就是 `db.InitDB(platform.GetDbPath())`，而它不解析任何 flag，所以那次「冒烟」在效果上等于一次
+   > 真实的带迁移开库。后果已逐项对账：4 项目 / 5 笔记 / 7 页（全部 pending）/ 2 条边 / 7 条 note_pages /
+   > 6 条 todo，slug 与边内容一字未变；`page_versions` 为 0 行（正确，当时没有 approved 页）；v22 只新增
+   > 1 张表 + 3 个触发器，纯增量、无破坏。
+   >
+   > 原文保留而不删，是因为要区分两件事：**「副本先行」这条纪律没有被撤销**，它对后续每一次迁移继续有效
+   > （lane 2 的 v23、以及任何将来的 DDL 变更），ADR-0018 lane 1 那次演练仍是本仓的标准先例。被改写的只是
+   > 本条的可完成性——真库已经在 v22 上，再要求一次「v22 上真库之前的副本演练」永远写不出完成态，
+   > 而一条永远关不上的条件正是本仓在 ADR-0009 分发评估门上纠正过的同类错误。
+   >
+   > 因此本条改写为今天仍然可完成、且真正承载剩余风险的那个检查：有 approved 页之后的回填对账。
+   > 在此之前，v22 的验收只由 `internal/db/wiki_versions_test.go` 的临时库测试承担（晋升条件 1、2）。
+
+## 实现修正（2026-10-13 落码时得到的事实）
+
+设计阶段有四处与本 ADR 的设想不同，都在实现或测试时被现实纠正，记录在此以免下一个人重新踩：
+
+1. **决策 2 的「两个写入点」落成一个 `wiki_pages` 上的 `AFTER UPDATE` 触发器，不是两处 Go 调用。** 理由与迁移 v14 给 embedding 队列用触发器是同一条：`internal/db` 是所有写入者收敛的地方——importer 直写、编译器、将来的 `revise_page`、以及今天还不存在的路径都经过它，而 Go 侧 helper 是「会被忘记调用」的那种东西。触发器的 `WHEN` 子句同时承担了两件事：只在 `new.status = 'approved'` 时写（pending 草稿与 rejected 墓碑不进快照），以及内容/标题/kind 未变时不写（审核按钮重复点击、`SetWikiPageStatus` 重放都只是 bump `updated_at`，不产生版本）。
+2. **决策 3 的 append-only 与决策 1 的表结构硬冲突，本 ADR 未预见：SQLite 会为外键 CASCADE 动作触发行触发器。** 若 `page_versions.page_id` 写成 `REFERENCES wiki_pages(id) ON DELETE CASCADE`，那么 `BEFORE DELETE` 守卫会让 `DELETE FROM wiki_pages` 失败——连带让**删除一个项目**失败（项目删除级联穿过 wiki_pages）。取舍只有两个：「删项目坏掉」或「快照比它所记录的页面活得更久」。审计层选后者：`page_id` 是普通 INTEGER，孤儿快照是预期状态，已删页面的历史仍可读，由 `TestPageVersions_ProjectDeleteIsNotBlockedByAppendOnly` 钉住（含「先证明守卫在位、再证明级联删得掉」两半）。
+3. **迁移编号取 v22，不是决策 5 预测的 v23；ADR-0018 lane 2 改占 v23。** 决策 5 倾向「与那次迟早要来的 CHECK 重建合批」，但落码时看清了：0019 待决 3 与 0020 决策 8 都明确**不新开 `compile_jobs.kind` 值**，所以那次重建眼下没有任何需求方；而 lane 2 还卡在 Phase 0（真实标注 query 集）。为一个可能几个月不落地的迁移预留号码，只会留下一个空洞。
+4. **回填不是「迁移跑一次就完」，它挂在 InitDB 每次开库重跑。** 触发器看不见 `INSERT`，所以「出生即 approved」的页面（人写的页、W2 把答案回档成的页）永远不会自己产生快照；`EnsurePageVersions` 里那条带 `NOT EXISTS` 门槛的回填才是它们的基线来源。门槛是逐页的，因此每次开库重跑既安全又必要。
+5. **决策 4 的 `revise_page` 未落地**，与本 ADR 原文一致（「只定型，不在本 ADR 落地」+ 待决 4「不单独立项，等第一个真实『已批准页过时』案例由用户触发」）。但决策 2 的第②个写入点今天确实被用上了：ADR-0019 的合并把一张曾批准的页转成墓碑时，它的批准时点内容已经在 `page_versions` 里可读——「合并销毁信息」这件事因此有了反悔的凭据，尽管没有一键撤销。
+
+**晋升状态**：条件 1（迁移与回填对账、幂等重放、`DropWikiSchema` 可逆）与条件 2（append-only 拒绝 UPDATE/DELETE、审核重入不产生重复快照）已由 `internal/db/wiki_versions_test.go` 满足；条件 3 随 `revise_page` 一起等待。条件 4 已于 2026-10-13 改写为「真库落地后的回填对账」——因为真库当天在**无演练**的前提下已被推进到 v22，原措辞失去对象（详见该条修订记录）；改写后的对账需要先存在 approved 页，而批准动作按设计只能由人做出。故本 ADR 维持 Proposed。

@@ -56,11 +56,24 @@ var allowedConfigKeys = map[string]bool{
 	// layer. Off by default, independent of semantic_search (that sends text out
 	// to get a vector back; this sends text out to get stored content back) and
 	// independent of wiki_lint_llm (which only reads).
-	"wiki_compile":     true,
-	"wiki_lint_llm":    true,
-	"ai_chat_base_url": true,
-	"ai_chat_model":    true,
-	"ai_chat_api_key":  true,
+	"wiki_compile":  true,
+	"wiki_lint_llm": true,
+	// M7/ADR-0019 merge suggestions: lets a model judge whether two pages are the
+	// same concept. Needs wiki_lint_llm too (it runs inside the lint model half),
+	// and its own key because judging similarity is separate consent from judging
+	// contradictions. Suggestions only ever become todos — the merge itself is a
+	// human click, with no gate because it is not automatic.
+	"wiki_merge_suggest": true,
+	// M7/ADR-0020 community synthesis: the ONLY path that lets a model write
+	// synthesis pages. Off by default, never scheduled (it spends tokens and writes
+	// pages, unlike lint), and the two size keys below are its tunables — numeric, so
+	// no stringConfigKeys entry.
+	"wiki_community_summary": true,
+	"community_min_size":     true,
+	"community_max_size":     true,
+	"ai_chat_base_url":       true,
+	"ai_chat_model":          true,
+	"ai_chat_api_key":        true,
 }
 
 // stringConfigKeys are exempt from the numeric-value check: they carry free-text

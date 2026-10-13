@@ -230,6 +230,14 @@ func (s *Service) askCompilePlan(cfg aiChatConfig, note *db.Note) ([]compileOp, 
 		"硬规则：\n" +
 		"- 不要提出修改或删除任何已存在页面。若你想修订一个既有概念，就不要为它生成操作（系统会把它转成给人看的建议）。\n" +
 		"- slug 用的小写-连字符形式；同一概念请复用下面词表里已有的 slug。\n" +
+		// ADR-0019 决策 7: the merge tool is the cure, this line is the prevention.
+		// It is spelled as an explicit alternative action because "don't duplicate"
+		// alone leaves the model no way to express "this note concerns an existing
+		// page" — and lane 1's rehearsal showed it would then invent a near-synonym
+		// slug (payment-gateway next to gateway-payment) rather than link.
+		"- 若这条笔记讲的是词表里已有的概念（哪怕名字略有出入）：**不要**再造一个新页，" +
+		"改用 add_link 把新页指向那个既有 slug，并用 attach_note 声明来源；" +
+		"造同义新页会让人额外做一次合并。\n" +
 		"- relation 含义：part-of 组成、depends 依赖、implements 实现、documents 描述、supersedes 取代（较新页取代较旧页）、contradicts 冲突、mentions 提及、ref 一般引用；选最贴切的一个，拿不准就用 ref。\n" +
 		"- 每个你新建的页面都必须至少有一条 attach_note 指向本次这条笔记（缺来源会被 lint 判为不可追溯）。\n" +
 		"- body 简洁，不超过 1500 字节，写事实与结论，不要写\"根据笔记\"这类元叙述。\n" +

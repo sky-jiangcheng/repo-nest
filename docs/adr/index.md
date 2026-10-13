@@ -23,11 +23,11 @@ order: 22
 | [0014](0014-llm-wiki-knowledge-compiler.md) | LLM Wiki 知识编译层——摄入时编译、消费时取证（M6） | Proposed（W1/W1b/W4 已落地、W2 核心与前端已落地；其晋升条件仍需真实标注 query 集，W3 见 0015） |
 | [0015](0015-w3-minimal-compile-loop.md) | W3 最小编译闭环——LLM 只写 pending 页，人批准才进检索 | Accepted |
 | [0016](0016-async-batch-jobs.md) | 长时批任务的异步化——提交即返回、进度可查、结果可取 | Accepted |
-| [0017](0017-one-kernel-two-entry-points.md) | 一个内核、两个入口——产品分层而不分叉仓库 | Proposed |
-| [0018](0018-knowledge-graph-foundation.md) | 知识图谱底座——受控关系词表让图可查，图感知取证让图被读 | **lane 1 Accepted（2026-10-12 真库演练 PASS）**；lane 2 Proposed（页面向量 + 图感知取证，schema v22，待 Phase 0 delta） |
-| [0019](0019-entity-resolution-merge.md) | 实体消歧与概念合并——治「概念分裂」，合并永远由人触发 | Proposed（仅设计，未落码；排在 ADR-0018 lane 1 Accepted 之后；结构 blocking 可独立推进，向量相似那一路待 lane 2） |
-| [0020](0020-community-synthesis.md) | 社区摘要——用 Label Propagation 让 synthesis 层自己长出来 | Proposed（仅设计，未落码；前置 ADR-0018 lane 1 Accepted；触发同步 vs job 为待拍板项） |
-| [0021](0021-temporal-graph-page-versions.md) | 时态图——`page_versions` 快照让「修订已批准结论」可以安全发生 | Proposed（仅设计，未落码；前置 ADR-0018 lane 1 Accepted，且待第一个真实修订需求触发） |
+| [0017](0017-one-kernel-two-entry-points.md) | 一个内核、两个入口——产品分层而不分叉仓库 | **Accepted（2026-10-13）**；条件 3 措辞于晋升当日由「第一安装路径」修订为「首屏叙事里的一等入口」，安装排序仍归 ADR-0009 管 |
+| [0018](0018-knowledge-graph-foundation.md) | 知识图谱底座——受控关系词表让图可查，图感知取证让图被读 | **lane 1 Accepted（2026-10-12 真库演练 PASS）**；lane 2 Proposed（页面向量 + 图感知取证，schema v23（原 v22 已被 ADR-0021 占用），待 Phase 0 delta） |
+| [0019](0019-entity-resolution-merge.md) | 实体消歧与概念合并——治「概念分裂」，合并永远由人触发 | Proposed（**2026-10-13 已落码**：结构 blocking + 合并事务 + 模型二判→`[lint] merge` 待办 + 审核页合并建议区；晋升条件 1-4 满足，条件 5 真库演练待用户跑；向量相似那一路仍待 lane 2） |
+| [0020](0020-community-synthesis.md) | 社区摘要——用 Label Propagation 让 synthesis 层自己长出来 | Proposed（**2026-10-13 已落码**：待决 4 定为同步 + 硬预算，不做 job、不重建 `compile_jobs`；条件 1/2/3/5 满足，条件 4 真库演练待用户跑） |
+| [0021](0021-temporal-graph-page-versions.md) | 时态图——`page_versions` 快照让「修订已批准结论」可以安全发生 | Proposed（**2026-10-13 地基已落码 = schema v22**：触发器写入 + append-only 守卫 + 逐页回填；条件 1/2 满足；条件 4 于同日改写为「真库落地后的回填对账」——真库当天在无演练下推进到 v22，原措辞失去对象，改写后的对账需先有 approved 页（批准是人独有的动作）；条件 3 随 `revise_page` 等待） |
 
 ## 约定
 

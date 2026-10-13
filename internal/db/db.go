@@ -95,6 +95,16 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ensure wiki review columns: %w", err)
 	}
 
+	// ...and for page version snapshots (v22, ADR-0021). It must run AFTER
+	// EnsureWikiReviewColumns: the snapshot trigger's WHEN clause reads
+	// old.status / new.status, so creating it against a table without the status
+	// column would fail. The call is also what re-applies the backfill, which is
+	// guarded per page and therefore safe on every open.
+	if err := EnsurePageVersions(db); err != nil {
+		db.Close() //nolint:errcheck
+		return nil, fmt.Errorf("failed to ensure page versions: %w", err)
+	}
+
 	// Triggers cannot backfill: pages that existed before this index was created
 	// would stay unsearchable forever. Rebuild is cheap (pages are a derived,
 	// bounded artifact) and idempotent, and doing it here is what stops the v7
