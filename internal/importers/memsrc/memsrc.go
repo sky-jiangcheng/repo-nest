@@ -6,12 +6,14 @@
 package memsrc
 
 import (
+	"context"
 	"database/sql"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"repotory/internal/db"
 )
@@ -136,6 +138,43 @@ func StripFrontmatter(s string) string {
 		}
 	}
 	return strings.TrimLeft(remainder, "\r\n")
+}
+
+// OpenReadOnly opens another application's live SQLite file without writing to
+// it. Two DSN variants because live tools run in WAL mode: plain `mode=ro`
+// reads the WAL correctly but fails when the sidecar `-shm` cannot be created
+// or is owned by another user, and `immutable=1` skips WAL handling entirely at
+// the cost of possibly reading a slightly stale snapshot. Preferring the
+// accurate read and falling back to the tolerant one gets a useful import from
+// a running app without ever risking its data.
+//
+// The returned handle is capped to ONE connection: this is a read of someone
+// else's database, and SQLite serializes writers anyway.
+func OpenReadOnly(path string) (*sql.DB, error) {
+	dsns := []string{
+		"file:" + filepath.ToSlash(path) + "?mode=ro",
+		"file:" + filepath.ToSlash(path) + "?mode=ro&immutable=1",
+	}
+	var lastErr error
+	for _, dsn := range dsns {
+		st, err := sql.Open("sqlite", dsn)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		// sql.Open is lazy; only a ping proves the file is readable as SQLite.
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err = st.PingContext(ctx)
+		cancel()
+		if err != nil {
+			_ = st.Close()
+			lastErr = err
+			continue
+		}
+		st.SetMaxOpenConns(1)
+		return st, nil
+	}
+	return nil, lastErr
 }
 
 // ClipToBytes returns s clipped to at most max BYTES without splitting a UTF-8

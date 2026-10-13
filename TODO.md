@@ -28,7 +28,7 @@
 ### 用户动作 / 外部依赖
 
 - [ ] **桌面 GUI 真机冒烟**：扫描→收藏→刷新历史→笔记 CRUD→版本恢复→知识库搜索→MCP 问答，并覆盖本轮新增的合并建议区 / 社区摘要 / 页面版本历史三块界面。（D25 的 ≤1080px 断点已实测修复——记忆环塌陷、搜索框与 handoff 列表被仪表盘遮盖；ADR-0017 已据此晋升 Accepted）
-- [ ] **Hermes sessions 导入**：等本机出现 `~/.hermes` 真实样例（判据：无公开文档且无本机样例，不猜活格式）
+- [ ] **Hermes sessions 真机核验**：sessions 导入已落码（schema 由 TencentDB-Agent-Memory 的 shipped importer 确证，见 ADR-0011 实现修正节），差一次真机 `~/.hermes/state.db` 跑通 + 设置页点源验证
 - [ ] **OMP 导入向**（等 OMP v1 稳定）；Bleve（需先做「是否替代 FTS5」架构决策）、Pinecone/Milvus（需凭据）按 `vectordb` registry 既有流程待接
 - [ ] **M3 语义检索默认上线**：等 Phase 0 标注集（见上）
 - [ ] **JetBrains 插件**：缓议，待真实需求信号（issue/star）+ 补 ADR 后立项

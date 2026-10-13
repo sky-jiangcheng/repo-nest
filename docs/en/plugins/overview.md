@@ -37,7 +37,7 @@ Note the last branch: **a document that cannot be matched to a project is not st
 | `codex` | manual | `~/.codex/sessions/**/rollout-*.jsonl`, `~/.codex/archived_sessions/**` | first user instruction + last assistant reply per session |
 | `opencode` | manual | `$XDG_DATA_HOME` / `~/.local/share/opencode/storage/session/**/*.json` | session title + summary |
 | `openclaw` | manual | `~/.openclaw-autoclaw/workspace/*.md` | single level, never recursive; **requires a target project** |
-| `hermes` | manual | `$HERMES_HOME` / `~/.hermes/memories/{MEMORY,USER}.md` | **requires a target project** |
+| `hermes` | manual | `$HERMES_HOME` / `~/.hermes/memories/{MEMORY,USER}.md` + `state.db` (`messages` table, read-only) | memory notes + session logs; **requires a target project**; an unrecognized layout fails the **whole source** |
 | `cursor` | manual | `<config>/Cursor/User/globalStorage/state.vscdb` (override with `CURSOR_STATE_DB`) | read-only; first prompt + last reply; an unrecognized layout **fails the whole source** |
 
 "Automatic" means the source runs at startup together with `auto_import` (**off by default**; enable it explicitly in **Settings → Plugins**). "Manual" means it only runs when you click that source in **Settings → Plugins** — those are raw session transcripts, large and noisy, which is why they never belong in a startup rescan.

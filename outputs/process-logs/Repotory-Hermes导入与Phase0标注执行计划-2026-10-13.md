@@ -92,30 +92,29 @@ go run ./cmd/abeval -cases queries.jsonl -k 10 -min-recall 0.05
 3. **安全红线（不可跳过）**：`.env`（密钥）、`mcp-tokens/` **绝不拷贝**；`state.db` 若需带走只取只读副本
 4. 样例打包交给我（agent）
 
-### H.2 格式考古（agent 执行）
+### H.2 格式考古（agent 执行）— ✅ 完成 2026-10-13，H.1 的"等真实样例"被更快的路径取代
 
-- [ ] 解析 sessions 文件格式（参考 codex importer 的 `rollout-*.jsonl` 流式解析经验）
-- [ ] `state.db` 只读打开，dump 表结构，确认是否为会话主存储
-- [ ] 产出格式说明（字段、分段方式、时间戳语义），落 fixture 到 `internal/importers/hermes/testdata/`（**脱敏后**）
-- [ ] 与 TencentDB 插件的写入行为对照：确认哪些文件是 Hermes 原生、哪些是插件追加
+- [x] 从 TencentDB-Agent-Memory 源码确证格式（`agents/asset-import.ts#scanSessions`）：会话主库 = `$HERMES_HOME/state.db` 的 `messages(session_id, role, content, tool_call_id, tool_calls, tool_name, timestamp)`，按 `(session_id, id)` 排序；`~/.hermes/sessions/` 只有原始 request dump，**不是**会话库
+- [x] 确认 schema **不含 cwd/workspace 线索**（与 Codex 的 `session_meta.cwd` 不同）→ 归属只能走 `hermes_project` 配置
+- [x] fixture 落在 `sessions_test.go`（程序生成，非脱敏文件）：镜像上述 schema，含两场会话 + 一场纯工具会话 + 空文本行
 
-### H.3 ADR-0011 修订（agent 起草，用户批准）
+### H.3 ADR-0011 修订 — ✅ 完成 2026-10-13
 
-- [ ] 在「实现修正」惯例下补充：sessions schema 已确认（引用 H.2 说明），解除决策 3/5 的 defer
-- [ ] 明确导入映射：每会话 → 一条 log 笔记（对齐 codex importer 先例），项目匹配策略（cwd / directory 末段）
-- [ ] 保持既定边界：**opt-in 手动源**、allowlist 范围、幂等 upsert、不碰 `.env`/`mcp-tokens`
+- [x] 中文 ADR 追加「实现修正：Hermes sessions 已落地」节，明确 schema 由 shipped consumer 确证、解除决策 3/5 的 defer；英文 ADR 状态行与决策 3 同批更新
+- [x] 导入映射：每会话 → 一条 log 笔记（首条提问 + 末条回复各截 3000 字符，同 codex 口径）
+- [x] 边界保持：opt-in 手动源、只读 `state.db`、幂等 upsert、不碰 `.env`/`mcp-tokens`
 
-### H.4 实现（agent 执行）
+### H.4 实现 — ✅ 完成 2026-10-13
 
-- [ ] `internal/importers/hermes/`：新增 sessions 解析，复用 `memsrc` 的 ReadCapped / StripFrontmatter / ClipToBytes
-- [ ] 测试：fixture 单测 + 幂等重跑 + 超长内容截断；hermes_test.go 现有 memories 用例保持绿
-- [ ] `go test ./...` 全绿
+- [x] `internal/importers/hermes/sessions.go`：`importSessions` + `probeSessionsLayout`（表/列漂移时**整源报错**，不安静导入 0 条）
+- [x] `hermes.go` 的 `Import` 拆为 memories + sessions 两半合并；包注释更新
+- [x] 附带下沉：cursor 的 `openReadOnly` → `memsrc.OpenReadOnly`（第 3 个 sqlite-backed importer，符合决策 2 的抽取时机）
+- [x] 测试 5 例全绿（含漂移报错、配置归属、allowlist）；`go build ./internal/... ./cmd/...` + `go vet` 通过；全量 `go test ./...` 除根包缺 `web/dist` 外全绿
+- [x] CHANGELOG 与双语手册（`docs/plugins/overview.md` ↔ `docs/en/plugins/overview.md`）同批更新
 
-### H.5 真机核验 + 收尾（用户 + agent）
+### H.5 真机核验 + 收尾（用户动作，未做）
 
-- [ ] 用户在真机跑一次导入（设置 → 知识源 → Hermes，手动触发）
-- [ ] 核验：笔记条数与会话数对上、标题可读、项目挂载正确
-- [ ] CHANGELOG 记录；**双语手册同批改**（`docs/**` 与 `docs/en/**` 的 knowledge sources 页）
+- [ ] 用户在真机跑一次导入（设置 → 插件 → Hermes，手动触发），核验笔记条数与会话数对上、标题可读、项目挂载正确
 
 ---
 

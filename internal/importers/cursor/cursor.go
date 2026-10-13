@@ -35,7 +35,6 @@
 package cursor
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -120,13 +119,13 @@ func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 		return nil, nil // no state database: Cursor absent, a successful no-op
 	}
 
-	st, err := openReadOnly(statePath)
+	st, err := memsrc.OpenReadOnly(statePath)
 	if err != nil {
 		return nil, fmt.Errorf("cursor importer: open %s: %w", statePath, err)
 	}
-	defer st.close()
+	defer st.Close()
 
-	if err := probeLayout(st.sql); err != nil {
+	if err := probeLayout(st); err != nil {
 		// Loud on purpose: see the package comment. Importing nothing here would
 		// be indistinguishable from "you have no sessions".
 		return nil, fmt.Errorf("cursor importer: %w", err)
@@ -136,7 +135,7 @@ func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 	repos, _ := db.GetAllRepositories(i.db)
 	wsProjects := workspaceProjects(statePath, projects, repos)
 
-	rows, err := st.sql.Query(
+	rows, err := st.Query(
 		`SELECT composerId, COALESCE(workspaceId, ''), createdAt, lastUpdatedAt
 		   FROM composerHeaders
 		  WHERE COALESCE(isSubagent, 0) = 0
@@ -175,7 +174,7 @@ func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 			skippedNoProject++
 			continue
 		}
-		first, last, ok := i.excerpts(st.sql, c.ComposerID)
+		first, last, ok := i.excerpts(st, c.ComposerID)
 		if !ok {
 			skippedNoText++
 			continue
@@ -247,51 +246,10 @@ func (i *Importer) excerpts(st *sql.DB, composerID string) (first, last string, 
 	return first, last, true
 }
 
-// state is the read-only handle on Cursor's own database. It is deliberately a
-// separate type: the only thing this package may ever do to that file is read it
+// The handle comes from memsrc.OpenReadOnly, shared with the other sqlite-backed
+// importers: the only thing this package may ever do to Cursor's file is read it
 // (ADR-0011 决策 3 — importers never mutate another tool's data).
-type state struct {
-	sql *sql.DB
-}
-
-func (s *state) close() { _ = s.sql.Close() }
-
-// openReadOnly opens another application's live SQLite file without writing to
-// it. Two DSN variants because Cursor runs in WAL mode: plain `mode=ro` reads
-// the WAL correctly but fails when the sidecar `-shm` cannot be created or is
-// owned by another user, and `immutable=1` skips WAL handling entirely at the
-// cost of possibly reading a slightly stale snapshot. Preferring the accurate
-// read and falling back to the tolerant one gets a useful import from a running
-// Cursor without ever risking its data.
-func openReadOnly(path string) (*state, error) {
-	dsns := []string{
-		"file:" + filepath.ToSlash(path) + "?mode=ro",
-		"file:" + filepath.ToSlash(path) + "?mode=ro&immutable=1",
-	}
-	var lastErr error
-	for _, dsn := range dsns {
-		st, err := sql.Open("sqlite", dsn)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		// sql.Open is lazy; only a ping proves the file is readable as SQLite.
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		err = st.PingContext(ctx)
-		cancel()
-		if err != nil {
-			_ = st.Close()
-			lastErr = err
-			continue
-		}
-		// One connection: this is a read of another app's database, and SQLite
-		// serializes writers anyway.
-		st.SetMaxOpenConns(1)
-		return &state{sql: st}, nil
-	}
-	return nil, lastErr
-}
-
+//
 // requiredTables / requiredColumns are the layout this importer reads. Anything
 // missing means Cursor's format moved under us, which must be reported instead of
 // silently importing zero notes.

@@ -5,14 +5,15 @@
 //	~/.hermes/memories/{MEMORY.md,USER.md}      (root overridden by $HERMES_HOME)
 //
 // SECURITY: the Hermes home also contains `.env` (secrets), `mcp-tokens/`, and
-// `state.db`. This importer is hard-scoped to memories/*.md ONLY — a flat,
+// `state.db`. The memory half is hard-scoped to memories/*.md ONLY — a flat,
 // non-recursive listing of that one subdirectory — and never reads the parent,
-// subdirectories, or any non-.md file.
+// subdirectories, or any non-.md file. The session half reads ONLY the
+// messages table of state.db, read-only (see sessions.go).
 //
-// Sessions (`~/.hermes/sessions/`, `state.db`) are intentionally NOT imported:
-// their record schema is not documented and cannot be verified on this machine,
-// so a lenient-but-correct parser is deferred until the format is confirmed
-// (ADR-0011 决策 3 / 5 — never guess a live format).
+// Sessions: imported since 2026-10-13, from state.db — the layout was confirmed
+// against TencentCloud/TencentDB-Agent-Memory, whose shipped asset importer
+// reads exactly these tables. ADR-0011 决策 3/5 had deferred this until a real
+// sample or a shipped consumer settled the format; that condition is met.
 //
 // Hermes memory is agent-GLOBAL, so notes attach to the project named by the
 // `hermes_project` config value; unset/unknown -> skipped. Registered as an
@@ -64,9 +65,25 @@ func memoriesDir() (string, bool) {
 	return filepath.Join(home, ".hermes", "memories"), true
 }
 
-// Import reads ONLY <hermesHome>/memories/*.md (flat) and yields one note per
-// non-empty file. Returns nil (no-op) when Hermes is not installed.
+// Import yields one note per curated memories/*.md file plus one log note per
+// session found in state.db (see sessions.go). Returns nil (no-op) when Hermes
+// is not installed; a drifted state.db layout returns an error instead, so
+// "imported nothing" never masquerades as "you have no sessions".
 func (i *Importer) Import() ([]plugin.ImportDoc, error) {
+	docs, err := i.importMemories()
+	if err != nil {
+		return nil, err
+	}
+	sessionDocs, err := i.importSessions()
+	if err != nil {
+		return nil, err
+	}
+	return append(docs, sessionDocs...), nil
+}
+
+// importMemories reads ONLY <hermesHome>/memories/*.md (flat) and yields one
+// note per non-empty file.
+func (i *Importer) importMemories() ([]plugin.ImportDoc, error) {
 	dir, ok := memoriesDir()
 	if !ok {
 		return nil, nil
