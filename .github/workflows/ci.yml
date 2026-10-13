@@ -163,3 +163,41 @@ jobs:
       # noUnusedParameters on, so this step is the real TypeScript gate.
       - name: Typecheck and build (tsc && vite build)
         run: npm run build
+
+  # --------------------------------------------------------- VS Code ext ----
+  # release.yml compiles the extension, but only on tags — so a TypeScript
+  # breakage in ide/vscode could sit on master unnoticed until the next release.
+  # This job is the gate. It also re-runs scripts/sync-init.mjs and fails when
+  # the bundled repotory-init copy has drifted from its source of truth: the
+  # command reads it at runtime, so a stale copy silently ships an old installer.
+  vscode-extension-test:
+    name: VS Code extension compile & bundle sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ide/vscode
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: ide/vscode/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `tsc -p ./ && node scripts/sync-init.mjs`. tsconfig.json is strict, so
+      # this is the extension's TypeScript gate; the sync step copies
+      # scripts/repotory-init/index.mjs next to the build output.
+      - name: Compile
+        run: npm run compile
+
+      # `compile` rewrites the copy, so a difference now means the file was
+      # committed out of sync with ../../scripts/repotory-init/index.mjs.
+      - name: Bundled repotory-init is in sync
+        run: git diff --exit-code -- repotory-init/index.mjs

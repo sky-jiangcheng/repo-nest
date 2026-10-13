@@ -162,14 +162,14 @@ async function refreshLastHandoff(): Promise<void> {
     const handoff = response.result;
     const at = handoff?.updated_at ? new Date(handoff.updated_at) : undefined;
     if (handoff && at && !Number.isNaN(at.getTime())) {
-      statusItem.text = `$(nest) Repotory · ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+      statusItem.text = `$(repo) Repotory · ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
       statusItem.tooltip = `Last handoff: ${handoff.title ?? "session"}\n${at.toLocaleString()}\n\nClick to load the session context`;
     } else {
-      statusItem.text = "$(nest) Repotory";
+      statusItem.text = "$(repo) Repotory";
       statusItem.tooltip = "Repotory: no session handoff yet. Click to load the session context";
     }
   } catch {
-    statusItem.text = "$(nest) Repotory";
+    statusItem.text = "$(repo) Repotory";
     statusItem.tooltip = "Repotory: click to load the session context";
   }
 }
@@ -279,18 +279,32 @@ async function searchKnowledge(notes: NotesSearchProvider): Promise<void> {
   }
 }
 
-async function registerMcp(): Promise<void> {
+// `repotory-init` is private and is not installed globally, so a shipped VSIX
+// cannot assume it exists in the user's project. Prefer the copy bundled into the
+// extension itself (scripts/sync-init.mjs puts it there at compile time); fall
+// back to a workspace copy so developing inside this repository still uses the
+// live source.
+async function registerMcp(context: vscode.ExtensionContext): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0];
-  if (!folder) {
-    void vscode.window.showErrorMessage("Repotory: open a folder first.");
-    return;
+  const candidates = [
+    vscode.Uri.joinPath(context.extensionUri, "repotory-init", "index.mjs"),
+  ];
+  if (folder) {
+    candidates.push(vscode.Uri.joinPath(folder.uri, "scripts", "repotory-init", "index.mjs"));
   }
-  const script = vscode.Uri.joinPath(folder.uri, "scripts", "repotory-init", "index.mjs");
-  try {
-    await vscode.workspace.fs.stat(script);
-  } catch {
+  let script: vscode.Uri | undefined;
+  for (const candidate of candidates) {
+    try {
+      await vscode.workspace.fs.stat(candidate);
+      script = candidate;
+      break;
+    } catch {
+      /* keep looking */
+    }
+  }
+  if (!script) {
     const choice = await vscode.window.showWarningMessage(
-      "Repotory: scripts/repotory-init/index.mjs was not found in this workspace — the one-command installer lives in the Repotory repository.",
+      "Repotory: repotory-init was not found. Reinstall the extension, or run the installer from the Repotory repository.",
       "Open Docs",
     );
     if (choice === "Open Docs") {
@@ -302,8 +316,13 @@ async function registerMcp(): Promise<void> {
     }
     return;
   }
-  const terminal = vscode.window.createTerminal({ name: "repotory-init", cwd: folder.uri });
-  terminal.sendText("node scripts/repotory-init/index.mjs --with-hook");
+  const terminal = vscode.window.createTerminal({
+    name: "repotory-init",
+    cwd: folder?.uri ?? context.extensionUri,
+  });
+  // Quoted: extensionUri contains spaces on some machines, which would otherwise
+  // split the command across several arguments.
+  terminal.sendText(`node "${script.fsPath}" --with-hook`);
   terminal.show();
 }
 
@@ -312,7 +331,7 @@ async function registerMcp(): Promise<void> {
 export function activate(context: vscode.ExtensionContext): void {
   output = vscode.window.createOutputChannel("Repotory", { log: true });
   statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 60);
-  statusItem.text = "$(nest) Repotory";
+  statusItem.text = "$(repo) Repotory";
   statusItem.tooltip = "Repotory: click to load the session context";
   statusItem.command = "repotory.loadContext";
   void refreshLastHandoff();
@@ -342,7 +361,7 @@ export function activate(context: vscode.ExtensionContext): void {
   register("repotory.loadContext", loadContext);
   register("repotory.handoff", writeHandoff);
   register("repotory.search", () => searchKnowledge(notes));
-  register("repotory.registerMcp", registerMcp);
+  register("repotory.registerMcp", () => registerMcp(context));
 
   context.subscriptions.push(
     statusItem,

@@ -12,8 +12,18 @@ One VSIX covers the whole fork family — **VS Code, Cursor and Windsurf**.
 | Command `Repotory: Write Session Handoff` | Prompts for summary / changes / next steps, then records a structured handoff (`repotory_handoff`) — the project is resolved from the workspace path when `repotory.projectId` is not set — the next session, yours or any agent's, starts from it |
 | Command `Repotory: Search Knowledge` | Full-text search (FTS5) across every note you captured; the workspace path is sent so notes recorded in the matched repository rank first (ranking only, nothing filtered). Hits render in the sidebar and open read-only |
 | Sidebar "Knowledge Search" | Idle state shows the resolved `project · repository` (or "not in the knowledge base yet"), then the search results |
-| Status bar `⌒ Repotory` | Click = load context; the tooltip names the resolved workspace (project / repository and its path) once resolved |
-| Command `Repotory: Register MCP Server` | Runs `repotory-init --with-hook` in a terminal: registers the MCP server for Claude Code / Cursor / VS Code / Windsurf and installs the SessionEnd hook |
+| Status bar `$(repo) Repotory` | Click = load context; the tooltip names the resolved workspace (project / repository and its path) once resolved |
+| Command `Repotory: Register MCP Server` | Runs the bundled `repotory-init --with-hook` in a terminal: registers the MCP server for Claude Code / Cursor / VS Code / Windsurf and installs the SessionEnd hook. The installer ships inside the extension, so this works in any project — it is not limited to the Repotory repository |
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl+Alt+R` `C` (`Ctrl+Cmd+R` `C` on macOS) | Load Session Context |
+| `Ctrl+Alt+R` `H` (`Ctrl+Cmd+R` `H` on macOS) | Write Session Handoff |
+| `Ctrl+Alt+R` `S` (`Ctrl+Cmd+R` `S` on macOS) | Search Knowledge |
+
+The sidebar's title bar also carries a search button. All four commands remain in the Command Palette; rebind them in *Preferences → Keyboard Shortcuts* if the defaults collide with yours.
 
 ## Requirements
 

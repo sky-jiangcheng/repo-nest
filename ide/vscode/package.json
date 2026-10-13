@@ -35,6 +35,32 @@
         "title": "Repotory: Register MCP Server (repotory-init)"
       }
     ],
+    "keybindings": [
+      {
+        "command": "repotory.loadContext",
+        "key": "ctrl+alt+r c",
+        "mac": "ctrl+cmd+r c"
+      },
+      {
+        "command": "repotory.handoff",
+        "key": "ctrl+alt+r h",
+        "mac": "ctrl+cmd+r h"
+      },
+      {
+        "command": "repotory.search",
+        "key": "ctrl+alt+r s",
+        "mac": "ctrl+cmd+r s"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "repotory.search",
+          "when": "view == repotory.notesSearch",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "Repotory",
       "properties": {
@@ -69,7 +95,8 @@
     }
   },
   "scripts": {
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && node scripts/sync-init.mjs",
+    "sync-init": "node scripts/sync-init.mjs",
     "watch": "tsc -w -p ./"
   },
   "devDependencies": {
