@@ -134,7 +134,7 @@ When an AI notices that "the search results seem incomplete", it should run `rep
 
 ### Workspace path resolution: which project owns this folder
 
-"Which project is the directory I'm standing in?" was the most common question that used to be unanswerable. The old `ResolveProject` matched with `strings.Contains(project.RootPath, query)` — the stored root had to *contain* the query — so a subdirectory of a multi-repository project (e.g. `/…/CBiPay/pay-common`) never matched, and the `repositories` table, which does record that directory, was never consulted at all. The VS Code extension additionally never sent the workspace path anywhere and required a hand-typed numeric `repotory.projectId` before the handoff command would run.
+"Which project is the directory I'm standing in?" was the most common question that used to be unanswerable. The old `ResolveProject` matched with `strings.Contains(project.RootPath, query)` — the stored root had to *contain* the query — so a subdirectory of a multi-repository project (e.g. `/…/CBiPay/pay-common`) never matched, and the `repositories` table, which does record that directory, was never consulted at all. The VS Code extension additionally never sent the workspace path anywhere, and the handoff command refused to run until you had hand-typed a numeric project id.
 
 `Service.ResolveProjectByPath` now does a **four-tier path resolution**, most specific first:
 

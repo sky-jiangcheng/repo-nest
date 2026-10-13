@@ -68,11 +68,6 @@
           "type": "string",
           "default": "http://127.0.0.1:18765",
           "description": "Repotory headless service URL (repotory server)."
-        },
-        "repotory.projectId": {
-          "type": "string",
-          "default": "",
-          "description": "Repotory project id used for context / handoff. Empty = let the service resolve the current workspace."
         }
       }
     },

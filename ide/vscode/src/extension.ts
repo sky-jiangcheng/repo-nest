@@ -14,7 +14,6 @@ import { NotesSearchProvider, parseSearchHits } from "./notesTree.js";
 
 const CONFIG_SECTION = "repotory";
 const SERVER_URL_KEY = "serverUrl";
-const PROJECT_ID_KEY = "projectId";
 const BINARY_NAMES = ["repotory-mcp", "repotory-mcp.exe"];
 
 export let output: vscode.OutputChannel;
@@ -51,12 +50,6 @@ interface WorkspaceResolution {
 }
 
 let lastResolution: WorkspaceResolution | null = null;
-
-function configuredProjectId(): number | undefined {
-  const raw = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>(PROJECT_ID_KEY) ?? "";
-  const id = Number(raw.trim());
-  return Number.isInteger(id) && id > 0 ? id : undefined;
-}
 
 export function findBinary(): string | undefined {
   for (const name of BINARY_NAMES) {
@@ -153,11 +146,14 @@ async function pingHeadless(): Promise<boolean> {
 
 async function refreshLastHandoff(): Promise<void> {
   if (!statusItem) return;
-  const projectId = configuredProjectId() ?? 0;
   try {
     const response = (await postJson(serverUrl(), "/api/rpc", {
       method: "LatestHandoff",
-      args: [projectId],
+      // 0 = unscoped: the newest handoff across all projects. The status bar is
+      // chrome about "when did I last hand anything off", so an unscoped answer
+      // is what it wants; the workspace's own project would need the resolution
+      // result, which is not this call's business.
+      args: [0],
     })) as { result?: HandoffStatus | null };
     const handoff = response.result;
     const at = handoff?.updated_at ? new Date(handoff.updated_at) : undefined;
@@ -190,10 +186,8 @@ function showOutput(title: string, body: string): void {
 
 async function loadContext(): Promise<void> {
   const args: Record<string, unknown> = {};
-  const projectId = configuredProjectId();
-  if (projectId !== undefined) args.project_id = projectId;
-  // The manual id wins when set; the path is what makes it work with no settings
-  // at all.
+  // The workspace path is the only input: the backend resolves it into a project
+  // AND a repository. There is no id to keep in sync and none to go stale.
   const dir = workspacePath();
   if (dir) args.path = dir;
   const text = await withProgress("loading session context", () =>
@@ -203,15 +197,13 @@ async function loadContext(): Promise<void> {
 }
 
 async function writeHandoff(): Promise<void> {
-  // A configured id is an override; otherwise the backend resolves the project
-  // from the workspace path. It used to be that this command simply refused
-  // without a hand-typed number, which made the primary write path of the product
-  // unusable out of the box.
-  const configured = configuredProjectId();
+  // The project comes from the workspace path, resolved server-side. It used to
+  // be that this command simply refused without a hand-typed number, which made
+  // the primary write path of the product unusable out of the box.
   const dir = workspacePath();
-  if (configured === undefined && !dir) {
+  if (!dir) {
     void vscode.window.showErrorMessage(
-      "Repotory: open a folder, or set repotory.projectId — a handoff needs a project.",
+      "Repotory: open a folder — the handoff is attached to the project your workspace resolves to.",
     );
     return;
   }
@@ -242,12 +234,10 @@ async function writeHandoff(): Promise<void> {
     summary,
     changes,
     next_steps: nextSteps,
+    // The path is how the backend picks the project. There is no id to pin, so
+    // none is sent — an explicit 0 would be a magic number meaning "unknown".
+    path: dir,
   };
-  // project_id is sent only when the user pinned one; otherwise it is omitted and
-  // the backend resolves it from `path`. Sending 0 as "unknown" would be a magic
-  // number the tool has to special-case.
-  if (configured !== undefined) handoffArgs.project_id = configured;
-  if (dir) handoffArgs.path = dir;
 
   const noteText = await withProgress("writing session handoff", () =>
     callTool("repotory_handoff", handoffArgs),

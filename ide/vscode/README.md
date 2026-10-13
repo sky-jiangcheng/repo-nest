@@ -9,7 +9,7 @@ One VSIX covers the whole fork family — **VS Code, Cursor and Windsurf**.
 | Surface | What it does |
 |---|---|
 | Command `Repotory: Load Session Context` | Pulls the working context for your project (tech stack, README excerpt, recent commits, open todos, the last session handoff) via `repotory_context`, sending the current workspace path so a subdirectory resolves to the repository it belongs to; shows it in the Repotory output channel |
-| Command `Repotory: Write Session Handoff` | Prompts for summary / changes / next steps, then records a structured handoff (`repotory_handoff`) — the project is resolved from the workspace path when `repotory.projectId` is not set — the next session, yours or any agent's, starts from it |
+| Command `Repotory: Write Session Handoff` | Prompts for summary / changes / next steps, then records a structured handoff (`repotory_handoff`) — the project is resolved from the workspace path — the next session, yours or any agent's, starts from it |
 | Command `Repotory: Search Knowledge` | Full-text search (FTS5) across every note you captured; the workspace path is sent so notes recorded in the matched repository rank first (ranking only, nothing filtered). Hits render in the sidebar and open read-only |
 | Sidebar "Knowledge Search" | Idle state shows the resolved `project · repository` (or "not in the knowledge base yet"), then the search results |
 | Status bar `$(repo) Repotory` | Click = load context; the tooltip names the resolved workspace (project / repository and its path) once resolved |
@@ -35,7 +35,8 @@ The sidebar's title bar also carries a search button. All four commands remain i
 | Setting | Default | Description |
 |---|---|---|
 | `repotory.serverUrl` | `http://127.0.0.1:18765` | Repotory headless service URL |
-| `repotory.projectId` | *(empty)* | Optional override: pin a project id for context / handoff. Leave empty and the extension resolves the current workspace path server-side — a numeric id is no longer a prerequisite |
+
+That is the whole surface. No project id to configure: the extension sends the workspace path and the service resolves it into a project and a repository, so there is no setting to keep in sync with your knowledge base.
 
 ## Workspace resolution
 

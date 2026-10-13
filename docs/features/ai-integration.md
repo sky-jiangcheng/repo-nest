@@ -136,7 +136,7 @@ sequenceDiagram
 
 ### 工作区路径解析：这个文件夹属于哪个项目
 
-「我站的这个目录是哪个项目？」是最常见却一度无法回答的问题。旧的 `ResolveProject` 用 `strings.Contains(project.RootPath, query)` 匹配——存进来的根路径必须*包含*查询串——所以一个多仓库项目的子目录（例如 `/…/CBiPay/pay-common`）永远匹配不上；而 `repositories` 表明明记录了那个目录，却根本没被查询过。VS Code 扩展更是从不把工作区路径发到任何地方，交接命令还要求先手填一个数字 `repotory.projectId` 才能运行。
+「我站的这个目录是哪个项目？」是最常见却一度无法回答的问题。旧的 `ResolveProject` 用 `strings.Contains(project.RootPath, query)` 匹配——存进来的根路径必须*包含*查询串——所以一个多仓库项目的子目录（例如 `/…/CBiPay/pay-common`）永远匹配不上；而 `repositories` 表明明记录了那个目录，却根本没被查询过。VS Code 扩展更是从不把工作区路径发到任何地方，交接命令甚至要求先手填一个项目 id 数字才肯运行。
 
 现在由 `Service.ResolveProjectByPath` 做**四层路径解析**，从最具体到最粗：
 
