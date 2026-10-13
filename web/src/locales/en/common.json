@@ -1,6 +1,7 @@
 {
   "nav": {
     "knowledge": "Knowledge",
+    "home": "Home",
     "dashboard": "Dashboard",
     "settings": "Settings",
     "search": "Search",
@@ -8,6 +9,20 @@
     "main": "Main navigation",
     "language": "Switch language",
     "review": "Review"
+  },
+  "home": {
+    "title": "Home",
+    "ringTitle": "Memory Ring",
+    "ringSub": "Recent session handoffs and global search",
+    "searchPlaceholder": "Search notes and todos…",
+    "searchLabel": "Global search",
+    "resultsLabel": "Search results",
+    "noResults": "No matching results",
+    "recentHandoffs": "Recent handoffs",
+    "noHandoffs": "No handoff yet — one appears here when a session ends or you capture it",
+    "openProject": "Open project {{name}}",
+    "autoCaptured": "Auto",
+    "projectStatus": "Project status overview"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -194,6 +209,7 @@
     "targetProjectHint": "Global-memory importers attach notes to this project; leave empty to skip.",
     "targetSaved": "Target project saved for {{source}}",
     "save": "Save",
+    "saving": "Saving…",
     "groupImport": "Knowledge import",
     "groupTargets": "Global-memory sources · target project",
     "groupCapture": "Claude session capture",
@@ -207,6 +223,7 @@
       "authors": "Identifies you in commit records so personal output is counted",
       "appearance": "Choose light, dark, or follow the system",
       "plugins": "Manage knowledge sources, global-memory targets and session capture",
+      "ai": "Configure the chat endpoint, semantic search (embedding & vector store), session capture, and the wiki compile and model-check gates",
       "actions": "Trigger a full rescan or import past memories on demand"
     },
     "ai": {
@@ -387,7 +404,8 @@
     "commitsCapped": "showing the latest {{limit}}",
     "copyHash": "Copy commit SHA",
     "commitLog": "Commit log",
-    "filterRepoHint": "Click to filter by this repo"
+    "filterRepoHint": "Click to filter by this repo",
+    "sectionTabs": "Sections"
   },
   "common": {
     "unknownError": "Unknown error",
@@ -564,7 +582,13 @@
     "footSelect": "↑↓ navigate",
     "footOpen": "↵ open",
     "footClose": "esc close",
-    "resultsCount": "{{count}} results"
+    "resultsCount": "{{count}} results",
+    "newHandoff": "New handoff",
+    "newHandoffMark": "New",
+    "newHandoffHint": "Capture the latest Claude session as a handoff note",
+    "pickProject": "Pick the project to capture",
+    "handoffOk": "Created: {{title}}",
+    "handoffFail": "Capture failed: {{msg}}"
   },
   "summaryBar": {
     "repos": "Active repos",
@@ -692,6 +716,44 @@
     "loadError": "Failed to load the review queue",
     "actionError": "Action failed",
     "pagesUpdated": "updated {{n}} pages",
-    "linksCreated": "created {{n}} links"
+    "linksCreated": "created {{n}} links",
+    "mergeHeading": "Merge suggestions",
+    "mergeHint": "Pairs the structural pass thinks are the same concept recorded twice. Suggestions only — nothing merges until you click, and no automatic path ever will.",
+    "emptyMergeTitle": "No merge suggestions",
+    "emptyMergeMsg": "No two pages share enough structural signal to look like one concept.",
+    "mergeTruncated": "Showing only the first {{n}} pairs",
+    "mergeScore": "score {{n}}",
+    "mergeSharedNotes": "{{n}} shared source notes",
+    "mergeAdopt": "Accept merge",
+    "mergeConfirm": "Confirm merge?",
+    "mergeIgnore": "Ignore",
+    "mergeConfirmHint": "A merge re-points edges and source notes and turns the loser into a tombstone. The loser's content is not recoverable here.",
+    "mergeDirectionAria": "absorb {{loser}} into {{winner}}",
+    "mergeDone": "Merged [[{{loser}}]] into [[{{winner}}]]",
+    "mergeResult": "{{edges}} edge(s) redirected, {{dropped}} dropped, {{notes}} source note(s) reattached",
+    "mergeResultUnknown": "The backend reported no counts for this merge.",
+    "startCommunity": "Community summary",
+    "communityRunning": "Summarising…",
+    "communityNeedsProject": "Community summaries run per project — project 0 is the global tier on the backend, not \"all projects\". Pick a project first.",
+    "communityHint": "Synthesises approved pages into one summary page per topic. Sends page content to the model and writes pending pages.",
+    "communityHeading": "Community summary",
+    "communityGateOffNote": "Model synthesis is off (community gate): this run only did detection, and its note explains why.",
+    "communityGateOff": "Community synthesis is switched off",
+    "communityNoReport": "The community summary returned no report",
+    "communityDone": "Community summary finished",
+    "communityPagesCreated": "{{n}} page(s) created",
+    "communityPagesUpdated": "{{n}} page(s) updated",
+    "communityDocsLinked": "{{n}} document(s) linked",
+    "communityRevisionTodos": "{{n}} revision suggestion(s)",
+    "communityEmptyBodies": "{{n}} empty body(ies)",
+    "communityOutbound": "{{n}} bytes sent",
+    "versionHistory": "View version history",
+    "versionHistoryHint": "Snapshots of this page's approved content, written by the database trigger",
+    "versionLoading": "Loading versions…",
+    "versionListTitle": "Page version history",
+    "versionEmpty": "No approved-content snapshots for this page yet.",
+    "versionDiffHint": "Diff this snapshot against the page's current content",
+    "versionNoDiff": "This snapshot matches the current content.",
+    "versionLoadError": "Failed to load page versions"
   }
 }

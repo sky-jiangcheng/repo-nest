@@ -1,8 +1,11 @@
 /* VersionHistoryPanel styles (P35: component-owned CSS).
 
-   整簇本组件独占（面板外壳、版本列表与条目、动作、diff 面板），从 features/notes.css
-   原样下沉，选择器结构不变——包括 `.version-history-header h4` 与 `.diff-pre code`
-   两个后代选择器。`.empty-hint`、`.btn` 是全局共享类，不在本文件内。 */
+   整簇本组件独占（面板外壳、版本列表与条目、动作），从 features/notes.css
+   原样下沉，选择器结构不变——包括 `.version-history-header h4` 后代选择器。
+   `.empty-hint`、`.btn` 是全局共享类，不在本文件内。
+   diff 面板一族（`.diff-panel` / `.diff-pre` / 增删行）已随 DiffViewer 组件
+   迁到 components/DiffViewer.module.css：笔记面板与审核页的页面历史共用同一个
+   渲染器，样式跟着渲染器走。 */
 
 .versionHistoryPanel {
   margin-top: 16px;
@@ -60,39 +63,4 @@
 .versionActions {
   display: flex;
   gap: 4px;
-}
-
-.diffPanel {
-  margin-top: 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.diffPre {
-  margin: 0;
-  padding: 12px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.6;
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  overflow-x: auto;
-  white-space: pre;
-}
-
-.diffPre code {
-  font-family: inherit;
-}
-
-.diffLineAdd {
-  display: block;
-  background: var(--success-soft);
-  color: var(--success);
-}
-
-.diffLineDel {
-  display: block;
-  background: var(--danger-soft);
-  color: var(--danger);
 }

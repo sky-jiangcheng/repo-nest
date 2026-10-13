@@ -166,6 +166,14 @@
 
   .ring {
     overflow-y: visible;
+    /* min-height: 0 above is what lets this column scroll inside a fixed-height
+       grid row in wide mode. In stacked mode the row is content-sized, so that
+       permission is actively harmful: the row collapsed to the header's 52px while
+       the column's content needed 181px, and the search box and handoff list —
+       no longer clipped by overflow — spilled out and were painted UNDERNEATH the
+       Dashboard, which starts at the same y with an opaque background. Measured in
+       headless Chrome at 1024px, not inferred. */
+    min-height: auto;
   }
 
   .dashWrap {

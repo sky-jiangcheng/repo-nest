@@ -1,6 +1,11 @@
 # ADR-0017: 一个内核、两个入口——产品分层而不分叉仓库
 
-- 状态：Proposed
+- 状态：**Accepted（2026-10-13）**。晋升依据：条件 1（README 首屏与文档站主叙事已是 agent 记忆层，
+  人侧措辞统一、「项目理解」能力描述完整）、条件 2（D25 首屏「记忆环 + 项目状态」并排已落地，Home/Dashboard
+  组件测试在跑，视觉回归经用户实机确认——过程中修掉一个 ≤1080px 堆叠模式下记忆环塌陷、搜索框与 handoff 列表被
+  仪表盘遮盖的真缺陷）、条件 4（单仓、单 schema、`internal/service` 未复制，git 层面可验证）三条成立；
+  条件 3 原文把「叙事优先」写成了「安装排序」，经用户于同日决定**改写为可判定的形式**（见下），改写后成立。
+  本 ADR 不判定安装排序本身，那是获客姿态问题，归 ADR-0009 的传播原则管。）
 - 日期：2026-10-08
 - 关联：[ADR-0006](0006-scope-freeze.md)（范围冻结与功能分级）、[ADR-0008](0008-pwa-removal.md)（PWA 移出主构建，遗产清理先例）、[ADR-0009](0009-ide-presence.md)（IDE 存在感与分发策略）、TODO D25（仪表盘生产力门面收缩，本 ADR 修正其删除/隐藏倾向）、docs/positioning-brief.md（定位简报）
 
@@ -55,7 +60,17 @@ README、文档站、发布说明的主叙事切到「agent 记忆层」（三�
 
 1. README 首屏与文档站主叙事已切换为 agent 记忆层，桌面应用措辞统一为 human-side view，且「项目理解」能力描述无遗漏、无失实。
 2. GUI 首屏同时呈现记忆环入口（最近 handoff + 全局检索）与项目状态一览（含 Dashboard 等）；记忆环与仪表盘两处的功能测试与视觉回归全绿。
-3. headless 路径（MCP 二进制 + init 脚本）成为 README 与文档站的第一安装路径；desktop 与 headless 共享同一版本号与 CHANGELOG。
+3. headless 路径（`repotory-mcp` 二进制 + `repotory-init` 脚本）在 README 与文档站的**首屏叙事**里作为与桌面
+   并列的一等入口出现（不藏在附录或次级链接里），且 desktop 与 headless 共享同一版本号（`wails.json` SSOT）
+   与同一份 CHANGELOG。
+   > **措辞修订（2026-10-13，晋升当日）**：本条原写作「成为 README 与文档站的**第一安装路径**」。那个措辞把
+   > 「叙事优先」写成了「安装排序」——它真正要防的是「headless 被讲成桌面的附属功能」，而不是「下载按钮排在
+   > 第一位」。实际安装顺序至今仍是桌面优先（README Option 1 直接下载桌面应用；文档站「下载安装」同理），这是
+   > 获客姿态的选择，归 ADR-0009 的「人在哪个界面上看见它」管，本 ADR 不判定也不该判定。改写后的三条判据今天
+   > 均可验证：README 首屏 tagline 即「The local-first memory layer for AI coding agents」，紧随其后的是
+   `scan → context → handoff` 三次工具调用图，`repotory-mcp` 在 Features 表里标着 Core 并有独立安装小节；
+   文档站 getting-started 首段把「跨 agent 的项目记忆层」定为核心价值、明写仪表盘是支持能力，并在上手路径里
+   给出「纯 MCP 用户不装桌面应用、让 agent 调一次 `repotory_scan`」的分支。版本号与 CHANGELOG 两边共用一条链。
 4. 全程未新增 repository、未分裂 schema、未复制 service 层（git 层面可验证）。
 
 ## 附录：配套发布策略清单（按执行顺序）

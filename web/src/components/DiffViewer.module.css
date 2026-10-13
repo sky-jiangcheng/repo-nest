@@ -1,0 +1,41 @@
+/* ============================================
+   DiffViewer — unified-diff line colouring.
+   Shared by the note version panel and the review page's wiki page history;
+   the whole cluster is this component's (P35 convention: component-owned CSS).
+   Global affordances reused: none (this is a plain pre/code block).
+   ============================================ */
+
+.diffPanel {
+  margin-top: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.diffPre {
+  margin: 0;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.diffPre code {
+  font-family: inherit;
+}
+
+.diffLineAdd {
+  display: block;
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.diffLineDel {
+  display: block;
+  background: var(--danger-soft);
+  color: var(--danger);
+}

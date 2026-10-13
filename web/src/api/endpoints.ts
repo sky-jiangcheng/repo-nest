@@ -13,6 +13,8 @@ import type {
   ImportResult,
   ImportRun,
   HandoffResult,
+  MergeCandidateReport,
+  MergeResult,
   Note,
   NoteCount,
   NoteVersion,
@@ -28,6 +30,8 @@ import type {
   Summary,
   Todo,
   TodoCount,
+  WikiCommunityReport,
+  WikiPageVersion,
   WikiPendingPage,
 } from './types'
 
@@ -590,4 +594,53 @@ export function startLintJob(projectId: number): Promise<number> {
 
 export function cancelCompileJob(jobId: number): Promise<CompileJob | null> {
   return call<CompileJob | null>({ method: 'CancelCompileJob', args: [jobId] })
+}
+
+// --- Concept merge, community synthesis & page versions -------------------------
+// (ADR-0019 / ADR-0020 / ADR-0021). These five bindings are desktop-only by
+// design: no MCP twin, because a merge destroys knowledge and a synthesis run
+// writes model output into the library — both are human decisions.
+
+// findMergeCandidates runs the free structural pass over a project's pages.
+// The report is normalised rather than passed through because the review page
+// maps over `candidates` directly: a null here would take the whole page down,
+// and "no report" and "no candidates" render the same empty state anyway.
+export function findMergeCandidates(projectId: number, topK: number): Promise<MergeCandidateReport> {
+  return call<MergeCandidateReport | null>({ method: 'FindMergeCandidates', args: [projectId, topK] })
+    .then(d => ({
+      project_id: d?.project_id ?? projectId,
+      pages: d?.pages ?? 0,
+      pairs_scored: d?.pairs_scored ?? 0,
+      pairs_possible: d?.pairs_possible ?? 0,
+      candidates: d?.candidates ?? [],
+      truncated: !!d?.truncated,
+    }))
+}
+
+// mergeWikiPages absorbs the loser into the winner. Null is passed through
+// (getCompileJob's shape): the call either reported what it moved, or the
+// promise rejected. Zeros for a missing report would read as "the merge did
+// nothing", which is a claim the UI is not entitled to make.
+export function mergeWikiPages(loserId: number, winnerId: number): Promise<MergeResult | null> {
+  return call<MergeResult | null>({ method: 'MergeWikiPages', args: [loserId, winnerId] })
+}
+
+// runCommunitySummary is the slow, token-spending half of ADR-0020. Same
+// pass-through rationale as mergeWikiPages: a null report must not render as a
+// run that created zero pages.
+export function runCommunitySummary(projectId: number): Promise<WikiCommunityReport | null> {
+  return call<WikiCommunityReport | null>({ method: 'RunCommunitySummary', args: [projectId] })
+}
+
+// listWikiPageVersions returns a page's approved snapshots, newest first
+// (the backend orders them; the panel must not re-sort).
+export function listWikiPageVersions(pageId: number): Promise<WikiPageVersion[]> {
+  return call<WikiPageVersion[]>({ method: 'ListWikiPageVersions', args: [pageId] }).then(d => d ?? [])
+}
+
+// diffWikiPageVersion compares one snapshot against the page's CURRENT content as
+// unified line-diff text — the same format DiffNoteVersions returns, so the same
+// DiffViewer renders both.
+export function diffWikiPageVersion(pageId: number, versionId: number): Promise<string> {
+  return call<string>({ method: 'DiffWikiPageVersion', args: [pageId, versionId] }).then(d => d ?? '')
 }

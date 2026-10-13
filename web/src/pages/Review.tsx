@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  approveWikiPage, cancelCompileJob, deleteCompiledPage, getProjects,
-  listCompileJobs, listPendingWikiPages, listRejectedWikiPages,
-  rejectWikiPage, startCompileJob, startLintJob,
+  approveWikiPage, cancelCompileJob, deleteCompiledPage, diffWikiPageVersion, findMergeCandidates,
+  getProjects, listCompileJobs, listPendingWikiPages, listRejectedWikiPages, listWikiPageVersions,
+  mergeWikiPages, rejectWikiPage, runCommunitySummary, startCompileJob, startLintJob,
 } from '../api/client'
-import type { CompileJob, Project, WikiPendingPage } from '../api/client'
+import type {
+  CompileJob, MergeCandidate, MergeCandidateReport, Project, WikiCommunityReport,
+  WikiPageVersion, WikiPendingPage,
+} from '../api/client'
+import DiffViewer from '../components/DiffViewer'
 import ErrorBanner from '../components/ErrorBanner'
 import Icon from '../components/Icon'
+import { useConfirmClick } from '../hooks/useConfirmClick'
 import { useToast } from '../hooks/useToast'
 import { renderMarkdown } from '../utils/markdown'
 import s from './Review.module.css'
@@ -17,6 +22,10 @@ import s from './Review.module.css'
 // only scheduling the page does — the work itself is a backend job.
 const jobPollMs = 5000
 const maxNotesPerRun = 10
+// How many merge pairs the review surface asks for. The backend's own default
+// (mergeDefaultTopK) is the same number; passing it explicitly keeps the note
+// ("仅显示前 N 对") true no matter what the binding's default becomes.
+const mergeTopK = 20
 
 // Job rows render {done} / {total} with total = notes_total || requested_notes.
 // A queued job legitimately has both at 0 only when the worker has not claimed
@@ -47,6 +56,13 @@ function kindLabel(job: CompileJob, t: (k: string) => string): string {
   return kind === 'lint' ? t('review.kindLint') : t('review.kindCompile')
 }
 
+// A dismissed pair is keyed by project too: "ignore" means "not in this view",
+// and switching project is a different view. Nothing is persisted — the moment
+// the page unmounts the pair is suggested again, which is the point (a local
+// dismissal must never become a silent global "these are not duplicates").
+const mergePairKey = (projectId: number, c: MergeCandidate) =>
+  `${projectId}:${c.loser_id}>${c.winner_id}`
+
 function ReviewPage() {
   const { t } = useTranslation()
   const toast = useToast()
@@ -56,6 +72,10 @@ function ReviewPage() {
   const [pending, setPending] = useState<WikiPendingPage[]>([])
   const [rejected, setRejected] = useState<WikiPendingPage[]>([])
   const [jobs, setJobs] = useState<CompileJob[]>([])
+  const [merge, setMerge] = useState<MergeCandidateReport | null>(null)
+  const [dismissed, setDismissed] = useState<string[]>([])
+  const [community, setCommunity] = useState<WikiCommunityReport | null>(null)
+  const [communityBusy, setCommunityBusy] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [busy, setBusy] = useState(false)
   const [reloadToken, setReloadToken] = useState(0)
@@ -66,18 +86,24 @@ function ReviewPage() {
     // setState happens inside a .then/.catch. Calling a setState-bearing function
     // directly here is what the react-hooks lint rule rejects, and a synchronous
     // setState on mount would cascade-render the whole page.
+    //
+    // The merge candidate pass rides along because it is free and structural
+    // (ADR-0019 决策 2: no model, no vector, no writes) — a reviewer sees what is
+    // waiting before anything is enabled.
     let cancelled = false
     Promise.all([
       getProjects(),
       listPendingWikiPages(projectFilter),
       listRejectedWikiPages(projectFilter),
       listCompileJobs(projectFilter, '', 10),
-    ]).then(([projs, pend, rej, jb]) => {
+      findMergeCandidates(projectFilter, mergeTopK),
+    ]).then(([projs, pend, rej, jb, cand]) => {
       if (cancelled) return
       setProjects(projs)
       setPending(pend)
       setRejected(rej)
       setJobs(jb)
+      setMerge(cand)
       setLoadError('')
     }).catch((e) => {
       // Surface the underlying message next to the generic banner. A bare
@@ -126,6 +152,58 @@ function ReviewPage() {
   const onStartLint = () => void runGuarded(() => startLintJob(projectFilter))
   const onCancel = (id: number) => void runGuarded(() => cancelCompileJob(id))
 
+  // ADR-0019 决策 1: this click is the only path to the merge transaction in the
+  // whole product — no job, no ticker reaches it. The row arms the button first
+  // (useConfirmClick), so nothing here fires without a deliberate second click.
+  const onMerge = (c: MergeCandidate) => void runGuarded(async () => {
+    const r = await mergeWikiPages(c.loser_id, c.winner_id)
+    toast({
+      kind: 'success',
+      title: t('review.mergeDone', { loser: c.loser_slug, winner: c.winner_slug }),
+      message: r
+        ? t('review.mergeResult', {
+          edges: r.edges_redirected,
+          dropped: r.edges_dropped,
+          notes: r.notes_reattached,
+        })
+        : t('review.mergeResultUnknown'),
+    })
+  })
+
+  const onIgnoreMerge = (c: MergeCandidate) =>
+    setDismissed(d => (d.includes(mergePairKey(projectFilter, c)) ? d : [...d, mergePairKey(projectFilter, c)]))
+
+  // ADR-0020: slow and paid for, so it is its own in-flight flag rather than
+  // riding on `busy` — the page's other buttons should not grey out for it, and
+  // its own label has to change. runGuarded still owns the reload and the error
+  // toast once the call settles.
+  const onRunCommunity = () => {
+    setCommunityBusy(true)
+    void runGuarded(async () => {
+      const r = await runCommunitySummary(projectFilter)
+      setCommunity(r)
+      if (!r) {
+        toast({ kind: 'error', title: t('review.communityNoReport') })
+        return
+      }
+      // Gate off = detection only. Saying "0 pages created" would read as "there
+      // is nothing to synthesise", when the real answer is "you never turned this
+      // on" — so the backend's own note goes up verbatim instead.
+      if (r.community_gate_off) {
+        toast({ kind: 'info', title: t('review.communityGateOff'), message: r.llm_note || undefined })
+        return
+      }
+      toast({ kind: 'success', title: t('review.communityDone') })
+    }).finally(() => setCommunityBusy(false))
+  }
+
+  const mergeCandidates = useMemo(() => {
+    const list = merge?.candidates ?? []
+    if (dismissed.length === 0) return list
+    const hidden = new Set(dismissed)
+    return list.filter(c => !hidden.has(mergePairKey(projectFilter, c)))
+  }, [merge, dismissed, projectFilter])
+
   const projectLabel = useMemo(() => {
     const m = new Map<number, string>()
     for (const p of projects) m.set(p.id, p.name)
@@ -169,6 +247,20 @@ function ReviewPage() {
           >
             {t('review.startLint')}
           </button>
+          {/* Community synthesis (ADR-0020). Same project rule as lint, same
+              reason: project_id 0 is the GLOBAL tier on the backend, not
+              "every project" — running it there would synthesise a topic out of
+              cross-project pages and say nothing about the project the reviewer
+              picked, so the button is disabled with that stated, not silently
+              aimed at tier 0. */}
+          <button
+            className="btn btn-sm"
+            onClick={onRunCommunity}
+            disabled={busy || communityBusy || projectFilter === 0}
+            title={projectFilter === 0 ? t('review.communityNeedsProject') : t('review.communityHint')}
+          >
+            {communityBusy ? t('review.communityRunning') : t('review.startCommunity')}
+          </button>
         </div>
       </div>
 
@@ -176,6 +268,11 @@ function ReviewPage() {
         <p className={s.lead}>{t('review.subtitle')}</p>
 
         {loadError && <ErrorBanner message={loadError} onRetry={reload} />}
+
+        {/* The last synthesis run stays on screen: its counters are the evidence
+            that a paid-for call did something, and a toast expires long before a
+            reviewer has read six numbers. */}
+        {community && <CommunityReport report={community} />}
 
         {/* Jobs and rejected sections only exist when they have content: a
             reviewer who just wants the queue should not scroll past two empty
@@ -210,6 +307,32 @@ function ReviewPage() {
                     busy={busy} onApprove={onApprove} onReject={onReject} />
                 ))}
               </ul>}
+        </section>
+
+        {/* Merge suggestions (ADR-0019): always mounted, because "the structural
+            pass found nothing" is itself the answer a reviewer wants — unlike the
+            job and error sections, which are absence of a thing nobody asked for. */}
+        <section>
+          <div className={s.sectionHead}>
+            <h2>{t('review.mergeHeading')}</h2>
+            <span className={s.countChip}>{mergeCandidates.length}</span>
+          </div>
+          <p className={s.lead}>{t('review.mergeHint')}</p>
+          {mergeCandidates.length === 0
+            ? <div className="empty-state small">
+                <div className="empty-icon"><Icon name="check" size={32} /></div>
+                <h3>{t('review.emptyMergeTitle')}</h3>
+                <p>{t('review.emptyMergeMsg')}</p>
+              </div>
+            : <ul className={s.mergeList}>
+                {mergeCandidates.map(c => (
+                  <MergeRow key={`${c.loser_id}-${c.winner_id}`} item={c} busy={busy}
+                    onMerge={onMerge} onIgnore={onIgnoreMerge} />
+                ))}
+              </ul>}
+          {merge?.truncated && (
+            <p className={s.note}>{t('review.mergeTruncated', { n: merge.candidates?.length ?? 0 })}</p>
+          )}
         </section>
 
         {rejected.length > 0 && (
@@ -290,6 +413,99 @@ function JobRow({
   )
 }
 
+// One suggested pair. The direction is the whole content of the row: [[loser]] →
+// [[winner]] is what the merge would do, and it is provisional (ADR-0019 待决 1 —
+// structural evidence picked it, not a judgement). The score and the signal names
+// are shown rather than a bar because the point of a structural pass is that a
+// human can read WHY the pair was suggested; an opaque 0.87 could not be argued
+// with. The signals are the backend's stable vocabulary (shared-notes,
+// slug-shape, title-overlap, linked) and appear verbatim, like job statuses do.
+function MergeRow({
+  item, busy, onMerge, onIgnore,
+}: {
+  item: MergeCandidate
+  busy: boolean
+  onMerge: (c: MergeCandidate) => void
+  onIgnore: (c: MergeCandidate) => void
+}) {
+  const { t } = useTranslation()
+  // Two-click arm: the first click only swaps the label to 确认？, the second one
+  // merges. The warning lives on the row itself because that is where the two
+  // slugs being destroyed are visible — a modal (or window.confirm, which the
+  // delete path above still uses) would take the reviewer away from the very
+  // evidence they need in order to decide.
+  const { armed, click } = useConfirmClick(() => onMerge(item))
+  return (
+    <li className={s.mergeRow}>
+      <div className={s.mergeTop}>
+        <span className={s.mergeDirection}>
+          <span className={s.mergeLoser}>{item.loser_slug}</span>
+          <span className={s.mergeArrow} aria-hidden="true">→</span>
+          <span className={s.mergeWinner}>{item.winner_slug}</span>
+          <span className="visually-hidden">
+            {t('review.mergeDirectionAria', { loser: item.loser_slug, winner: item.winner_slug })}
+          </span>
+        </span>
+        <span className={s.stat}>{t('review.mergeScore', { n: item.score })}</span>
+        {(item.signals ?? []).map(sig => <span key={sig} className={s.signal}>{sig}</span>)}
+        {item.shared_notes > 0 && (
+          <span className={s.signal}>{t('review.mergeSharedNotes', { n: item.shared_notes })}</span>
+        )}
+      </div>
+      <div className={s.mergeActions}>
+        {/* Ignore is local and ephemeral by design: hiding a pair the reviewer has
+            already looked at is a view convenience, not a stored decision, and a
+            stored one would quietly teach the detector that these are different. */}
+        <button className="btn btn-sm" disabled={busy} onClick={() => onIgnore(item)}>
+          {t('review.mergeIgnore')}
+        </button>
+        <button
+          className={`btn btn-sm ${armed ? 'btn-danger' : 'btn-primary'} ${s.mergeAdopt}`}
+          onClick={click}
+          disabled={busy}
+          title={t('review.mergeConfirmHint')}
+        >
+          {armed ? t('review.mergeConfirm') : t('review.mergeAdopt')}
+        </button>
+      </div>
+    </li>
+  )
+}
+
+// The synthesis report. Every counter is shown even when zero: "0 pages created"
+// is a fact about this run, whereas hiding zeros would make a run that found
+// nothing indistinguishable from a button that was never pressed.
+function CommunityReport({ report }: { report: WikiCommunityReport }) {
+  const { t } = useTranslation()
+  const gates = [
+    { key: 'review.communityPagesCreated', n: report.pages_created },
+    { key: 'review.communityPagesUpdated', n: report.pages_updated },
+    { key: 'review.communityDocsLinked', n: report.documents_linked },
+    { key: 'review.communityRevisionTodos', n: report.revision_todos },
+    { key: 'review.communityEmptyBodies', n: report.empty_bodies },
+  ]
+  return (
+    <section aria-label={t('review.communityHeading')}>
+      <div className={s.sectionHead}>
+        <h2>{t('review.communityHeading')}</h2>
+      </div>
+      {report.community_gate_off ? (
+        // Detection only: the model half never ran, so the generation counters
+        // would be zeros nobody earned. The backend's own sentence says why.
+        <p className={s.note}>{t('review.communityGateOffNote')}</p>
+      ) : (
+        <div className={s.jobStats}>
+          {gates.map(g => <span key={g.key} className={s.stat}>{t(g.key, { n: g.n })}</span>)}
+          <span className={s.stat}>{t('review.communityOutbound', { n: report.outbound_bytes })}</span>
+        </div>
+      )}
+      {/* llm_note is backend copy (why nothing was found, why nothing was sent),
+          so it is rendered verbatim rather than paraphrased into a counter. */}
+      {report.llm_note && <p className={s.jobNote}>{report.llm_note}</p>}
+    </section>
+  )
+}
+
 function ReviewCard({
   item, projectLabel, busy, rejected = false, onApprove, onReject, onDelete,
 }: {
@@ -303,6 +519,51 @@ function ReviewCard({
 }) {
   const { t } = useTranslation()
   const p = item.page
+  // Page version history (ADR-0021) is lazy and per-card: the list is a second
+  // round trip nobody asked for until they opened the row, and one reviewer
+  // comparing three pages should not pay for all three histories.
+  const [versions, setVersions] = useState<WikiPageVersion[] | null>(null)
+  const [versionsBusy, setVersionsBusy] = useState(false)
+  const [versionsError, setVersionsError] = useState('')
+  const [diff, setDiff] = useState<{ versionId: number; text: string } | null>(null)
+  const [diffBusy, setDiffBusy] = useState(false)
+
+  const failure = (e: unknown) => {
+    const detail = e instanceof Error ? e.message : String(e)
+    setVersionsError(detail ? `${t('review.versionLoadError')}: ${detail}` : t('review.versionLoadError'))
+  }
+
+  const toggleVersions = () => {
+    if (versions !== null) {
+      setVersions(null)
+      setDiff(null)
+      setVersionsError('')
+      return
+    }
+    setVersionsError('')
+    setVersionsBusy(true)
+    // Newest first is the backend's contract (ORDER BY id DESC on the page_id
+    // index), so it is rendered as returned — re-sorting here would let the two
+    // version screens (notes and pages) disagree about what "newest" means.
+    listWikiPageVersions(p.id)
+      .then(v => setVersions(v))
+      .catch(failure)
+      .finally(() => setVersionsBusy(false))
+  }
+
+  const showDiff = (versionId: number) => {
+    if (diff?.versionId === versionId) {
+      setDiff(null)
+      return
+    }
+    setVersionsError('')
+    setDiffBusy(true)
+    diffWikiPageVersion(p.id, versionId)
+      .then(text => setDiff({ versionId, text }))
+      .catch(failure)
+      .finally(() => setDiffBusy(false))
+  }
+
   return (
     <li className={`${s.card} ${rejected ? s.cardRejected : ''}`}>
       <div className={s.cardHead}>
@@ -350,8 +611,19 @@ function ReviewCard({
         </div>
       )}
       {/* Secondary action left, primary right — the page's whole job is the
-          approve/decline decision, so the pair reads as one dialog. */}
+          approve/decline decision, so the pair reads as one dialog. The version
+          history toggle sits left of them: it is a reading aid, not a verdict,
+          and putting it on the right would make it compete with 批准. */}
       <div className={s.actions}>
+        <button
+          className={`btn btn-sm ${s.versionToggle}`}
+          onClick={toggleVersions}
+          disabled={versionsBusy}
+          aria-expanded={versions !== null}
+          title={t('review.versionHistoryHint')}
+        >
+          {versionsBusy ? t('review.versionLoading') : t('review.versionHistory')}
+        </button>
         {!rejected && (
           <>
             <button className="btn btn-sm" disabled={busy} onClick={() => onReject?.(p.id)}>
@@ -368,6 +640,42 @@ function ReviewCard({
           </button>
         )}
       </div>
+
+      {/* ADR-0021: what a reviewer actually signed off on. The trigger keeps one
+          snapshot per approved state, so this is the audit answer to "was it this
+          page before?" — and on a rejected card it is the last thing the page said
+          while it was still a conclusion. */}
+      {versions !== null && (
+        <div className={s.versions}>
+          <div className={s.versionsHead}>
+            <h3>{t('review.versionListTitle')}</h3>
+            <button className="btn btn-sm" onClick={toggleVersions}>{t('common.close')}</button>
+          </div>
+          {versionsError && <p className={s.jobError}>{versionsError}</p>}
+          {versions.length === 0 && <p className="empty-hint">{t('review.versionEmpty')}</p>}
+          <ul className={s.versionList}>
+            {versions.map(v => (
+              <li key={v.id}>
+                <button
+                  className={`${s.versionItem} ${diff?.versionId === v.id ? s.versionItemActive : ''}`}
+                  onClick={() => showDiff(v.id)}
+                  disabled={diffBusy}
+                  title={t('review.versionDiffHint')}
+                >
+                  <span className={s.versionTime}>{v.created_at}</span>
+                  <span className={s.versionKind}>{t(`review.kind_${v.kind}`, v.kind)}</span>
+                  <span className={s.versionSource}>{v.source}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {diff && (
+            diff.text
+              ? <DiffViewer text={diff.text} />
+              : <p className="empty-hint">{t('review.versionNoDiff')}</p>
+          )}
+        </div>
+      )}
     </li>
   )
 }

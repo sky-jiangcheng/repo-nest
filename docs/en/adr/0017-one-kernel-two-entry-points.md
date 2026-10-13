@@ -1,6 +1,15 @@
 # ADR-0017: One kernel, two entry points — product layering without forking the repo
 
-- Status: Proposed
+- Status: **Accepted (2026-10-13)**. Basis for promotion: criteria 1 (the README first screen and the docs-site
+  narrative are already the agent memory layer; human-side wording is uniform and the "project understanding"
+  capability is described completely), 2 (D25's side-by-side memory ring + project status has landed, Home and
+  Dashboard component tests run, and the visual regression was confirmed by the user on a real screen — which
+  surfaced and fixed a genuine defect where the memory ring collapsed at ≤1080px and its search box and handoff
+  list were painted underneath the Dashboard) and 4 (one repository, one schema, no duplicated service layer,
+  verifiable in git) hold as written. Criterion 3 originally said "first install path", which conflated
+  narrative primacy with download ordering; the user amended it on the same day into the decidable form below,
+  and it holds as amended. This ADR does not rule on install ordering — that is an acquisition posture, owned by
+  ADR-0009's propagation principle.)
 - Date: 2026-10-08
 - Relates to: [ADR-0006](0006-scope-freeze.md) (scope freeze and feature tiering), [ADR-0008](0008-pwa-removal.md) (legacy cleanup), [ADR-0009](0009-ide-presence.md) (distribution strategy), TODO D25 (dashboard trim; this ADR revises its remove/hide tendency), docs/positioning-brief.md
 
@@ -55,7 +64,21 @@ Positive: narrative purity is restored — "two entry points" is a factual descr
 
 1. README first screen and docs-site narrative lead with the agent memory layer; desktop wording is uniformly "human-side view", with the "project understanding" capability described completely and without stale claims.
 2. GUI first screen shows both the memory-loop entry (recent handoffs + global search) and the project-state overview (including Dashboard etc.); functional tests plus visual regression pass for both the memory loop and the dashboard.
-3. The headless path (MCP binary + init script) is the first install path in README and docs; desktop and headless share one version number and one CHANGELOG.
+3. The headless path (`repotory-mcp` binary + `repotory-init` script) appears as a **first-class entry alongside
+   the desktop app in the first-screen narrative** of both README and the docs site — not buried in an appendix or
+   a secondary link — and desktop and headless share one version number (the `wails.json` SSOT) and one CHANGELOG.
+   > **Wording amended (2026-10-13, the day of promotion)**: this criterion used to read "is the **first install
+   > path** in README and docs". That phrasing turned narrative primacy into download ordering. What the criterion
+   > actually guards against is headless being *narrated* as an accessory to the desktop app, not a download
+   > button sitting in first place. Install ordering is still desktop-first today (README Option 1 is the direct
+   > desktop download; the docs site's install section is the same), which is an acquisition posture governed by
+   > ADR-0009's "on what screen does a human see it" principle — this ADR neither decides nor should decide it.
+   > Every clause of the amended form is verifiable today: the README tagline is "The local-first memory layer for
+   > AI coding agents", immediately followed by the `scan → context → handoff` three-call diagram, `repotory-mcp`
+   > is marked Core in the Features table and has its own installation subsection; the docs site's opening
+   > paragraph names the cross-agent memory layer as the core value, states that the dashboard is supporting,
+   > and offers the pure-MCP branch ("no desktop app; have your agent call `repotory_scan` once`). One version
+   > number and one CHANGELOG serve both paths.
 4. Throughout: no new repository, no forked schema, no duplicated service layer (verifiable at the git level).
 
 ## Appendix: release-strategy checklist (in execution order)

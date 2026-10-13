@@ -1,6 +1,7 @@
 {
   "nav": {
     "knowledge": "知识库",
+    "home": "首页",
     "dashboard": "仪表盘",
     "settings": "设置",
     "search": "搜索",
@@ -8,6 +9,20 @@
     "main": "主导航",
     "language": "切换语言",
     "review": "审核"
+  },
+  "home": {
+    "title": "首页",
+    "ringTitle": "记忆环",
+    "ringSub": "最近的会话交接与全局检索",
+    "searchPlaceholder": "搜索笔记与待办…",
+    "searchLabel": "全局检索",
+    "resultsLabel": "搜索结果",
+    "noResults": "没有匹配的结果",
+    "recentHandoffs": "最近 handoff",
+    "noHandoffs": "还没有 handoff——会话结束或手动捕捉后会出现在这里",
+    "openProject": "打开项目 {{name}}",
+    "autoCaptured": "自动",
+    "projectStatus": "项目状态一览"
   },
   "dashboard": {
     "title": "仪表盘",
@@ -193,6 +208,7 @@
     "targetProjectHint": "全局记忆导入器把笔记挂到此项目；留空则跳过。",
     "targetSaved": "已保存 {{source}} 的目标项目",
     "save": "保存",
+    "saving": "保存中…",
     "groupImport": "知识导入",
     "groupTargets": "全局记忆源 · 目标项目",
     "groupCapture": "Claude 会话捕捉",
@@ -206,6 +222,7 @@
       "authors": "用于在提交记录中识别你的身份，统计个人代码量",
       "appearance": "选择浅色、深色或跟随系统",
       "plugins": "管理知识导入源、全局记忆归属项目与会话捕捉",
+      "ai": "配置对话端点、语义检索（embedding 与向量存储）、会话捕捉，以及 wiki 编译与模型检查的开关",
       "actions": "手动触发全量扫描或导入历史记忆"
     },
     "ai": {
@@ -386,7 +403,8 @@
     "commitsCapped": "仅显示最近 {{limit}} 条",
     "copyHash": "复制 commit SHA",
     "commitLog": "提交记录",
-    "filterRepoHint": "点击按此仓库筛选"
+    "filterRepoHint": "点击按此仓库筛选",
+    "sectionTabs": "内容分区"
   },
   "common": {
     "unknownError": "未知错误",
@@ -563,7 +581,13 @@
     "footSelect": "↑↓ 选择",
     "footOpen": "↵ 打开",
     "footClose": "esc 关闭",
-    "resultsCount": "{{count}} 个结果"
+    "resultsCount": "{{count}} 个结果",
+    "newHandoff": "新建 handoff",
+    "newHandoffMark": "新建",
+    "newHandoffHint": "捕捉最近的 Claude 会话为交接笔记",
+    "pickProject": "选择要捕捉的项目",
+    "handoffOk": "已创建：{{title}}",
+    "handoffFail": "捕捉失败：{{msg}}"
   },
   "summaryBar": {
     "repos": "活跃仓库",
@@ -691,6 +715,44 @@
     "loadError": "加载审核队列失败",
     "actionError": "操作失败",
     "pagesUpdated": "更新 {{n}} 页",
-    "linksCreated": "新建 {{n}} 条链接"
+    "linksCreated": "新建 {{n}} 条链接",
+    "mergeHeading": "合并建议",
+    "mergeHint": "结构信号找出的“可能是同一个概念”页面对。这里只有建议——合并发生在你点击之后，没有任何自动路径会合并。",
+    "emptyMergeTitle": "没有合并建议",
+    "emptyMergeMsg": "没有两张页面的结构信号强到像同一个概念。",
+    "mergeTruncated": "仅显示前 {{n}} 对",
+    "mergeScore": "信号分 {{n}}",
+    "mergeSharedNotes": "共用来源笔记 {{n}} 条",
+    "mergeAdopt": "采纳合并",
+    "mergeConfirm": "确认合并？",
+    "mergeIgnore": "忽略",
+    "mergeConfirmHint": "合并会改向出边与来源笔记，并把落选页替换为墓碑；原页内容不可在此页恢复。",
+    "mergeDirectionAria": "将 {{loser}} 并入 {{winner}}",
+    "mergeDone": "已把 [[{{loser}}]] 并入 [[{{winner}}]]",
+    "mergeResult": "边改向 {{edges}} 条、丢弃 {{dropped}} 条，来源笔记重挂 {{notes}} 条",
+    "mergeResultUnknown": "后端未回报本次移动了多少边与笔记。",
+    "startCommunity": "生成社区摘要",
+    "communityRunning": "归纳中…",
+    "communityNeedsProject": "社区摘要按项目运行：项目 0 在后端是“全局层”，不是“所有项目”，请先选一个具体项目",
+    "communityHint": "会把已批准页面的内容发给模型并写入新的待审页面，耗时且消耗 token",
+    "communityHeading": "社区摘要结果",
+    "communityGateOffNote": "模型归纳开关未开启：本次只做了结构检测，没有外发内容，也没有写入页面。",
+    "communityGateOff": "社区摘要未开启模型归纳",
+    "communityNoReport": "社区摘要没有返回报告",
+    "communityDone": "社区摘要已完成",
+    "communityPagesCreated": "新建 {{n}} 页",
+    "communityPagesUpdated": "更新 {{n}} 页",
+    "communityDocsLinked": "关联文档 {{n}} 份",
+    "communityRevisionTodos": "修订待办 {{n}} 条",
+    "communityEmptyBodies": "空正文 {{n}} 页",
+    "communityOutbound": "外发 {{n}} 字节",
+    "versionHistory": "查看版本历史",
+    "versionHistoryHint": "这一页每次成为或改变“已批准内容”时的快照，由数据库触发器写入",
+    "versionLoading": "加载版本…",
+    "versionListTitle": "页面版本历史",
+    "versionEmpty": "该页面还没有已批准内容的快照。",
+    "versionDiffHint": "查看这一版与当前内容的差异",
+    "versionNoDiff": "这一版与当前内容一致。",
+    "versionLoadError": "加载页面版本失败"
   }
 }

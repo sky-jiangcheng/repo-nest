@@ -352,3 +352,87 @@ export interface CompileJob {
   started_at?: string
   finished_at?: string
 }
+
+// --- Concept merge (ADR-0019) -------------------------------------------------
+// Shapes mirror internal/service.MergeCandidate{,Report} and internal/db.MergeResult.
+
+/**
+ * One pair of pages that look like the same concept twice. The direction is
+ * PROVISIONAL (structural evidence only): the loser is the page that would be
+ * absorbed, the winner the one whose row stays untouched.
+ */
+export interface MergeCandidate {
+  winner_id: number
+  winner_slug: string
+  loser_id: number
+  loser_slug: string
+  score: number
+  signals: string[]
+  shared_notes: number
+  project_id: number
+}
+
+export interface MergeCandidateReport {
+  project_id: number
+  pages: number
+  pairs_scored: number
+  pairs_possible: number
+  candidates: MergeCandidate[]
+  truncated: boolean
+}
+
+/** What an executed absorption actually moved. All-zero is how a replay of a
+ *  finished merge shows itself. */
+export interface MergeResult {
+  loser_id: number
+  loser_slug: string
+  winner_id: number
+  winner_slug: string
+  edges_redirected: number
+  edges_dropped: number
+  notes_reattached: number
+  loser_previous_status: string
+}
+
+// --- Community synthesis (ADR-0020) -------------------------------------------
+// Mirrors internal/service.WikiCommunityReport. The structural half is free and
+// always present; the generation half is zero when the consent gate is off, in
+// which case llm_note says so and must be shown instead of the zeros.
+export interface WikiCommunityReport {
+  project_id: number
+  approved_pages: number
+  edges: number
+  communities_found: number
+  dropped_small: number
+  dropped_large: number
+  isolated: number
+  rounds: number
+  converged: boolean
+  pages_created: number
+  pages_updated: number
+  documents_linked: number
+  notes_attached: number
+  revision_todos: number
+  empty_bodies: number
+  summarized_slugs: string[]
+  skipped_by_budget: string[]
+  outbound_bytes: number
+  calls: number
+  community_gate_off: boolean
+  llm_note?: string
+  elapsed_ms: number
+  run_at: string
+}
+
+// --- Wiki page version snapshots (ADR-0021) -----------------------------------
+// Mirrors internal/db.PageVersion: one frozen snapshot of a page's APPROVED
+// content, written by a database trigger. Newest first, as returned.
+export interface WikiPageVersion {
+  id: number
+  page_id: number
+  title: string
+  content: string
+  kind: string
+  source: string
+  created_at: string
+}
