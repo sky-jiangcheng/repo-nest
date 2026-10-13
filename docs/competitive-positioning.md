@@ -53,8 +53,8 @@
 
 | 事项 | 结论 |
 |---|---|
-| Hermes sessions 导入（TODO 现有项） | **优先级提升**。对方插件原生支持 Hermes，落地后会在本机产生格式明确的会话数据——届时以他们的存储格式作真实样例，比猜活格式靠谱。 |
-| M3 语义检索 Phase 0 标注 | **优先级提升**。竞品用 benchmark 立信，我们至少要有 `abeval` delta 为正的公开证据。 |
+| Hermes sessions 导入（TODO 现有项） | **优先级提升**。对方插件原生支持 Hermes，落地后会在本机产生格式明确的会话数据——届时以他们的存储格式作真实样例，比猜活格式靠谱。执行计划见 [outputs/process-logs/Repotory-Hermes导入与Phase0标注执行计划-2026-10-13.md](../outputs/process-logs/Repotory-Hermes导入与Phase0标注执行计划-2026-10-13.md)。 |
+| M3 语义检索 Phase 0 标注 | **优先级提升**。竞品用 benchmark 立信，我们至少要有 `abeval` delta 为正的公开证据。执行计划见 [outputs/process-logs/Repotory-Hermes导入与Phase0标注执行计划-2026-10-13.md](../outputs/process-logs/Repotory-Hermes导入与Phase0标注执行计划-2026-10-13.md)。 |
 | ADR-0014/0015（LLM wiki 编译） | 维持克制。全自动 LLM 提炼是对方的主场优势，我们在没有评测门之前不应正面跟随；先把手写知识+图谱做扎实。 |
 | 是否做"用户画像/Persona" | **不做**。画像属于运行时个性化层，与"项目知识库"定位冲突；坚持 project-centric。 |
 
