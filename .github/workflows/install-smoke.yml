@@ -10,7 +10,7 @@
 # The desktop asset is faked (the goal is the script's URL/extract/install
 # logic, not Wails output), but the MCP archive is a real Go build of
 # ./cmd/mcp, so `repotory-mcp` actually runs afterwards. RELEASES /
-# REPO_NEST_RELEASE_BASE point the scripts at the fixture.
+# REPOTORY_RELEASE_BASE point the scripts at the fixture.
 name: Install smoke test
 
 on:
@@ -238,7 +238,7 @@ jobs:
       - name: Run install script
         shell: pwsh
         run: |
-          $env:REPO_NEST_RELEASE_BASE = "http://127.0.0.1:8080"
+          $env:REPOTORY_RELEASE_BASE = "http://127.0.0.1:8080"
           . .\scripts\install.ps1
 
       - name: Verify installed artifacts

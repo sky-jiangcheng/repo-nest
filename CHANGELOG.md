@@ -36,6 +36,7 @@
 
 - **首屏在 ≤1080px 下记忆环塌陷、搜索框与 handoff 列表被仪表盘遮盖（D25 残留②，实测发现）**：`Home.module.css` 里 `.ring { min-height: 0 }` 是宽屏下让左栏内部滚动的承重值，但堆叠模式下它允许网格行塌到表头那 52px，而栏内内容实际需要 181px；`overflow-y` 又已改成 `visible`，于是搜索框与 handoff 列表溢出到行外，被同一 y 位置起、带不透明背景的仪表盘盖在下面——元素在 DOM 里、在页面上看不见。修法是在 ≤1080px 的媒体查询里把 `min-height` 恢复为 `auto`。诊断与验证用 headless Chrome 在 1024px / 1440px 实测元素包围盒（本仓无 Playwright，jsdom 断不了布局），修后 1024px 下环高 181px、仪表盘起始 y 由 168 变 297。
 - **Label Propagation 的振荡缺陷（ADR-0020 落码时由测试暴露）**：按教科书实现的「取邻居多数标签」会让二节点连通分量逐轮互换标签——每个节点采纳的正是对方上一轮刚采纳的值，于是相连的一对页面永远不成社区、由小分量组成的图永远不收敛。改为每个节点额外投自己当前标签一票（仍是多数规则，邻域有明显偏好时照样压过在任者），确定性不受影响：票箱与迭代顺序无关。这不是调参，是可用性前提。
+- **Windows 一键安装脚本随品牌更名更新（install.ps1）**：品牌更名漏掉了这个文件——它仍在下载旧资产名 `reponest-*.zip`，而 v2.0.0 起发布资产全部是新名 `repotory-*`，导致 **v2.0.0 的 Windows 一键安装直接 404**。现改为 `repotory.exe` / `repotory-mcp.exe`、安装目录 `%LOCALAPPDATA%\Repotory`，fixture 覆盖环境变量同步改名为 `REPOTORY_RELEASE_BASE`（原 `REPO_NEST_RELEASE_BASE`），install-smoke 的 Windows job 同步。macOS/Linux 的 install.sh 无此问题。
 
 ## [2.0.0] - 2026-10-12
 

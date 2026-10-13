@@ -1,21 +1,21 @@
-# RepoNest install script for Windows
-# Installs both the desktop app (reponest.exe) and the MCP server (reponest-mcp.exe).
+# Repotory install script for Windows
+# Installs both the desktop app (repotory.exe) and the MCP server (repotory-mcp.exe).
 # Run in PowerShell: iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
-$InstallDir = "$env:LOCALAPPDATA\RepoNest"
-$BinaryName = "reponest.exe"
-$McpBinaryName = "reponest-mcp.exe"
+$InstallDir = "$env:LOCALAPPDATA\Repotory"
+$BinaryName = "repotory.exe"
+$McpBinaryName = "repotory-mcp.exe"
 $Repo = "sky-jiangcheng/repo-nest"
 $Target = "windows-amd64"
 
 # ReleaseBase is the base URL for release assets. Overridable so CI can point
 # it at a local fixture server and exercise the real download/extract/install
 # path without a published release (see .github/workflows/install-smoke.yml).
-$ReleaseBase = if ($env:REPO_NEST_RELEASE_BASE) { $env:REPO_NEST_RELEASE_BASE } else { "https://github.com/$Repo/releases/latest/download" }
-$DesktopUrl = "$ReleaseBase/reponest-$Target.zip"
-$McpUrl = "$ReleaseBase/reponest-mcp-$Target.zip"
+$ReleaseBase = if ($env:REPOTORY_RELEASE_BASE) { $env:REPOTORY_RELEASE_BASE } else { "https://github.com/$Repo/releases/latest/download" }
+$DesktopUrl = "$ReleaseBase/repotory-$Target.zip"
+$McpUrl = "$ReleaseBase/repotory-mcp-$Target.zip"
 
 # --- Checksum verification -----------------------------------------------------
 #
@@ -27,7 +27,7 @@ $McpUrl = "$ReleaseBase/reponest-mcp-$Target.zip"
 # The manifest is optional on purpose: releases published before it existed
 # do not have the asset, and a missing manifest must not fail an otherwise
 # healthy install. A digest MISMATCH is always fatal.
-$SumsFile = "$env:TEMP\reponest-SHA256SUMS"
+$SumsFile = "$env:TEMP\repotory-SHA256SUMS"
 $SumsLoaded = $false
 try {
     Invoke-WebRequest -Uri "$ReleaseBase/SHA256SUMS" -OutFile $SumsFile -ErrorAction Stop
@@ -55,17 +55,17 @@ function Test-AssetSha256 {
     Write-Host "Verified $AssetName (sha256)."
 }
 
-Write-Host "Downloading RepoNest for Windows..."
+Write-Host "Downloading Repotory for Windows..."
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
 # The release workflow publishes Windows as a .zip (Compress-Archive of
-# build/bin/reponest.exe), not a bare .exe. Download the archive and expand it
+# build/bin/repotory.exe), not a bare .exe. Download the archive and expand it
 # rather than pointing at a .exe URL that 404s.
-$DesktopZip = "$env:TEMP\reponest-$Target.zip"
+$DesktopZip = "$env:TEMP\repotory-$Target.zip"
 try {
     Invoke-WebRequest -Uri $DesktopUrl -OutFile $DesktopZip
-    Test-AssetSha256 -Path $DesktopZip -AssetName "reponest-$Target.zip"
+    Test-AssetSha256 -Path $DesktopZip -AssetName "repotory-$Target.zip"
     Expand-Archive -Path $DesktopZip -DestinationPath $InstallDir -Force
     if (-not (Test-Path "$InstallDir\$BinaryName")) {
         throw "archive did not contain $BinaryName"
@@ -76,30 +76,30 @@ try {
 
 # MCP server: separate release asset, so AI clients can run it without the desktop
 # app. Non-fatal: older releases may not have the asset yet.
-Write-Host "Downloading RepoNest MCP server for Windows..."
-$McpZip = "$env:TEMP\reponest-mcp-$Target.zip"
+Write-Host "Downloading Repotory MCP server for Windows..."
+$McpZip = "$env:TEMP\repotory-mcp-$Target.zip"
 $McpDownloaded = $false
 try {
     Invoke-WebRequest -Uri $McpUrl -OutFile $McpZip
     $McpDownloaded = $true
 } catch {
-    Write-Warning "Could not download reponest-mcp (no asset for $Target, or download failed)."
+    Write-Warning "Could not download repotory-mcp (no asset for $Target, or download failed)."
     Write-Warning "The desktop app is installed and working; install the MCP server manually from $McpUrl"
 }
 
 if ($McpDownloaded) {
     # Outside the try on purpose: a checksum mismatch throws and must abort the
     # install, not fall through to the non-fatal warning path above.
-    Test-AssetSha256 -Path $McpZip -AssetName "reponest-mcp-$Target.zip"
+    Test-AssetSha256 -Path $McpZip -AssetName "repotory-mcp-$Target.zip"
     try {
         Expand-Archive -Path $McpZip -DestinationPath $InstallDir -Force
         if (Test-Path "$InstallDir\$McpBinaryName") {
-            Write-Host "RepoNest MCP server installed to $InstallDir\$McpBinaryName"
+            Write-Host "Repotory MCP server installed to $InstallDir\$McpBinaryName"
         } else {
             Write-Warning "archive did not contain $McpBinaryName"
         }
     } catch {
-        Write-Warning "Could not install reponest-mcp. The desktop app is installed and working."
+        Write-Warning "Could not install repotory-mcp. The desktop app is installed and working."
     } finally {
         if (Test-Path $McpZip) { Remove-Item $McpZip -Force }
     }
@@ -113,7 +113,7 @@ if ($UserPath -notlike "*$InstallDir*") {
 }
 
 Write-Host ""
-Write-Host "RepoNest installed to $InstallDir"
-Write-Host "Run 'reponest' in a new terminal to start!"
+Write-Host "Repotory installed to $InstallDir"
+Write-Host "Run 'repotory' in a new terminal to start!"
 Write-Host ""
 Write-Host "You can also create a desktop shortcut to: $InstallDir\$BinaryName"
