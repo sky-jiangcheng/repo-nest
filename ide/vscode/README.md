@@ -8,11 +8,11 @@ One VSIX covers the whole fork family — **VS Code, Cursor and Windsurf**.
 
 | Surface | What it does |
 |---|---|
-| Command `Repotory: Load Session Context` | Pulls the working context for your project (tech stack, README excerpt, recent commits, open todos, the last session handoff) via `repotory_context` and shows it in the Repotory output channel |
-| Command `Repotory: Write Session Handoff` | Prompts for summary / changes / next steps, then records a structured handoff (`repotory_handoff`) — the next session, yours or any agent's, starts from it |
-| Command `Repotory: Search Knowledge` | Full-text search (FTS5) across every note you captured; hits render in the sidebar and open read-only |
-| Sidebar "Knowledge Search" | Tree view bound to the search results |
-| Status bar `⌒ Repotory` | Click = load context; tooltip shows headless-service reachability |
+| Command `Repotory: Load Session Context` | Pulls the working context for your project (tech stack, README excerpt, recent commits, open todos, the last session handoff) via `repotory_context`, sending the current workspace path so a subdirectory resolves to the repository it belongs to; shows it in the Repotory output channel |
+| Command `Repotory: Write Session Handoff` | Prompts for summary / changes / next steps, then records a structured handoff (`repotory_handoff`) — the project is resolved from the workspace path when `repotory.projectId` is not set — the next session, yours or any agent's, starts from it |
+| Command `Repotory: Search Knowledge` | Full-text search (FTS5) across every note you captured; the workspace path is sent so notes recorded in the matched repository rank first (ranking only, nothing filtered). Hits render in the sidebar and open read-only |
+| Sidebar "Knowledge Search" | Idle state shows the resolved `project · repository` (or "not in the knowledge base yet"), then the search results |
+| Status bar `⌒ Repotory` | Click = load context; the tooltip names the resolved workspace (project / repository and its path) once resolved |
 | Command `Repotory: Register MCP Server` | Runs `repotory-init --with-hook` in a terminal: registers the MCP server for Claude Code / Cursor / VS Code / Windsurf and installs the SessionEnd hook |
 
 ## Requirements
@@ -25,7 +25,13 @@ One VSIX covers the whole fork family — **VS Code, Cursor and Windsurf**.
 | Setting | Default | Description |
 |---|---|---|
 | `repotory.serverUrl` | `http://127.0.0.1:18765` | Repotory headless service URL |
-| `repotory.projectId` | *(empty)* | Pin a project id for context / handoff; empty = let the service resolve the current workspace |
+| `repotory.projectId` | *(empty)* | Optional override: pin a project id for context / handoff. Leave empty and the extension resolves the current workspace path server-side — a numeric id is no longer a prerequisite |
+
+## Workspace resolution
+
+The extension no longer needs a hand-typed project id. Every command sends the current workspace folder's absolute path (`repotory_context`, `repotory_handoff`, `repotory_notes_search`), and the backend's four-tier path resolver (`project → repository`, most specific first) works out which project — and which repository inside it — the folder belongs to. The matching rules live server-side on purpose: the MCP tools resolve the same path, and a second implementation in the extension would let the sidebar and an agent's `repotory_context` disagree about which knowledge a session gets. On load and whenever the workspace folders change, the extension asks the read-only `ResolveWorkspacePath` binding what the folder is and shows the answer: the sidebar's idle row reads `<project> · <repository>` (or `not in the knowledge base yet` when nothing matches), and the status-bar tooltip names the resolved workspace.
+
+When the headless service is not reachable, the scope display stays silent (it does not guess) and the status-bar tooltip reports the reachability failure; the commands themselves still work over `repotory-mcp`, and any path-based resolution there is done by the same server-side code.
 
 ## Install
 

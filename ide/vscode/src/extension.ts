@@ -35,6 +35,23 @@ function serverUrl(): string {
   );
 }
 
+// workspacePath is the folder the session is actually standing in. It is the
+// input the backend resolves into a project AND a repository, which is what makes
+// opening `…/CBiPay/pay-common` behave differently from opening `…/CBiPay`.
+function workspacePath(): string | undefined {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  return folder ? folder.uri.fsPath : undefined;
+}
+
+interface WorkspaceResolution {
+  Project?: { id: number; name: string; root_path: string } | null;
+  Repository?: { id: number; path: string } | null;
+  MatchedOn?: string;
+  Candidates?: unknown[];
+}
+
+let lastResolution: WorkspaceResolution | null = null;
+
 function configuredProjectId(): number | undefined {
   const raw = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>(PROJECT_ID_KEY) ?? "";
   const id = Number(raw.trim());
@@ -90,6 +107,41 @@ export async function callTool(name: string, args: Record<string, unknown>): Pro
   }
 }
 
+// refreshScope asks the backend which project/repository this workspace is, and
+// shows the answer. The matching rules live server-side on purpose: the MCP tools
+// resolve the same path, and a TypeScript reimplementation would let the sidebar
+// and an agent's repotory_context disagree about which knowledge a session gets.
+async function refreshScope(notes: NotesSearchProvider): Promise<void> {
+  const dir = workspacePath();
+  if (!dir) {
+    lastResolution = null;
+    notes.setScope("");
+    return;
+  }
+  try {
+    const response = (await postJson(serverUrl(), "/api/rpc", {
+      method: "ResolveWorkspacePath",
+      args: [dir],
+    })) as { result?: WorkspaceResolution | null };
+    const res = response.result ?? null;
+    lastResolution = res;
+    if (res?.Project) {
+      const repo = res.Repository?.path ? res.Repository.path.split(/[\\/]/).pop() : undefined;
+      notes.setScope(repo ? `${res.Project.name} · ${repo}` : res.Project.name);
+      if (statusItem) {
+        statusItem.tooltip =
+          `Workspace: ${res.Project.name}${repo ? " / " + repo : ""}\n${dir}\n\nClick to load the session context`;
+      }
+    } else {
+      notes.setScope("not in the knowledge base yet");
+    }
+  } catch {
+    // No headless service: the commands still work through repotory-mcp, so the
+    // sidebar stays silent about scope rather than asserting something unverified.
+    notes.setScope("");
+  }
+}
+
 async function pingHeadless(): Promise<boolean> {
   try {
     await getJson(serverUrl(), "/health");
@@ -140,6 +192,10 @@ async function loadContext(): Promise<void> {
   const args: Record<string, unknown> = {};
   const projectId = configuredProjectId();
   if (projectId !== undefined) args.project_id = projectId;
+  // The manual id wins when set; the path is what makes it work with no settings
+  // at all.
+  const dir = workspacePath();
+  if (dir) args.path = dir;
   const text = await withProgress("loading session context", () =>
     callTool("repotory_context", args),
   );
@@ -147,10 +203,15 @@ async function loadContext(): Promise<void> {
 }
 
 async function writeHandoff(): Promise<void> {
-  const projectId = configuredProjectId();
-  if (projectId === undefined) {
+  // A configured id is an override; otherwise the backend resolves the project
+  // from the workspace path. It used to be that this command simply refused
+  // without a hand-typed number, which made the primary write path of the product
+  // unusable out of the box.
+  const configured = configuredProjectId();
+  const dir = workspacePath();
+  if (configured === undefined && !dir) {
     void vscode.window.showErrorMessage(
-      "Repotory: set repotory.projectId in settings — the handoff tool needs a project id.",
+      "Repotory: open a folder, or set repotory.projectId — a handoff needs a project.",
     );
     return;
   }
@@ -176,14 +237,20 @@ async function writeHandoff(): Promise<void> {
   const changes = await askList("changes");
   const nextSteps = await askList("next steps");
 
+  const handoffArgs: Record<string, unknown> = {
+    agent: "vscode-extension",
+    summary,
+    changes,
+    next_steps: nextSteps,
+  };
+  // project_id is sent only when the user pinned one; otherwise it is omitted and
+  // the backend resolves it from `path`. Sending 0 as "unknown" would be a magic
+  // number the tool has to special-case.
+  if (configured !== undefined) handoffArgs.project_id = configured;
+  if (dir) handoffArgs.path = dir;
+
   const noteText = await withProgress("writing session handoff", () =>
-    callTool("repotory_handoff", {
-      project_id: projectId,
-      agent: "vscode-extension",
-      summary,
-      changes,
-      next_steps: nextSteps,
-    }),
+    callTool("repotory_handoff", handoffArgs),
   );
   showOutput("Handoff recorded", noteText);
   void refreshLastHandoff();
@@ -198,8 +265,12 @@ async function searchKnowledge(notes: NotesSearchProvider): Promise<void> {
   if (!query) return;
   notes.setHint(`Searching "${query}"…`);
   try {
+    const searchArgs: Record<string, unknown> = { query };
+    // Ranking only: notes recorded in THIS repository lead the result list.
+    const dir = workspacePath();
+    if (dir) searchArgs.path = dir;
     const text = await withProgress("searching knowledge", () =>
-      callTool("repotory_notes_search", { query }),
+      callTool("repotory_notes_search", searchArgs),
     );
     notes.setHits(parseSearchHits(text), query);
   } catch (err) {
@@ -247,6 +318,10 @@ export function activate(context: vscode.ExtensionContext): void {
   void refreshLastHandoff();
 
   const notes = new NotesSearchProvider();
+  void refreshScope(notes);
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeWorkspaceFolders(() => void refreshScope(notes)),
+  );
 
   const handoffTimer = setInterval(() => void refreshLastHandoff(), 60_000);
   context.subscriptions.push({ dispose: () => clearInterval(handoffTimer) });

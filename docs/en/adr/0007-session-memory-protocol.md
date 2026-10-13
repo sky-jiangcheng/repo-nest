@@ -28,6 +28,21 @@ A single call returns a Markdown document of the project's full context:
 
 Project resolution protocol (`ResolveProject`): `project_id` exact resolution → `project_name` fuzzy match on name/path → auto-resolution when called with no arguments and exactly one project exists. On multiple matches, a project directory (with ID table) is returned for the agent to choose; the context of a wrongly guessed project is never injected.
 
+> **Protocol addition (2026-10-13): the path tier.** The protocol above gained one preceding input while all three
+> original steps remain. `repotory_context` and `repotory_handoff` now accept an optional `path` (the IDE workspace
+> folder or the agent's cwd), arbitrated by `ResolveWorkspace`: **an explicit `project_id` / `project_name` always
+> wins**, and `path` is consulted only when the name or id lookup could not decide a project. The ordering is not a
+> stylistic preference — letting the project a caller named be overwritten by whatever directory it happens to be
+> standing in is exactly the "inject the wrong project's context" this criterion forbids, wearing a smarter face.
+>
+> The fallback was needed because step 2 above matches in the direction "the project's root_path contains the
+> query", so a **subdirectory** of a multi-repository project (`…/CBiPay/pay-common`) hits none of the three steps,
+> while the `repositories` table — which does record that directory — was never consulted. The path tier fills that
+> gap in four tiers (repository exact → deepest repository ancestor → project exact → deepest project ancestor; see
+> `internal/service/workspace.go` and its tests, landed with ADR-0021), and reports what it matched
+> (`repository-exact` / `project-ancestor` / `unresolved` …), which turns "never guess" from a statement of intent
+> into a checkable fact.
+
 ### `repotory_handoff` (session end)
 
 A structured handoff protocol. Inputs: `summary` (required) + `changes` / `decisions` / `gotchas` / `next_steps` (arrays, at least one non-empty) + `agent` (writer identity). Rendered into a fixed Markdown template and persisted (`kind=knowledge`, `source=mcp`, tags automatically include `handoff`).

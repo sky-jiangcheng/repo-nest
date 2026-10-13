@@ -75,6 +75,29 @@ update_file "web/package.json" \
   '("version"[[:space:]]*:[[:space:]]*)"[^"]+"' \
   "\1\"$VERSION\""
 
+# 2b. ide/vscode/package.json  ->  version
+#
+#     The extension deliberately follows the app version rather than keeping its
+#     own line. It used to have one (0.1.0) while every release published it at the
+#     app version, so `vsce package` stamped 0.1.0 inside a file named
+#     repotory-vscode-<app>.vsix and the Marketplace got the app version — three
+#     numbers for one artifact, and no way to tell from an installed extension which
+#     build a user was actually running. This is also the same rule ADR-0017
+#     criterion 3 states for desktop and headless: one version, one CHANGELOG.
+#     Safe against the generic pattern: this manifest has exactly one "version" key
+#     (asserted by the check below rather than assumed).
+if [ -f ide/vscode/package.json ]; then
+  VKEYS=$(grep -c '"version"' ide/vscode/package.json || true)
+  if [ "$VKEYS" -ne 1 ]; then
+    echo "ERROR: ide/vscode/package.json has $VKEYS \"version\" keys, expected 1." >&2
+    echo "       Refusing to rewrite — the pattern would hit the wrong one." >&2
+    exit 1
+  fi
+  update_file "ide/vscode/package.json" \
+    '("version"[[:space:]]*:[[:space:]]*)"[^"]+"' \
+    "\1\"$VERSION\""
+fi
+
 # 3. internal/version/version.go  ->  const Version = "..."  (SSOT for app/CLI/MCP)
 update_file "internal/version/version.go" \
   '(const Version[[:space:]]*=[[:space:]]*)"[^"]+"' \
@@ -117,7 +140,7 @@ fi
 
 echo
 echo "Done. Verify with:"
-echo "  grep -rn '$VERSION' wails.json web/package.json web/package-lock.json internal/version/version.go packaging/ docs/index.html"
+echo "  grep -rn '$VERSION' wails.json web/package.json web/package-lock.json internal/version/version.go ide/vscode/package.json packaging/ docs/index.html"
 echo "  go build ./... && (cd web && npm run build)"
 echo
 echo "Then commit & tag:"

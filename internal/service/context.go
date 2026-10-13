@@ -89,6 +89,18 @@ func (s *Service) ResolveProject(query string) *ProjectResolution {
 type ProjectResolution struct {
 	Project    *domain.Project
 	Candidates []domain.Project
+	// Repository is set when the request resolved to a folder INSIDE a scanned
+	// repository (see ResolveProjectByPath) — the fine-grained scope for mining and
+	// notes. A name-based or id-based resolution leaves it nil, because "project
+	// auth" says nothing about which module the caller is standing in.
+	Repository *domain.Repository
+	// MatchedOn records HOW the resolution happened ("project-id", "name",
+	// "repository-exact", "project-ancestor", …). Callers show it rather than
+	// asserting a guess: a user who opened `…/CBiPay/pay-common` needs to see that
+	// the tool matched the repository, not that it silently fell back.
+	MatchedOn string
+	// WorkspacePath echoes the path that was resolved, when one was supplied.
+	WorkspacePath string
 }
 
 // BuildProjectContext renders a project's complete working context as a
@@ -110,16 +122,41 @@ func (s *Service) BuildProjectContext(res *ProjectResolution) string {
 	}
 
 	p := res.Project
-	overview, err := s.GetProjectOverview(p.ID)
+	// Mining scope follows the resolution. A workspace that landed inside one
+	// repository gets THAT repository's tech stack, README and commits — not the
+	// project's first repository, which for a multi-repo container is an arbitrary
+	// sibling (see GetRepositoryOverview).
+	var overview *ProjectOverview
+	var err error
+	if res.Repository != nil {
+		overview, err = s.GetRepositoryOverview(p.ID, res.Repository.ID)
+	} else {
+		overview, err = s.GetProjectOverview(p.ID)
+	}
 	if err != nil {
 		log.Printf("build project context overview error: %v", err)
+		overview = nil
+	}
+
+	notes := s.ListNotes(p.ID)
+	// Note scope follows the resolution too, by RANK rather than by filter: an
+	// unattached note must stay reachable, and note_repositories had no writer at
+	// all until this change, so filtering would have emptied every project's
+	// context. scopeNotesToRepository carries the detail.
+	near, other := s.scopeNotesToRepository(notes, repositoryScopeID(res))
+	if len(near) > 0 {
+		notes = append(append([]domain.Note{}, near...), other...)
 	}
 
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("# Project Context: %s\n\n", p.Name))
 	b.WriteString(fmt.Sprintf("- Root path: `%s`\n", p.RootPath))
-
-	notes := s.ListNotes(p.ID)
+	if res.Repository != nil {
+		b.WriteString(fmt.Sprintf("- Requested workspace: `%s`\n", res.Repository.Path))
+	}
+	if line := workspaceScopeLine(res, len(near), len(other)); line != "" {
+		b.WriteString("\n" + line)
+	}
 	todos := s.ListTodos(p.ID)
 	open := 0
 	for _, t := range todos {

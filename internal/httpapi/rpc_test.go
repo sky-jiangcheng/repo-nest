@@ -90,6 +90,13 @@ func TestRPCBlocksLifecycleMethods(t *testing.T) {
 			t.Fatalf("%s: code=%d out=%v, want 403", method, code, out)
 		}
 	}
+	// StartAskStream is in the same blocklist for a DIFFERENT reason — it answers
+	// over Wails events, so an HTTP caller would receive a stream id it can never
+	// read. It was in the list untested, which is how a blocklist entry quietly
+	// stops existing: delete the entry and nothing fails.
+	if code, out := rpc(t, h, `{"method":"StartAskStream","args":[1,"q",false]}`); code != 403 {
+		t.Fatalf("StartAskStream: code=%d out=%v, want 403 (it must not be reflexively callable)", code, out)
+	}
 }
 
 // Oversized request bodies are rejected with 413 before any decoding work.

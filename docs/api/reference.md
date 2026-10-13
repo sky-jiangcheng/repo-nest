@@ -53,6 +53,7 @@ Repotory 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 | `GetProjectDetail` | `(id) → ProjectDetail` | 项目 + 仓库列表及各自历史统计 |
 | `GetProjectStats` | `(id, date) → DailyStat[]` | 某日（默认昨天）项目统计 |
 | `GetProjectOverview` | `(id) → ProjectOverview` | 知识挖掘：README/技术栈/语言/依赖/贡献者/活跃度/最近提交（缓存于 repo_meta，未命中异步挖掘） |
+| `ResolveWorkspacePath` | `(path) → ProjectResolution` | 只读：把一个绝对目录解析为归属 project，以及当该目录落在被扫描仓库内时对应的 repository（四层路径解析）。供 IDE 侧栏显示命中范围；无 MCP 对应面，agent 改为把 `path` 传给 `repotory_context`。见 [AI 集成](../features/ai-integration.md) |
 | `SearchProjects` | `(query) → ProjectResponse[]` | 名称/路径模糊搜索（含昨日统计增强） |
 | `ToggleStar` | `(id) → bool` | 切换收藏，返回新状态（原子 UPDATE） |
 | `UpdateProjectLevel` | `(id, "up"\|"down") → {success, new_level}` | 合并/拆分项目（单事务） |

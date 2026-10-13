@@ -53,6 +53,7 @@ A JSON API for external runtimes such as the DeepSeek Harness dsh-plugin. It sha
 | `GetProjectDetail` | `(id) → ProjectDetail` | project + repo list, each with historical stats |
 | `GetProjectStats` | `(id, date) → DailyStat[]` | project stats for a given day (yesterday by default) |
 | `GetProjectOverview` | `(id) → ProjectOverview` | knowledge mining: README / tech stack / languages / dependencies / contributors / activity / recent commits (cached in repo_meta; mined asynchronously on cache miss) |
+| `ResolveWorkspacePath` | `(path) → ProjectResolution` | read-only: resolve an absolute directory to its owning project and, when the folder sits inside a scanned repository, that repository (the four-tier path resolution). Backs the IDE's scope display; there is no MCP twin — agents pass `path` to `repotory_context` instead. See [AI Integration](../features/ai-integration.md) |
 | `SearchProjects` | `(query) → ProjectResponse[]` | fuzzy search by name/path (enriched with yesterday's stats) |
 | `ToggleStar` | `(id) → bool` | toggle star, returns the new state (atomic UPDATE) |
 | `UpdateProjectLevel` | `(id, "up"\|"down") → {success, new_level}` | merge/split projects (single transaction) |

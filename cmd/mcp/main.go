@@ -13,6 +13,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	"repotory/internal/bounds"
 	"repotory/internal/db"
 	"repotory/internal/domain"
 	"repotory/internal/platform"
@@ -49,20 +50,27 @@ func main() {
 // repotory_ask. The query is escaped before it reaches SQLite, so this is not
 // an injection guard — it stops a multi-megabyte argument from turning every
 // FTS/LIKE match into a multi-second scan on each call.
-const maxArgQueryLen = 1000
+const maxArgQueryLen = bounds.MaxQueryLen
+
+// NOTE on the handoff guard inside repotory_notes_update: it protects well-behaved agents
+// from destroying a session record. It is NOT a security boundary. The /api/rpc bridge
+// (loopback, unauthenticated by design) reaches UpdateNoteFull directly and can rewrite
+// a handoff, and so can any local process that opens the SQLite file. Saying so is the
+// point: a reader who assumes the guard is enforcement will build on it. The desktop app
+// must be able to edit handoffs, which is why the rule sits at the agent surface and not
+// in the service layer.
 
 // notesListLimit reads the optional limit argument for repotory_notes_list,
 // defaulting to 50 and clamped to 500 so a single call cannot dump the whole
 // knowledge base over the wire.
 func notesListLimit(req mcp.CallToolRequest) int {
-	limit := 50
+	limit := bounds.AgentNotesDefault
 	if v, ok := req.GetArguments()["limit"].(float64); ok && v > 0 {
 		limit = int(v)
 	}
-	if limit > 500 {
-		limit = 500
-	}
-	return limit
+	// The clamp itself is shared with any other agent-facing listing surface, so
+	// the default and the ceiling cannot drift apart per transport.
+	return bounds.ClampNotesLimit(limit)
 }
 
 // registerTools wires every MCP tool onto the server. Split out of main so
@@ -72,7 +80,7 @@ func notesListLimit(req mcp.CallToolRequest) int {
 func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 	mcpServer.AddTool(mcp.Tool{
 		Name:        "repotory_notes_list",
-		Description: "List all knowledge notes across projects",
+		Description: "List knowledge notes across projects (bounded: default 50, max 500). For one project's working set call repotory_context instead — it returns that project's notes, todos and mined repo knowledge in one call, which is why this tool has no project_id argument.",
 		InputSchema: mcp.ToolInputSchema{
 			Type: "object",
 			Properties: map[string]any{
@@ -100,6 +108,10 @@ func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 					"type":        "string",
 					"description": "Search query",
 				},
+				"path": map[string]any{
+					"type":        "string",
+					"description": "Optional absolute directory (IDE workspace folder / agent cwd). When it resolves inside a scanned repository, notes recorded in that repository are ranked first. Ranking only: nothing is filtered out, and todos are untouched.",
+				},
 			},
 		},
 	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -110,7 +122,11 @@ func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 		if len(query) > maxArgQueryLen {
 			return makeTextResult(fmt.Sprintf("query too long: %d bytes (max %d)", len(query), maxArgQueryLen)), nil
 		}
-		return makeJSONResult("notes_search", svc.SearchAll(query))
+		hits := svc.SearchAll(query)
+		if path, _ := req.GetArguments()["path"].(string); strings.TrimSpace(path) != "" {
+			hits = svc.RankHitsByWorkspace(hits, path)
+		}
+		return makeJSONResult("notes_search", hits)
 	})
 
 	mcpServer.AddTool(mcp.Tool{

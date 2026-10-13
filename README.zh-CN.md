@@ -238,13 +238,13 @@ Agent 会调用 `repotory_projects_list` → `repotory_notes_search` → `repoto
 git clone https://github.com/sky-jiangcheng/repo-nest.git
 cd repo-nest/ide/vscode
 npm install
-npx @vscode/vsce package --no-dependencies   # → repotory-vscode-0.1.0.vsix
+npx @vscode/vsce package --no-dependencies   # → repotory-vscode-2.0.0.vsix
 ```
 
 安装生成的 `.vsix`：
 
 - **界面**：扩展视图 → `⋯` 菜单 → **从 VSIX 安装…**
-- **命令行**：`code --install-extension repotory-vscode-0.1.0.vsix`（Cursor / Windsurf 把 `code` 换成 `cursor` / `windsurf`）
+- **命令行**：`code --install-extension repotory-vscode-2.0.0.vsix`（Cursor / Windsurf 把 `code` 换成 `cursor` / `windsurf`）
 
 扩展是瘦客户端：命令经 stdio 调用 `repotory-mcp`（请先安装——brew / scoop / [Releases](https://github.com/sky-jiangcheng/repo-nest/releases)），所有答案都来自与桌面应用相同的 `internal/service` 层。能力清单见 [`ide/vscode/README.md`](ide/vscode/README.md)。
 

@@ -35,6 +35,13 @@ date: 2026-08（原 RFC 0001）
 - **不废弃 Wails**：桌面版继续是主力发布形态（零依赖、双击即用，对应当前用户核心价值）。
 - **内核拆分**：`main.App` + `handlers_*.go` 的业务逻辑下沉到 `internal/core/`，Wails Bind 层仅做薄包装。
 - **内嵌 HTTP 服务**：同一进程中，只要启动参数 `-server` 或桌面模式下**总是**监听 `127.0.0.1:18731`，对外暴露 `/api/v1/*` RESTful API。插件协议与前端 API 共享这套 HTTP。
+  > **事实修订（2026-10-13）**：本条的三处描述在今天都不成立，保留原文以免后来的读者以为它一直是错的。
+  > ① **桌面应用不内嵌 HTTP 服务**——全仓唯一的 `ListenAndServe` 在 `cmd/server`（独立二进制 `repotory-server`），
+  > `internal/app` 里没有任何监听点；② 端口是 **18765**（`cmd/server` 的 flag 默认值，可用 `REPOTORY_HTTP_PORT`
+  > 覆盖），18731 只是历史上 `scripts/dev.sh` 用 `--port` 显式覆盖出来的开发端口，已于同日统一为 18765；
+  > ③ 路径不是 `/api/v1/*`——`httpapi` 现在的主入口是 `/api/rpc`（反射 bound App，覆盖前端全部调用），
+  > REST 只保留 `dsh` 插件需要的那个子集。此外本 ADR 的进程内脚本插件运行时（yaegi）已于 C11 方案 B 移除，
+  > 见 CHANGELOG 与 ADR-0002 的状态注记。
 - **独立后端部署**：后续提供 `repotory-server` 构建目标（去掉 Wails 启动、保留 HTTP + 插件宿主），复用 90%+ 代码。
 
 ### 2.2 存储升级时机：M4 引入，做成可插拔后端

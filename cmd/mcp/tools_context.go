@@ -2,19 +2,20 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	"repotory/internal/bounds"
 	"repotory/internal/service"
+	"strings"
 )
 
 // maxProjectNameLen bounds the fuzzy project_name argument. Project names and
 // root paths are short; a multi-megabyte value only exists to burn cycles in
 // the LIKE match, so it is rejected instead of searched.
-const maxProjectNameLen = 200
+const maxProjectNameLen = bounds.MaxNameLen
 
 // registerContextTools wires the session memory loop: repotory_context loads
 // a project's full working context in one call (session cold start) and
@@ -39,6 +40,12 @@ func registerContextTools(mcpServer *server.MCPServer, svc *service.Service) {
 					"type":        "string",
 					"description": "Fuzzy match on project name or root path, e.g. \"auth\"",
 				},
+				"path": map[string]any{
+					"type": "string",
+					"description": "Absolute directory the session is working in (the IDE workspace folder or the agent cwd). " +
+						"Preferred over project_name when known: it resolves a subdirectory to the repository it belongs to, " +
+						"so a multi-repository project answers with THAT repository's knowledge instead of an arbitrary sibling.",
+				},
 			},
 		},
 	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -47,10 +54,20 @@ func registerContextTools(mcpServer *server.MCPServer, svc *service.Service) {
 		if id, ok := args["project_id"].(float64); ok {
 			query = formatFloatID(id)
 		}
-		if len(query) > maxProjectNameLen {
-			return makeTextResult(fmt.Sprintf("project_name too long: %d bytes (max %d)", len(query), maxProjectNameLen)), nil
+		if msg := bounds.Check("project_name", query, maxProjectNameLen); msg != "" {
+			return makeTextResult(msg), nil
 		}
-		res := svc.ResolveProject(query)
+		path, _ := args["path"].(string)
+		// The path gets its OWN limit. Reusing the project-name cap (200) would
+		// reject a legitimate deep absolute path — the failure would look like
+		// "unresolved" to the caller and be indistinguishable from "not scanned".
+		if msg := bounds.Check("path", path, bounds.MaxPathLen); msg != "" {
+			return makeTextResult(msg), nil
+		}
+		// An explicit project_id still wins (ResolveWorkspace consults the path when
+		// the id/name did not decide); the path is the fallback that used to be
+		// impossible, not an override of a caller that already knows its project.
+		res := svc.ResolveWorkspace(query, path)
 		return makeTextResult(svc.BuildProjectContext(res)), nil
 	})
 
@@ -64,7 +81,7 @@ func registerContextTools(mcpServer *server.MCPServer, svc *service.Service) {
 			Properties: map[string]any{
 				"project_id": map[string]any{
 					"type":        "number",
-					"description": "Project ID the handoff belongs to",
+					"description": "Project ID the handoff belongs to. Optional when `path` resolves to a project.",
 				},
 				"agent": map[string]any{
 					"type":        "string",
@@ -98,8 +115,12 @@ func registerContextTools(mcpServer *server.MCPServer, svc *service.Service) {
 					"type":        "string",
 					"description": "Extra comma-separated tags (\"handoff\" is added automatically)",
 				},
+				"path": map[string]any{
+					"type":        "string",
+					"description": "Absolute directory the session worked in. When it lies inside a scanned repository, the handoff is attributed to that repository so the next session opened there leads with it.",
+				},
 			},
-			Required: []string{"project_id", "summary"},
+			Required: []string{"summary"},
 		},
 	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
@@ -107,16 +128,33 @@ func registerContextTools(mcpServer *server.MCPServer, svc *service.Service) {
 		agent, _ := args["agent"].(string)
 		summary, _ := args["summary"].(string)
 		tags, _ := args["tags"].(string)
+		path, _ := args["path"].(string)
+
+		// project_id is preferred when the caller knows it. Otherwise resolve it from
+		// the workspace path server-side: the alternative is asking a human to type a
+		// numeric id, which is the friction that made this command unusable out of the
+		// box. Resolution lives here rather than in the client so an agent and the IDE
+		// cannot disagree about which project a folder belongs to.
+		if int64(projectID) <= 0 && strings.TrimSpace(path) != "" {
+			if res := svc.ResolveWorkspace("", path); res != nil && res.Project != nil {
+				projectID = float64(res.Project.ID)
+			}
+		}
+		if int64(projectID) <= 0 {
+			return makeTextResult("project_id is required unless `path` resolves to a collected project " +
+				"(call repotory_projects_list, or repotory_scan to discover repositories)"), nil
+		}
 
 		result, err := svc.CreateHandoffNote(service.HandoffInput{
-			ProjectID: int64(projectID),
-			Agent:     agent,
-			Summary:   summary,
-			Changes:   stringSlice(args["changes"]),
-			Decisions: stringSlice(args["decisions"]),
-			Gotchas:   stringSlice(args["gotchas"]),
-			NextSteps: stringSlice(args["next_steps"]),
-			Tags:      tags,
+			ProjectID:     int64(projectID),
+			Agent:         agent,
+			Summary:       summary,
+			Changes:       stringSlice(args["changes"]),
+			Decisions:     stringSlice(args["decisions"]),
+			Gotchas:       stringSlice(args["gotchas"]),
+			NextSteps:     stringSlice(args["next_steps"]),
+			Tags:          tags,
+			WorkspacePath: path,
 		})
 		if err != nil {
 			return makeTextResult("error: " + err.Error()), nil

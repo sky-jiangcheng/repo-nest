@@ -206,6 +206,24 @@ type ProjectOverview struct {
 // detected tech stack, language breakdown and recent commits. Mined results
 // are cached in repo_meta so repeated loads do not re-walk the working tree.
 func (s *Service) GetProjectOverview(projectID int64) (*ProjectOverview, error) {
+	return s.projectOverview(projectID, 0)
+}
+
+// GetRepositoryOverview is GetProjectOverview narrowed to ONE repository inside
+// the project — the shape a workspace needs when it is opened on
+// `<project>/<module>` rather than on the project root.
+//
+// This is not just a nicer label. Migration v13 dropped the mined cache for every
+// multi-repo project because mining walked the PROJECT root, which for a
+// container of sibling repositories is not a git repository at all — so a project
+// like CBiPay (11 repositories) has no honest tech-stack answer at project scope,
+// and `repos[0]` was never one. Narrowing to the repository the user is actually
+// in gives mining a real root, which is the case v13 could only invalidate.
+func (s *Service) GetRepositoryOverview(projectID, repositoryID int64) (*ProjectOverview, error) {
+	return s.projectOverview(projectID, repositoryID)
+}
+
+func (s *Service) projectOverview(projectID, preferRepoID int64) (*ProjectOverview, error) {
 	project, err := db.GetProjectByID(s.db, projectID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -217,9 +235,30 @@ func (s *Service) GetProjectOverview(projectID int64) (*ProjectOverview, error) 
 
 	resp := &ProjectOverview{}
 
-	// Cache is keyed by the first repo id when available.
+	// Scope selection. preferRepoID narrows to that repository (and mines at ITS
+	// path); otherwise the historical behaviour stands: the cache key is the first
+	// repository, and mining runs at the project root.
+	scopeRepos := repos
+	miningRoot := project.RootPath
 	var cacheRepoID int64
-	if len(repos) > 0 {
+	if preferRepoID > 0 {
+		var chosen *domain.Repository
+		for i := range repos {
+			if repos[i].ID == preferRepoID {
+				chosen = &repos[i]
+				break
+			}
+		}
+		if chosen == nil {
+			// The repository exists but not under THIS project: answering with the
+			// project's first repo would be a silent substitution, so refuse.
+			return nil, fmt.Errorf("repository %d is not part of project %d: %w",
+				preferRepoID, projectID, db.ErrRepositoryNotFound)
+		}
+		scopeRepos = []domain.Repository{*chosen}
+		cacheRepoID = chosen.ID
+		miningRoot = chosen.Path
+	} else if len(repos) > 0 {
 		cacheRepoID = repos[0].ID
 	}
 	if cacheRepoID > 0 {
@@ -237,13 +276,15 @@ func (s *Service) GetProjectOverview(projectID int64) (*ProjectOverview, error) 
 	// Mine fresh when no cache was found — trigger async so the API returns quickly.
 	if !resp.Cached {
 		resp.Mining = true
-		s.bgGo(fmt.Sprintf("mine project %d", projectID), func(_ context.Context) {
-			s.mineAndCache(cacheRepoID, project.RootPath, repos)
+		miningRepos := scopeRepos
+		root := miningRoot
+		s.bgGo(fmt.Sprintf("mine project %d repo %d", projectID, cacheRepoID), func(_ context.Context) {
+			s.mineAndCache(cacheRepoID, root, miningRepos)
 		})
 	}
 	// Recent commits are always fresh.
-	repoPaths := make([]string, 0, len(repos))
-	for _, r := range repos {
+	repoPaths := make([]string, 0, len(scopeRepos))
+	for _, r := range scopeRepos {
 		repoPaths = append(repoPaths, r.Path)
 	}
 	if commits, err := s.git.GetRecentCommits(repoPaths, s.gitUser(), 8); err == nil && commits != nil {
@@ -339,12 +380,19 @@ func (s *Service) GetProjectSummary(id int64) (*ProjectSummary, error) {
 	return &ProjectSummary{Project: project, Repos: repos, RepoCount: len(repos)}, nil
 }
 
-// ListProjects returns all projects for read-only consumers (CLI / MCP).
+// ListProjects returns every project. An empty result is an empty slice, never
+// nil: this is the single place the "empty serialises as [] not null" rule is
+// applied, because every consumer (desktop UI, /api/rpc, MCP, dsh) renders this
+// straight to JSON and each one previously re-implementing the fix is how one of
+// them eventually forgets to.
 func (s *Service) ListProjects() []domain.Project {
 	projects, err := db.GetAllProjects(s.db)
 	if err != nil {
 		log.Printf("list projects error: %v", err)
-		return nil
+		return []domain.Project{}
+	}
+	if projects == nil {
+		return []domain.Project{}
 	}
 	return projects
 }

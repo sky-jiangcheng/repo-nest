@@ -346,8 +346,14 @@ jobs:
           cd ide/vscode
           npm ci
           npm run compile
-          npx @vscode/vsce publish "$VER" --no-dependencies
-          echo "Published repotory-vscode@$VER to the VS Code Marketplace."
+          # No version argument. `vsce publish <v>` REWRITES package.json and
+          # publishes the passed value, which is how the Marketplace ended up on the
+          # app version while the manifest said something else. Publishing the
+          # version that is already in ide/vscode/package.json keeps the attached
+          # VSIX, the Marketplace listing and the manifest to a single number — the
+          # file is stamped by scripts/bump-version.sh at release time.
+          npx @vscode/vsce publish --no-dependencies
+          echo "Published repotory-vscode@$(node -p "require('./package.json').version") to the VS Code Marketplace."
 
   # After the release is published, the sha256 of every shipped asset is a
   # known fact. Homebrew and Scoop hard-fail on a missing/wrong digest, so the

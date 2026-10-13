@@ -41,6 +41,16 @@ type HandoffInput struct {
 	NextSteps []string
 	// Tags appends user-supplied tags to the reserved "handoff" tag.
 	Tags string
+	// WorkspacePath is the directory the session was working in (an IDE workspace
+	// folder or an agent cwd). Optional. When it resolves inside a scanned
+	// repository, the note is attributed to that repository in note_repositories —
+	// which is what lets a later session opened in the SAME folder lead with these
+	// notes instead of the whole project's.
+	//
+	// It is not stored verbatim on the note: the repository row is the durable
+	// identity, so renaming or moving the folder does not orphan the attribution
+	// silently, and the note never leaks an absolute path into its content.
+	WorkspacePath string
 }
 
 // CreateHandoffNote persists a session handoff as a knowledge note rendered
@@ -70,7 +80,28 @@ func (s *Service) CreateHandoffNote(in HandoffInput) (*HandoffResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &HandoffResult{NoteID: note.ID, Title: note.Title, Tags: tags}, nil
+	res := &HandoffResult{NoteID: note.ID, Title: note.Title, Tags: tags}
+
+	// Attribute the note to the repository the session was standing in. This is the
+	// writer note_repositories never had; without it the repository scope in
+	// BuildProjectContext can never find anything to lead with.
+	//
+	// Deliberately non-fatal, and reported: the handoff already exists and is
+	// useful at project scope, so failing the whole call because the finer
+	// attribution did not land would destroy a session record over a ranking hint.
+	if strings.TrimSpace(in.WorkspacePath) != "" {
+		if r := s.ResolveProjectByPath(in.WorkspacePath); r != nil && r.Repository != nil &&
+			r.Project != nil && r.Project.ID == in.ProjectID {
+			if err := s.attachNoteToRepository(note.ID, r.Repository.ID); err != nil {
+				res.RepositoryNote = fmt.Sprintf("note not attributed to repository %d: %v",
+					r.Repository.ID, err)
+			} else {
+				res.RepositoryID = r.Repository.ID
+				res.RepositoryPath = r.Repository.Path
+			}
+		}
+	}
+	return res, nil
 }
 
 // validateHandoffBounds caps the structured sections before rendering, so
@@ -102,6 +133,14 @@ type HandoffResult struct {
 	NoteID int64  `json:"note_id"`
 	Title  string `json:"title"`
 	Tags   string `json:"tags"`
+	// RepositoryID / RepositoryPath echo the attribution when it succeeded, so the
+	// caller can tell "recorded against this module" from "recorded against the
+	// project" instead of assuming the finer scope happened.
+	RepositoryID   int64  `json:"repository_id,omitempty"`
+	RepositoryPath string `json:"repository_path,omitempty"`
+	// RepositoryNote carries why attribution did NOT happen. It is a note, not an
+	// error, precisely because the handoff itself succeeded.
+	RepositoryNote string `json:"repository_note,omitempty"`
 }
 
 // HandoffStatus is the minimal status surface for UI chrome (currently the VS

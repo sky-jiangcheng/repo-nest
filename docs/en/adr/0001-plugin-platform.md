@@ -35,6 +35,15 @@ This RFC codifies the key decisions across four phases — **M1 (abstraction dec
 - **Wails is retained**: the desktop version remains the primary release form (zero dependencies, double-click to run, matching the current core user value).
 - **Kernel split**: business logic from `main.App` + `handlers_*.go` moves down into `internal/core/`, with the Wails Bind layer kept as a thin wrapper.
 - **Embedded HTTP service**: within the same process, whenever started with the `-server` flag — or **always** in desktop mode — the app listens on `127.0.0.1:18731`, exposing the `/api/v1/*` RESTful API. The plugin protocol and the frontend API share this HTTP server.
+  > **Factual correction (2026-10-13)**: three claims in this bullet no longer hold. The original text is kept so
+  > later readers do not assume it was always wrong. (1) The desktop app embeds no HTTP server at all — the only
+  > `ListenAndServe` in the repository lives in `cmd/server` (the standalone `repotory-server` binary) and
+  > `internal/app` has no listener. (2) The port is **18765** (the `cmd/server` flag default, overridable via
+  > `REPOTORY_HTTP_PORT`); 18731 was only ever the port `scripts/dev.sh` passed explicitly with `--port`, and it was
+  > unified to 18765 on the same day. (3) The path is not `/api/v1/*` — main entry point of `httpapi` is now
+  > `/api/rpc` (reflecting the bound App, covering every frontend call), with REST kept only for the subset the
+  > `dsh` plugin needs. Separately, the in-process script plugin runtime of this ADR (yaegi) was removed under C11
+  > option B; see the CHANGELOG and the status note on ADR-0002.
 - **Standalone backend deployment**: a `repotory-server` build target will follow later (dropping the Wails bootstrap, keeping HTTP + plugin host), reusing 90%+ of the code.
 
 ### 2.2 Storage upgrade timing: introduced in M4 as pluggable backends

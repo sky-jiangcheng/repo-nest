@@ -28,6 +28,18 @@ ADR-0006 将核心闭环定为「发现 → 理解 → 记录 → 检索 → AI 
 
 项目解析协议（`ResolveProject`）：`project_id` 精确解析 → `project_name` 名称/路径模糊匹配 → 无参且仅一个项目时自动解析。多匹配时返回项目目录（含 ID 表格）让 agent 选择，绝不猜测注入错误项目的上下文。
 
+> **协议增补（2026-10-13）：路径解析阶。** 上面这条协议在今天多了一个前置输入，且原三步全部保留：
+> `repotory_context` 与 `repotory_handoff` 现在接受可选的 `path`（IDE 工作区目录或 agent 的 cwd），由
+> `ResolveWorkspace` 统一裁决——**显式的 `project_id` / `project_name` 永远优先**，只有它没能定出项目时才用
+> `path` 兜底。顺序不是风格问题：让调用方点名的项目被它恰好所在的目录改写，就是本条协议一直禁止的"注入错误
+> 项目的上下文"，只不过换了一副看起来更聪明的面孔。
+>
+> 兜底之所以必要，是因为原协议第 2 步的模糊匹配方向是「项目 root_path 包含查询串」，于是多仓库项目的**子目录**
+> （`…/CBiPay/pay-common`）三步全不命中，而 `repositories` 表明明记着这个目录却从未被查询过。路径解析按四阶
+> （仓库精确 → 仓库最深祖先 → 项目精确 → 项目最深祖先，细则见 [ADR-0021](0021-temporal-graph-page-versions.md)
+> 同批的 `internal/service/workspace.go` 与其测试）补齐这一格，并且把「匹配上了什么」随结果返回
+> （`repository-exact` / `project-ancestor` / `unresolved` …），使「绝不猜测」这句承诺变成可检查的事实而非态度。
+
 ### `repotory_handoff`（会话结束）
 
 结构化交接协议，入参为 `summary`（必填）+ `changes` / `decisions` / `gotchas` / `next_steps`（数组，至少一项非空）+ `agent`（写入方标识）。渲染为固定 Markdown 模板落库（`kind=knowledge`、`source=mcp`、tags 自动含 `handoff`）。

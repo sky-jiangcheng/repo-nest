@@ -30,6 +30,7 @@ import (
 	"strconv"
 	"strings"
 
+	"repotory/internal/bounds"
 	"repotory/internal/service"
 )
 
@@ -165,7 +166,7 @@ func (h *handler) aiAskStream(w http.ResponseWriter, r *http.Request) {
 // injection guard — it stops a multi-megabyte value from turning every
 // FTS/LIKE match into a multi-second scan. The trust boundary is loopback
 // only, but any local process can hit this endpoint repeatedly.
-const maxSearchQueryLen = 1000
+const maxSearchQueryLen = bounds.MaxQueryLen
 
 // search runs a full-text knowledge search across notes and todos.
 // Query param: q (required). Use ?all=1 to also include todos (default notes).

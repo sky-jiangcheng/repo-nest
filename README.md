@@ -250,13 +250,13 @@ The extension (VS Code / Cursor / Windsurf — one VSIX covers all three) is a *
 git clone https://github.com/sky-jiangcheng/repo-nest.git
 cd repo-nest/ide/vscode
 npm install
-npx @vscode/vsce package --no-dependencies   # → repotory-vscode-0.1.0.vsix
+npx @vscode/vsce package --no-dependencies   # → repotory-vscode-2.0.0.vsix
 ```
 
 Then install the produced `.vsix`:
 
 - **UI**: Extensions view → `⋯` menu → **Install from VSIX…**
-- **CLI**: `code --install-extension repotory-vscode-0.1.0.vsix` (use `cursor` / `windsurf` for the forks)
+- **CLI**: `code --install-extension repotory-vscode-2.0.0.vsix` (use `cursor` / `windsurf` for the forks)
 
 The extension is a thin client: commands call `repotory-mcp` over stdio (install it first — brew / scoop / [Releases](https://github.com/sky-jiangcheng/repo-nest/releases)), and all answers come from the same `internal/service` layer as the desktop app. Capability details in [`ide/vscode/README.md`](ide/vscode/README.md).
 

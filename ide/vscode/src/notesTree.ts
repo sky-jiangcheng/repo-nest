@@ -19,6 +19,7 @@ export function parseSearchHits(text: string): NoteHit[] {
 
 export class NotesSearchProvider implements vscode.TreeDataProvider<NoteItem> {
   private hits: NoteHit[] = [];
+  private scope = "";
   private hint = "Run the search command to query the knowledge base";
   private readonly emitter = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.emitter.event;
@@ -27,9 +28,20 @@ export class NotesSearchProvider implements vscode.TreeDataProvider<NoteItem> {
     return element;
   }
 
+  /**
+   * Announce what the view is scoped to. An idle sidebar that says only "run the
+   * search command" is indistinguishable from a broken one, so once the workspace
+   * resolves it states the project and repository it will search within.
+   */
+  setScope(scope: string): void {
+    this.scope = scope;
+    this.emitter.fire();
+  }
+
   getChildren(): NoteItem[] {
     if (this.hits.length === 0) {
-      return [new NoteItem(this.hint, undefined)];
+      const label = this.scope ? `${this.scope} — ${this.hint}` : this.hint;
+      return [new NoteItem(label, undefined)];
     }
     const items = this.hits.slice(0, MAX_HITS).map((hit) => {
       const title =

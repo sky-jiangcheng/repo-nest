@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"repotory/internal/bounds"
 	pluginruntime "repotory/internal/core/plugin/runtime"
 	"repotory/internal/db"
 	"repotory/internal/domain"
@@ -44,6 +45,19 @@ import (
 //             ListPendingWikiPages, ApproveWikiPage, RejectWikiPage. Deliberately
 //             no MCP twin: an agent able to write pending knowledge would bypass
 //             the human gate the whole design rests on.
+//   Workspace chrome: ResolveWorkspacePath — read-only path→project/repository
+//             resolution so the IDE can show what it matched. No MCP twin by
+//             design: agents pass `path` to repotory_context instead, and a second
+//             client-side implementation of the matcher is the failure this avoids.
+//   Knowledge graph (ADR-0019/0020/0021): FindMergeCandidates, MergeWikiPages,
+//             RunCommunitySummary, ListWikiPageVersions, DiffWikiPageVersion.
+//             Also no MCP twin, for two different reasons worth keeping apart:
+//             MergeWikiPages destroys knowledge and must only ever follow a human
+//             decision, while RunCommunitySummary writes model output into the
+//             library and would defeat the review queue if an agent could call it.
+//             The three read-only structural ones (candidates, versions, diff) stay
+//             unexported to agents for the same reason the review queue does — they
+//             are the surfaces a person looks at to decide.
 //   Scan: GetScanStatus (progress polling)
 //   Dashboard: GetSummary, GetHeatmapData, GetStatusBar, GetTodoCounts, GetNoteCounts
 //   Notes lifecycle: DeleteNote, PinNote, MoveNote, ListNoteVersions,
@@ -465,6 +479,69 @@ func (a *App) ListRejectedWikiPages(projectID int64) ([]service.WikiPendingPage,
 // DeleteCompiledPage permanently removes a never-published page (pending or
 // rejected); the escape hatch that keeps rejected tombstones from piling up.
 func (a *App) DeleteCompiledPage(pageID int64) error { return a.svc.DeleteCompiledPage(pageID) }
+
+// ---- knowledge graph: merge, communities, page history (ADR-0019/0020/0021) ----
+
+// FindMergeCandidates returns the pairs of pages that look like the same concept
+// twice. Structural only — no model, no vector, no writes — so the review page can
+// call it on load and show what is waiting before anyone enables anything
+// (ADR-0019 决策 2). topK <= 0 uses the default.
+func (a *App) FindMergeCandidates(projectID int64, topK int) (*service.MergeCandidateReport, error) {
+	return a.svc.FindMergeCandidates(projectID, topK)
+}
+
+// MergeWikiPages absorbs loserID into winnerID: the loser's edges and source notes
+// move to the winner and the loser becomes a tombstone. The winner's row is not
+// touched (ADR-0019 决策 5).
+//
+// This is the ONLY merge entry point in the product and it exists for a human click
+// — no job, no ticker and no MCP tool reaches it, which is the ADR's central claim
+// and is pinned by TestMergeHasNoAutoPath. Deliberately no MCP twin: letting an
+// agent destroy knowledge is the one thing this layer must never allow.
+func (a *App) MergeWikiPages(loserID, winnerID int64) (*db.MergeResult, error) {
+	return a.svc.MergeWikiPagesInto(loserID, winnerID)
+}
+
+// RunCommunitySummary detects topics among a project's approved pages and files one
+// pending synthesis page per topic (ADR-0020). Synchronous by decision (决策 8 /
+// 待决 4): it is bounded to ten communities and one call each, and job-ifying it
+// would require rebuilding compile_jobs for a CHECK value.
+//
+// projectID 0 is the GLOBAL tier, not "every project" — so the review page must
+// require an explicit project, exactly as StartCompileJob and StartLintJob do.
+func (a *App) RunCommunitySummary(projectID int64) (*service.WikiCommunityReport, error) {
+	return a.svc.RunCommunitySummary(projectID)
+}
+
+// ResolveWorkspacePath answers "which project is this folder, and which
+// repository inside it" — the four-tier path resolution shared with the MCP tools.
+//
+// It exists as a binding so the IDE chrome can DISPLAY what was matched instead of
+// reimplementing the matching in TypeScript. Two copies of "which project owns
+// this directory" is precisely how an agent and the sidebar end up disagreeing
+// about what knowledge a session gets. Read-only, and no MCP twin: an agent does
+// not need it, because repotory_context takes `path` and resolves internally.
+func (a *App) ResolveWorkspacePath(path string) (*service.ProjectResolution, error) {
+	// Same limit as the agent-facing path argument, from the same package: the two
+	// surfaces must not disagree about how long a path they will look at.
+	if len(path) > bounds.MaxPathLen {
+		return nil, fmt.Errorf("%s", bounds.TooLong("path", len(path), bounds.MaxPathLen))
+	}
+	return a.svc.ResolveProjectByPath(path), nil
+}
+
+// ListWikiPageVersions returns a page's approved-content snapshots, newest first
+// (ADR-0021). Read-only, and the writer is a database trigger rather than a call
+// anyone can forget to make.
+func (a *App) ListWikiPageVersions(pageID int64) ([]db.PageVersion, error) {
+	return a.svc.ListWikiPageVersions(pageID)
+}
+
+// DiffWikiPageVersion compares one snapshot against the page's current content, in
+// the same line-diff format as DiffNoteVersions so one component renders both.
+func (a *App) DiffWikiPageVersion(pageID, versionID int64) (string, error) {
+	return a.svc.DiffWikiPageVersion(pageID, versionID)
+}
 
 // LayeredProjectContext assembles project memory from most stable to least
 // (L3 cross-project profile, L2 project scenario, L1 curated notes, L0 raw

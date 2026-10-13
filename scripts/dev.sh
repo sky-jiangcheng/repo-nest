@@ -3,7 +3,7 @@
 #
 # Why this exists: running `npx vite` alone gives you a page that renders but
 # 502s on every /api/rpc call. Vite proxies /api to the headless server (see
-# vite.config.ts, default 18731), and if that process is not up the proxy has
+# vite.config.ts, default 18765), and if that process is not up the proxy has
 # nothing to talk to — the HTML loads fine and only the data calls fail, which
 # reads as "the app is broken" rather than "a backend is missing".
 #
@@ -11,15 +11,15 @@
 # does not lose time bisecting a 502.
 #
 # Usage:
-#   bash scripts/dev.sh                 # API on 18731, Vite on 5173
-#   bash scripts/dev.sh --api 18765     # custom API port (vite proxy must match)
+#   bash scripts/dev.sh                 # API on 18765, Vite on 5173
+#   bash scripts/dev.sh --api 19000     # custom API port (vite proxy must match)
 #   bash scripts/dev.sh --no-api        # Vite only (API already running elsewhere)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-API_PORT=18731
+API_PORT=18765
 WITH_API=1
 while [ $# -gt 0 ]; do
   case "$1" in
