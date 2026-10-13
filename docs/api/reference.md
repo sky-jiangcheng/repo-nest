@@ -143,4 +143,4 @@ Repotory 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 
 ## OpenAPI
 
-机器可读契约暂以本页表格为准（此前的手工 openapi.json 已随 D10 移除，待 CI 自动生成后回归）。桌面应用不提供公网 HTTP 服务（见 [TODO](https://github.com/sky-jiangcheng/repo-nest/blob/master/TODO.md)）。
+机器可读契约暂以本页表格为准（此前的手工 openapi.json 已随 D10 移除，待 CI 自动生成后回归）。桌面应用不提供公网 HTTP 服务（见 [TODO](https://github.com/sky-jiangcheng/repotory/blob/master/TODO.md)）。

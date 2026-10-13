@@ -2,7 +2,7 @@
 // scripts/build-docs.mjs — 文档站生成器（双语）。
 //
 // 内容源分两个 locale：
-//   en  docs/en/**/*.md   → 输出到 docs/ 根路径（默认语言，/repo-nest/ 即英文）
+//   en  docs/en/**/*.md   → 输出到 docs/ 根路径（默认语言，/repotory/ 即英文）
 //   zh  docs/**/*.md（不含 docs/en/）→ 输出到 docs/zh/ 子路径
 //
 // 两个树的相对结构互为镜像；英文页链接到尚未翻译的页面（如 ADR 详情）时
@@ -264,7 +264,7 @@ try {
 
 const sidebar = JSON.parse(readFileSync(join(docsDir, 'sidebar.json'), 'utf8'))
 const version = JSON.parse(readFileSync(join(root, 'web', 'package.json'), 'utf8')).version
-const REPO = 'https://github.com/sky-jiangcheng/repo-nest'
+const REPO = 'https://github.com/sky-jiangcheng/repotory'
 
 // --- Locale registry -------------------------------------------------------------
 // srcRoot: where the locale's .md sources live; outRoot: where its .html goes.

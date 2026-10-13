@@ -111,9 +111,9 @@ How to read it: **the top two rows are the shelf** — the desktop App and the V
 
 This manual covers Repotory's core features and use cases. The docs are written in Markdown (the single source of content, stored in the repository's `docs/` directory), rendered to HTML by `scripts/build-docs.mjs`, and deployed to GitHub Pages.
 
-- **Read online**: <https://sky-jiangcheng.github.io/repo-nest/> — updated automatically with the master branch
+- **Read online**: <https://sky-jiangcheng.github.io/repotory/> — updated automatically with the master branch
 - **Build locally**: `node scripts/build-docs.mjs` (uses marked from `web/node_modules`)
-- **Report issues**: <https://github.com/sky-jiangcheng/repo-nest/issues>
+- **Report issues**: <https://github.com/sky-jiangcheng/repotory/issues>
 
 ## Quick Navigation
 

@@ -140,7 +140,7 @@ The project detail page auto-extracts: README summary, tech stack list (20+ mani
 
 ### Install
 
-Get the latest build for your platform from [Releases](https://github.com/sky-jiangcheng/repo-nest/releases).
+Get the latest build for your platform from [Releases](https://github.com/sky-jiangcheng/repotory/releases).
 
 **Option 1: direct download**
 
@@ -156,9 +156,9 @@ Download the archive for your platform from Releases and run it:
 
 | Platform | Command | Installs to |
 |----------|---------|-------------|
-| macOS | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh \| bash` | `/Applications/Repotory.app` + `/usr/local/bin/repotory-mcp` |
+| macOS | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repotory/master/scripts/install.sh \| bash` | `/Applications/Repotory.app` + `/usr/local/bin/repotory-mcp` |
 | Linux | same | `/usr/local/bin/repotory` + `/usr/local/bin/repotory-mcp` |
-| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 \| iex` | `%LOCALAPPDATA%\Repotory` (added to user PATH automatically) |
+| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repotory/master/scripts/install.ps1 \| iex` | `%LOCALAPPDATA%\Repotory` (added to user PATH automatically) |
 
 macOS also ships via Homebrew (add the tap first — see [`packaging/`](packaging/README.md)):
 
@@ -185,7 +185,7 @@ AI clients talk to the independently distributed `repotory-mcp` (an MCP stdio se
 
 | Method | Platform | Command |
 |--------|----------|---------|
-| Manual (no prerequisites) | All platforms | Download `repotory-mcp-<target>.tar.gz` / `.zip` from [Releases](https://github.com/sky-jiangcheng/repo-nest/releases) |
+| Manual (no prerequisites) | All platforms | Download `repotory-mcp-<target>.tar.gz` / `.zip` from [Releases](https://github.com/sky-jiangcheng/repotory/releases) |
 | Homebrew | macOS | `brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/repotory-mcp` |
 | Homebrew | Linux | `brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/repotory-mcp` |
 | Scoop | Windows | `scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/repotory-mcp` |
@@ -244,11 +244,11 @@ Log paths: see [Troubleshooting](docs/en/troubleshooting.md).
 
 ## VS Code Extension (preview)
 
-The extension (VS Code / Cursor / Windsurf — one VSIX covers all three) is a **preview**. Every product release automatically publishes it to the [Marketplace](https://marketplace.visualstudio.com/items?itemName=sky-jiangcheng.repotory-vscode) (active once the `VSCE_PAT` secret is configured); the `.vsix` is also attached to each [Release](https://github.com/sky-jiangcheng/repo-nest/releases) for manual install, and you can always package from source:
+The extension (VS Code / Cursor / Windsurf — one VSIX covers all three) is a **preview**. Every product release automatically publishes it to the [Marketplace](https://marketplace.visualstudio.com/items?itemName=sky-jiangcheng.repotory-vscode) (active once the `VSCE_PAT` secret is configured); the `.vsix` is also attached to each [Release](https://github.com/sky-jiangcheng/repotory/releases) for manual install, and you can always package from source:
 
 ```bash
-git clone https://github.com/sky-jiangcheng/repo-nest.git
-cd repo-nest/ide/vscode
+git clone https://github.com/sky-jiangcheng/repotory.git
+cd repotory/ide/vscode
 npm install
 npx @vscode/vsce package --no-dependencies   # → repotory-vscode-2.0.0.vsix
 ```
@@ -258,7 +258,7 @@ Then install the produced `.vsix`:
 - **UI**: Extensions view → `⋯` menu → **Install from VSIX…**
 - **CLI**: `code --install-extension repotory-vscode-2.0.0.vsix` (use `cursor` / `windsurf` for the forks)
 
-The extension is a thin client: commands call `repotory-mcp` over stdio (install it first — brew / scoop / [Releases](https://github.com/sky-jiangcheng/repo-nest/releases)), and all answers come from the same `internal/service` layer as the desktop app. Capability details in [`ide/vscode/README.md`](ide/vscode/README.md).
+The extension is a thin client: commands call `repotory-mcp` over stdio (install it first — brew / scoop / [Releases](https://github.com/sky-jiangcheng/repotory/releases)), and all answers come from the same `internal/service` layer as the desktop app. Capability details in [`ide/vscode/README.md`](ide/vscode/README.md).
 
 ## Building from Source
 
@@ -327,20 +327,20 @@ Architecture decisions: see the [ADRs](docs/en/adr/index.md), especially [ADR-00
 
 ## Naming Layers
 
-The brand name and machine identifiers are **intentionally inconsistent**: the display layer exists to be remembered, the identifier layer to stay stable (URLs, upgrade paths, data migrations and external contracts do not follow brand wording).
+The brand name and machine identifiers are **deliberately separate layers**: the display layer exists to be remembered, the identifier layer to stay stable (URLs, upgrade paths, data migrations and external contracts do not follow brand wording).
 
 | Layer | Value | Used for |
 |-------|-------|----------|
 | Brand (display) | `Repotory` | `productName`, in-app logo, docs and UI copy |
 | Full display name | `Repotory: Local Git Knowledge Base` | Window title, HTML `<title>`, README title |
-| Repo & package identifier | `repo-nest` | GitHub repo name, Go module name, npm package name, docs site URL |
-| Frozen identifiers (never follow the brand) | `repotory` | Command / binary name (`outputfilename`), user data directory, MCP server name `repotory-mcp` and tool prefix `repotory_*` |
+| Repo & package identifier | `repotory` | GitHub repo name, Go module name, npm package names, docs site URL |
+| Identifiers deliberately frozen against the brand | `repotory` | Command / binary name (`outputfilename`), user data directory, MCP server name `repotory-mcp` and tool prefix `repotory_*` |
 
-Why frozen: the data directory `repotory` has already been through two automatic migrations (gitboard → gitbuddy → repotory); another rename would mean a third data move. MCP tool names are an external contract with AI clients — renaming breaks existing configs and allowlists. When contributing, please do not "helpfully unify" these names.
+Why frozen: the data directory has already been through two automatic migrations (gitboard → gitbuddy → repotory); the `repotory` → `Repotory` rebrand deliberately left it alone, because another rename would mean a third data move. MCP tool names are an external contract with AI clients — renaming breaks existing configs and allowlists. When contributing, please do not "helpfully unify" these names.
 
 ## Documentation
 
-English pages are the default; the [Chinese manual](https://sky-jiangcheng.github.io/repo-nest/zh/) mirrors them. Only the [positioning brief](docs/positioning-brief.md) and [product reviews](docs/product-review/2026-08-27-new-deep-review.md) remain Chinese-only.
+English pages are the default; the [Chinese manual](https://sky-jiangcheng.github.io/repotory/zh/) mirrors them. Only the [positioning brief](docs/positioning-brief.md) and [product reviews](docs/product-review/2026-08-27-new-deep-review.md) remain Chinese-only.
 
 | Document | Contents |
 |----------|----------|
@@ -355,7 +355,7 @@ English pages are the default; the [Chinese manual](https://sky-jiangcheng.githu
 | [SKILL.md](SKILL.md) | Capability card for AI agents |
 | [TODO.md](TODO.md) | Known issues and roadmap (Chinese) |
 
-[Online docs](https://sky-jiangcheng.github.io/repo-nest/) (GitHub Pages, auto-deployed from master).
+[Online docs](https://sky-jiangcheng.github.io/repotory/) (GitHub Pages, auto-deployed from master).
 
 ## Contributing
 

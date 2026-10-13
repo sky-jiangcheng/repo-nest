@@ -14,7 +14,7 @@ Repotory 是一款本地优先的桌面应用（Wails v2，单文件、零运行
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repotory/master/scripts/install.sh | bash
 ```
 
 macOS 装到 `/Applications/Repotory.app`，Linux 装到 `/usr/local/bin/repotory`；两者都会把 `repotory-mcp` 放进 `/usr/local/bin`。
@@ -22,10 +22,10 @@ macOS 装到 `/Applications/Repotory.app`，Linux 装到 `/usr/local/bin/repotor
 ### Windows
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repotory/master/scripts/install.ps1 | iex
 ```
 
-或从 [GitHub Releases](https://github.com/sky-jiangcheng/repo-nest/releases) 下载对应平台的二进制文件。
+或从 [GitHub Releases](https://github.com/sky-jiangcheng/repotory/releases) 下载对应平台的二进制文件。
 
 ## 首次启动
 

@@ -143,4 +143,4 @@ Or in a project-level `.mcp.json` / user-level MCP config (Cursor: Settings → 
 - **Markdown**: Mermaid, KaTeX, callouts, highlight.js
 - **Plugins**: yaegi in-process Go scripts for knowledge source import (see docs/plugins/overview.md)
 
-Docs: <https://sky-jiangcheng.github.io/repo-nest/> · Repo: <https://github.com/sky-jiangcheng/repo-nest>
+Docs: <https://sky-jiangcheng.github.io/repotory/> · Repo: <https://github.com/sky-jiangcheng/repotory>

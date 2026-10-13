@@ -130,7 +130,7 @@ flowchart TB
 
 ### 下载安装
 
-从 [Releases](https://github.com/sky-jiangcheng/repo-nest/releases) 下载对应平台的最新版本。
+从 [Releases](https://github.com/sky-jiangcheng/repotory/releases) 下载对应平台的最新版本。
 
 **方式一：直接下载**
 
@@ -146,9 +146,9 @@ flowchart TB
 
 | 平台 | 命令 | 装到哪 |
 |------|------|--------|
-| macOS | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh \| bash` | `/Applications/Repotory.app` + `/usr/local/bin/repotory-mcp` |
+| macOS | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repotory/master/scripts/install.sh \| bash` | `/Applications/Repotory.app` + `/usr/local/bin/repotory-mcp` |
 | Linux | 同上 | `/usr/local/bin/repotory` + `/usr/local/bin/repotory-mcp` |
-| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 \| iex` | `%LOCALAPPDATA%\Repotory`（自动加入用户 PATH） |
+| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repotory/master/scripts/install.ps1 \| iex` | `%LOCALAPPDATA%\Repotory`（自动加入用户 PATH） |
 
 macOS 也可以用 Homebrew（需先添加 tap，见 [`packaging/`](packaging/README.md)）：
 
@@ -173,7 +173,7 @@ AI 客户端走的是独立分发的 `repotory-mcp`（MCP stdio 服务器），*
 
 | 方式 | 平台 | 命令 |
 |------|------|------|
-| 手动（无需任何前置） | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/repo-nest/releases) 下载 `repotory-mcp-<target>.tar.gz` / `.zip` |
+| 手动（无需任何前置） | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/repotory/releases) 下载 `repotory-mcp-<target>.tar.gz` / `.zip` |
 | Homebrew | macOS | `brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/repotory-mcp` |
 | Homebrew | Linux | `brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/repotory-mcp` |
 | Scoop | Windows | `scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/repotory-mcp` |
@@ -232,11 +232,11 @@ Agent 会调用 `repotory_projects_list` → `repotory_notes_search` → `repoto
 
 ## VS Code 扩展（预览）
 
-扩展（VS Code / Cursor / Windsurf —— 一个 VSIX 三端通用）目前为**预览版**。每个产品版本发布时会自动同步上架 [Marketplace](https://marketplace.visualstudio.com/items?itemName=sky-jiangcheng.repotory-vscode)（配置 `VSCE_PAT` secret 后生效）；`.vsix` 同时挂在每个 [Release](https://github.com/sky-jiangcheng/repo-nest/releases) 下可手动安装，也可以从源码打包：
+扩展（VS Code / Cursor / Windsurf —— 一个 VSIX 三端通用）目前为**预览版**。每个产品版本发布时会自动同步上架 [Marketplace](https://marketplace.visualstudio.com/items?itemName=sky-jiangcheng.repotory-vscode)（配置 `VSCE_PAT` secret 后生效）；`.vsix` 同时挂在每个 [Release](https://github.com/sky-jiangcheng/repotory/releases) 下可手动安装，也可以从源码打包：
 
 ```bash
-git clone https://github.com/sky-jiangcheng/repo-nest.git
-cd repo-nest/ide/vscode
+git clone https://github.com/sky-jiangcheng/repotory.git
+cd repotory/ide/vscode
 npm install
 npx @vscode/vsce package --no-dependencies   # → repotory-vscode-2.0.0.vsix
 ```
@@ -246,7 +246,7 @@ npx @vscode/vsce package --no-dependencies   # → repotory-vscode-2.0.0.vsix
 - **界面**：扩展视图 → `⋯` 菜单 → **从 VSIX 安装…**
 - **命令行**：`code --install-extension repotory-vscode-2.0.0.vsix`（Cursor / Windsurf 把 `code` 换成 `cursor` / `windsurf`）
 
-扩展是瘦客户端：命令经 stdio 调用 `repotory-mcp`（请先安装——brew / scoop / [Releases](https://github.com/sky-jiangcheng/repo-nest/releases)），所有答案都来自与桌面应用相同的 `internal/service` 层。能力清单见 [`ide/vscode/README.md`](ide/vscode/README.md)。
+扩展是瘦客户端：命令经 stdio 调用 `repotory-mcp`（请先安装——brew / scoop / [Releases](https://github.com/sky-jiangcheng/repotory/releases)），所有答案都来自与桌面应用相同的 `internal/service` 层。能力清单见 [`ide/vscode/README.md`](ide/vscode/README.md)。
 
 ## 从源码构建
 
@@ -315,16 +315,15 @@ web/src/
 
 ## 命名分层
 
-品牌名与机器标识**有意不一致**：展示层负责被记住，标识层负责稳定（URL、升级链、数据迁移、对外契约都不随品牌措辞变化）。
+品牌名与机器标识**有意分为两层**：展示层负责被记住，标识层负责稳定（URL、升级链、数据迁移、对外契约都不随品牌措辞变化）。
 
 | 层 | 取值 | 落点 |
 |------|------|------|
 | 品牌名（展示层） | `Repotory` | `productName`、应用内 Logo、文档与 UI 文案 |
 | 完整展示名 | `Repotory: Local Git Knowledge Base` | 窗口标题、HTML `<title>`、README 标题 |
-| 仓库与包标识 | `repotory` | GitHub 仓库名、Go module 名、npm 包名、文档站 URL |
-| 冻结标识（永不随品牌变） | `repotory` | 命令名 / 二进制名（`outputfilename`）、用户数据目录、MCP server 名 `repotory-mcp` 与工具前缀 `repotory_*` |
+| 机器标识 | `repotory` | GitHub 仓库名、Go module 名、npm 包名、文档站 URL、命令名 / 二进制名（`outputfilename`）、用户数据目录、MCP server 名 `repotory-mcp` 与工具前缀 `repotory_*` |
 
-冻结标识的历史原因：数据目录 `repotory` 已经历 gitboard → gitbuddy → repotory 两轮自动迁移，再次改名意味着第三次数据搬家；MCP 工具名是对 AI 客户端的对外契约，改名会使已有配置与允许列表失效。贡献时请勿「顺手统一」这些名字。
+为什么标识层不改：数据目录已经历 gitboard → gitbuddy → repotory 两轮自动迁移，`repotory` → `Repotory` 这次更名**刻意没动它**——再改名就是第三次数据搬家。MCP 工具名是对 AI 客户端的对外契约，改名会使已有配置与允许列表失效。贡献时请勿「顺手统一」这些名字。
 
 ## 文档
 
@@ -341,7 +340,7 @@ web/src/
 | [SKILL.md](SKILL.md) | 面向 AI 代理的能力卡片 |
 | [TODO.md](TODO.md) | 已知事项与待办 |
 
-[在线文档](https://sky-jiangcheng.github.io/repo-nest/zh/)（GitHub Pages，随 master 自动部署；默认语言为英文，中文手册在 `/zh/` 路径）。
+[在线文档](https://sky-jiangcheng.github.io/repotory/zh/)（GitHub Pages，随 master 自动部署；默认语言为英文，中文手册在 `/zh/` 路径）。
 
 ## 参与贡献
 

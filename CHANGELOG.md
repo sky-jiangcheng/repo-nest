@@ -21,6 +21,7 @@
 
 ### 变更
 
+- **GitHub 仓库更名 `repo-nest` → `repotory`，与项目名统一**：v2.0.0 的品牌更名只改了展示层与二进制（`repotory` / `repotory-mcp`），GitHub 仓库名仍留在 `repo-nest`，于是 `go.mod` 写 `repotory`、README 讲 `Repotory`、克隆地址却是 `repo-nest`——三个名字指向同一份代码。仓库已更名，旧地址由 GitHub 自动重定向，**已有 clone 与 CI 无需改动**（`origin` 换地址即可）。随之同步的硬编码引用：安装脚本（`install.sh` / `install.ps1`）、发布流水线（`release.yml`）、清单生成（`update-manifests.sh` / `prune-releases.sh`）、`repotory-init` 的 Releases 地址、`packaging/` 全部 Homebrew cask/formula 与 Scoop 清单、VS Code 扩展的 `repository`/`homepage`/`bugs` 与两处「打开 Releases」链接、`build-docs.mjs` 的 `REPO`（文档站页脚「返回 GitHub 仓库」的单一事实源）、以及 README ×2、SKILL、CONTRIBUTING、SECURITY、CODE_OF_CONDUCT 与 docs/en ↔ docs 双语手册。文档站 URL 随之由 `sky-jiangcheng.github.io/repo-nest` 变为 `sky-jiangcheng.github.io/repotory`（**GitHub Pages 不随仓库更名做重定向，实测旧路径 404**——因此站内所有自指链接必须同批改掉，只改仓库名不改链接会让「返回 GitHub 仓库」与「在线阅读」全部指向死链；新站点随 master 推送由 `pages.yml` 重建）。仓库自身的旧地址则确实由 GitHub 自动重定向（实测 `github.com/sky-jiangcheng/repo-nest` → 200 落到新地址，`raw.githubusercontent.com` 旧路径亦仍可取到内容），故既有 clone、Releases 链接与 Homebrew/Scoop 清单在生效期内不会断。README「命名分层」表顺带修掉一处**既有双语漂移**：英文版该行仍写 `repo-nest`、中文版已写 `repotory`，现两份都只有一个机器标识 `repotory`。**刻意未改**：数据目录、MCP server 名与工具前缀（对外契约，见 README「命名分层」）——这次改名收口的正是仓库名，不是那些。
 - **[ADR-0017 晋升 Accepted，并修订其条件 3 的措辞]**：D25 首屏落地后按该 ADR 的四条晋升条件逐条核验，条件 1/2/4 成立，条件 3 原文「headless 路径成为 README 与文档站的第一安装路径」实测不成立（README Option 1 与文档站「下载安装」至今桌面优先）。经用户决定，把该条改写为可判定且今天为真的形式——「headless 在首屏叙事里是与桌面并列的一等入口，且两边共用版本号与 CHANGELOG」——并在 ADR 正文留下修订记录：原措辞把「叙事优先」写成了「安装排序」，而安装顺序是获客姿态、归 ADR-0009 的传播原则管，本 ADR 不判定。ADR 与 index 中英两份同步更新。本条只改文档与决策记录，不改任何安装路径。
 - **schema 版本分配：v22 给了页面版本快照，ADR-0018 lane 2 改占 v23**。lane 2 原本预留 v22，但它的前置（Phase 0 真实标注 query 集）仍未达标、几个月内未必落地，而 ADR-0021 的地基现在就要一个号——为一个不落地的迁移预留号码只会留下空洞。`docs/adr/0018` 状态行与 Lane 2 小节标题已同步改号。
 - **`WikiLintReport.LLMRan` / `LLMNote` 语义随「lint 有了两个模型半」而变**：`LLMRan` 从「模型半跑了且没有抱怨」改为「至少一个模型半执行了」，`LLMNote` 改为把各半未跑的原因并列写出。理由不是文字偏好：合并判等默认关，若沿用旧语义，用户开了矛盾检查就永远看不到第二个门的存在（`TestWikiLint_LLMChecksAreGatedAndSkeptical` 里 `LLMNote == ""` 那条断言随之更新为新契约）。
@@ -141,8 +142,8 @@
 
 > v1.15.1 及更早版本（v1.0.0 – v1.15.1，2026-03 – 2026-10）的变更历史见 [outputs/archive/CHANGELOG-v1.0-v1.15.md](outputs/archive/CHANGELOG-v1.0-v1.15.md)。
 
-[Unreleased]: https://github.com/sky-jiangcheng/repo-nest/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.16.2...v2.0.0
-[1.16.2]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.16.1...v1.16.2
-[1.16.1]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.16.0...v1.16.1
-[1.16.0]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.15.1...v1.16.0
+[Unreleased]: https://github.com/sky-jiangcheng/repotory/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/sky-jiangcheng/repotory/compare/v1.16.2...v2.0.0
+[1.16.2]: https://github.com/sky-jiangcheng/repotory/compare/v1.16.1...v1.16.2
+[1.16.1]: https://github.com/sky-jiangcheng/repotory/compare/v1.16.0...v1.16.1
+[1.16.0]: https://github.com/sky-jiangcheng/repotory/compare/v1.15.1...v1.16.0

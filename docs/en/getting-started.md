@@ -14,7 +14,7 @@ The install script sets up both the desktop app and `repotory-mcp` (the MCP serv
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repotory/master/scripts/install.sh | bash
 ```
 
 On macOS it installs to `/Applications/Repotory.app`, on Linux to `/usr/local/bin/repotory`; both place `repotory-mcp` in `/usr/local/bin`.
@@ -22,10 +22,10 @@ On macOS it installs to `/Applications/Repotory.app`, on Linux to `/usr/local/bi
 ### Windows
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repotory/master/scripts/install.ps1 | iex
 ```
 
-Or download the binary for your platform from [GitHub Releases](https://github.com/sky-jiangcheng/repo-nest/releases).
+Or download the binary for your platform from [GitHub Releases](https://github.com/sky-jiangcheng/repotory/releases).
 
 ## First Launch
 

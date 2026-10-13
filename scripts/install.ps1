@@ -1,13 +1,13 @@
 # Repotory install script for Windows
 # Installs both the desktop app (repotory.exe) and the MCP server (repotory-mcp.exe).
-# Run in PowerShell: iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 | iex
+# Run in PowerShell: iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repotory/master/scripts/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
 $InstallDir = "$env:LOCALAPPDATA\Repotory"
 $BinaryName = "repotory.exe"
 $McpBinaryName = "repotory-mcp.exe"
-$Repo = "sky-jiangcheng/repo-nest"
+$Repo = "sky-jiangcheng/repotory"
 $Target = "windows-amd64"
 
 # ReleaseBase is the base URL for release assets. Overridable so CI can point

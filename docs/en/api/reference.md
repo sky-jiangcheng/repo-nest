@@ -143,4 +143,4 @@ A successful create emits the plugin event `note.created`.
 
 ## OpenAPI
 
-For now, the tables on this page serve as the machine-readable contract (the hand-maintained openapi.json was removed in D10 and will return once CI generates it automatically). The desktop app does not expose a public HTTP service (see [TODO](https://github.com/sky-jiangcheng/repo-nest/blob/master/TODO.md)).
+For now, the tables on this page serve as the machine-readable contract (the hand-maintained openapi.json was removed in D10 and will return once CI generates it automatically). The desktop app does not expose a public HTTP service (see [TODO](https://github.com/sky-jiangcheng/repotory/blob/master/TODO.md)).

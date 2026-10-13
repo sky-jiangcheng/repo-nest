@@ -17,7 +17,7 @@ One VSIX covers the whole fork family — **VS Code, Cursor and Windsurf**.
 
 ## Requirements
 
-- The [`repotory-mcp`](https://github.com/sky-jiangcheng/repo-nest#quick-start) binary on your PATH — install it via Homebrew, Scoop or the GitHub Releases page. The desktop app is optional; the MCP server alone is enough.
+- The [`repotory-mcp`](https://github.com/sky-jiangcheng/repotory#quick-start) binary on your PATH — install it via Homebrew, Scoop or the GitHub Releases page. The desktop app is optional; the MCP server alone is enough.
 - Optional: a running `repotory server` for the status-bar health check (set `repotory.serverUrl` if you changed the port).
 
 ## Settings
@@ -55,4 +55,4 @@ npm run compile
 npx @vscode/vsce package --no-dependencies   # → repotory-vscode-<version>.vsix
 ```
 
-Architecture and scope: [ADR-0009](https://github.com/sky-jiangcheng/repo-nest/blob/master/docs/en/adr/0009-ide-presence.md). The extension calls `repotory-mcp` over stdio and the loopback-only headless service; zero business logic lives here.
+Architecture and scope: [ADR-0009](https://github.com/sky-jiangcheng/repotory/blob/master/docs/en/adr/0009-ide-presence.md). The extension calls `repotory-mcp` over stdio and the loopback-only headless service; zero business logic lives here.

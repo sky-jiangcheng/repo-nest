@@ -84,7 +84,7 @@ async function getMcp(): Promise<McpStdioClient> {
     );
     if (choice === "Open Releases") {
       void vscode.env.openExternal(
-        vscode.Uri.parse("https://github.com/sky-jiangcheng/repo-nest/releases"),
+        vscode.Uri.parse("https://github.com/sky-jiangcheng/repotory/releases"),
       );
     }
     throw new Error("repotory-mcp not found");
@@ -296,7 +296,7 @@ async function registerMcp(): Promise<void> {
     if (choice === "Open Docs") {
       void vscode.env.openExternal(
         vscode.Uri.parse(
-          "https://github.com/sky-jiangcheng/repo-nest/blob/master/docs/features/ai-integration.md",
+          "https://github.com/sky-jiangcheng/repotory/blob/master/docs/features/ai-integration.md",
         ),
       );
     }

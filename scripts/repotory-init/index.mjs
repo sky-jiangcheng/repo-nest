@@ -14,7 +14,7 @@ const BINARY_NAME = process.platform === "win32" ? "repotory-mcp.exe" : "repotor
 const HOOK_SCRIPT_REL = path.join(".claude", "hooks", "repotory-handoff.sh");
 const BACKUP_SUFFIX = ".repotory-init.bak";
 
-const RELEASES_URL = "https://github.com/sky-jiangcheng/repo-nest/releases";
+const RELEASES_URL = "https://github.com/sky-jiangcheng/repotory/releases";
 
 const USAGE = `repotory-init — register Repotory's MCP server with your AI clients (ADR-0009)
 

@@ -114,9 +114,9 @@ flowchart TB
 
 手册有**英文（默认）与中文两个版本**，通过侧栏顶部的语言切换器互跳；英文内容源在 `docs/en/`，中文在 `docs/`。
 
-- **在线浏览**：<https://sky-jiangcheng.github.io/repo-nest/>，随 master 分支自动更新
+- **在线浏览**：<https://sky-jiangcheng.github.io/repotory/>，随 master 分支自动更新
 - **本地生成**：`node scripts/build-docs.mjs`（依赖 `web/node_modules` 中的 marked）
-- **问题反馈**：<https://github.com/sky-jiangcheng/repo-nest/issues>
+- **问题反馈**：<https://github.com/sky-jiangcheng/repotory/issues>
 
 ## 快速导览
 

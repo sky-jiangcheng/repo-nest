@@ -8,18 +8,18 @@
 # (info.productVersion) — never edit it by hand.
 class RepotoryMcp < Formula
   desc "MCP stdio server exposing the Repotory local knowledge base to AI agents"
-  homepage "https://github.com/sky-jiangcheng/repo-nest"
+  homepage "https://github.com/sky-jiangcheng/repotory"
   version "2.0.0"
   license "MIT"
 
   if OS.mac? && Hardware::CPU.arm?
-    url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/repotory-mcp-darwin-arm64.tar.gz"
+    url "https://github.com/sky-jiangcheng/repotory/releases/download/v#{version}/repotory-mcp-darwin-arm64.tar.gz"
     sha256 "b7fa4bfd6cc49bbfed3916b88f8de6e505ebaede6a7c6bae5eb7e6e8f62fe3b7"
   elsif OS.mac? && Hardware::CPU.is_64_bit?
-    url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/repotory-mcp-darwin-amd64.tar.gz"
+    url "https://github.com/sky-jiangcheng/repotory/releases/download/v#{version}/repotory-mcp-darwin-amd64.tar.gz"
     sha256 "75682bc0ec892ffdbab31fbbea0cea89536baa10063128332283aac83f730bdd"
   else
-    url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/repotory-mcp-linux-amd64.tar.gz"
+    url "https://github.com/sky-jiangcheng/repotory/releases/download/v#{version}/repotory-mcp-linux-amd64.tar.gz"
     sha256 "d876978b5799ab9a83c6cb6901acafdede845611b0b76ea9465ad23a92679436"
   end
 
