@@ -37,7 +37,7 @@ flowchart TB
 | `codex` | 手动 | `~/.codex/sessions/**/rollout-*.jsonl`、`~/.codex/archived_sessions/**` | 取每场会话的首条用户指令 + 末条助手回复 |
 | `opencode` | 手动 | `$XDG_DATA_HOME`/`~/.local/share/opencode/storage/session/**/*.json` | 会话标题 + 摘要 |
 | `openclaw` | 手动 | `~/.openclaw-autoclaw/workspace/*.md` | 仅单层，不递归；**需配置目标项目** |
-| `hermes` | 手动 | `$HERMES_HOME`/`~/.hermes/memories/{MEMORY,USER}.md` | **需配置目标项目** |
+| `hermes` | 手动 | `$HERMES_HOME`/`~/.hermes/memories/{MEMORY,USER}.md` + `state.db`（`messages` 表，只读） | 记忆笔记 + 会话日志；**需配置目标项目**；库表结构不认识则**整源报错** |
 | `cursor` | 手动 | `<config>/Cursor/User/globalStorage/state.vscdb`（`CURSOR_STATE_DB` 可覆盖） | 只读；取首条提问 + 末条回复；格式不认识则**整源报错** |
 
 「自动」指应用启动时随 `auto_import` 一起跑（**默认关**，需在 **设置 → 插件** 显式开启）；「手动」指只在 **设置 → 插件** 点该源时才导入 —— 这类源多为原始会话转录，量大且噪音高，不适合每次启动全量重扫。

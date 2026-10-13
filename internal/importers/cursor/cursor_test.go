@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"repotory/internal/db"
+	"repotory/internal/importers/memsrc"
 )
 
 // The fixtures below mirror the shapes verified against a real macOS install
@@ -391,12 +392,12 @@ func TestImportAgainstRealInstall(t *testing.T) {
 		t.Skipf("no Cursor state database at %s", statePath)
 	}
 
-	st, err := openReadOnly(statePath)
+	st, err := memsrc.OpenReadOnly(statePath)
 	if err != nil {
 		t.Fatalf("open read-only: %v", err)
 	}
-	defer st.close()
-	if err := probeLayout(st.sql); err != nil {
+	defer st.Close()
+	if err := probeLayout(st); err != nil {
 		t.Fatalf("real install failed the layout probe (drift, and we would have imported nothing): %v", err)
 	}
 
@@ -406,7 +407,7 @@ func TestImportAgainstRealInstall(t *testing.T) {
 	// deadlock (which is exactly what this test did before it was written this way
 	// — Import() itself is safe for the same reason).
 	var ids []string
-	rows, err := st.sql.Query(
+	rows, err := st.Query(
 		`SELECT composerId FROM composerHeaders
 		  WHERE COALESCE(isSubagent, 0) = 0
 		    AND COALESCE(workspaceId, '') NOT IN ('', 'empty-window')`)
@@ -426,7 +427,7 @@ func TestImportAgainstRealInstall(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, id := range ids {
-		first, last, ok := (&Importer{db: app}).excerpts(st.sql, id)
+		first, last, ok := (&Importer{db: app}).excerpts(st, id)
 		if !ok {
 			continue
 		}
