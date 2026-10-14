@@ -8,6 +8,16 @@
 
 ### 新增
 
+### 变更
+
+### 修复
+
+## [2.1.0] - 2026-10-14
+
+### 新增
+
+- **自动发现并定时同步 agent 记忆，来源类型用户可见（[ADR-0022](docs/adr/0022-agent-memory-discovery-sync.md)）**：此前各 agent 的记忆导入靠设置页手动填 `*_project` 目标项目，来源是「黑盒」——导入后只见笔记，说不清每条来自谁。现在来源类型本身成为一等公民：新增 CodeBuddy 记忆/会话导入源（官方 `_memery.md` 持久层 + MCP transcript 两路，沿用只读纪律与无 workspace 即 skip 口径），插件运行时暴露 `source_type`，前端设置页逐源展示发现状态、来源类型与同步开关；新增 `knowledge_sync` 定时同步服务（复用幂等 upsert 路径，键 `(project_id, source, title)`，重复导是更新不是堆叠）。同批修掉 claude/codex/opencode/hermes/cursor 各源边界：超大 rollout（>32MB）跳过、cwd containment 误匹配纠偏（`he`→HengTian、`ni`→CBiUnion 之类按"cwd 必须是项目根/repo 前缀"判定）、opencode 会话 JSON `summary` 字段类型漂移宽容处理。
+
 - **图感知取证 + 页面向量空间（[ADR-0018](docs/adr/0018-knowledge-graph-foundation.md) lane 2，schema v23）**：取证从此**读图**。此前 `GatherEvidence` 只跑页面 FTS + 笔记检索，`WikiEdgesFrom/To` 从未被取证调用——Obsidian 里看得见图，AskAI 却把图当不存在。两半落地：**页面向量空间**——`note_embeddings` 是 notes-only（`KnnNoteIDs`/`PutNoteEmbedding` 按笔记 rowid 键控），编译出的页面从来没有向量面，语义召回永远到不了页面；新增 `page_embeddings` vec0 + `page_embeddings_meta`（`internal/db/pagevec.go`），**物理独立于 `note_embeddings`**——`hybrid.FuseRRF` 融合的是裸 int64 id，而 `wiki_pages.id` 与 `project_notes.id` 是独立自增序列，共用一张表会把 page #7 和 note #7 融成同一个对象（正是证据交织注释反复警告的串号陷阱）。增量队列 `page_embed_dirty` 由 `wiki_pages` 上三个触发器维护（正文/标题真变、或 approved 状态迁移时置脏；`IS NOT` 值判定而非 `AFTER UPDATE OF` 语法判定，避免每次改状态都白付一次 embedding），drainer 每 5s 排空：页还在且 approved 就 embed + Upsert，已删或已退出 approved 就删向量（**只嵌 approved 页**，ADR-0015 边界）。整条路径挂在既有 `semantic_search` 之后（那是用户同意把文本发往端点的显式授权），**不新开第二个开关**——否则会出现"主开关开着、页嵌却静默不更新"的陈旧索引。分享同一个 embedding provider（endpoint/model/dim），但向量存储各走各的表。**图感知取证**——新门 `wiki_graph_search`（默认关）：关时 `evidencePages` 走**与今天逐条一致**的 FTS 顺序（零行为回退，`TestEvidencePages_GraphOffIsFTSPure` 钉住）；开时以 FTS 命中页为种子，`WITH RECURSIVE` 沿关系白名单（`ref`/`part-of`/`documents`，**不含 `contradicts`**——矛盾是给用户看的、不是喂进同一份证据的）扩 1 跳召回邻居，再用纯 Go PPR（`internal/search/graph`，带 reset 的随机游走，reset 向量 = 检索命中页）替 bm25 定序，让"结构上邻近命中页、却从未匹配查询"的页面也能被引用。递归 CTE 用 path 串 + 跳数双重上界防环逃逸，两端都只走 approved 页（pending 邻居绝不进证据）。结果是 FTS 命中的**超集**（命中永远是命中），开图检索不会减少页面命中。**晋升仍待 Phase 0**：lane 2 的核心主张"图感知取证 > 纯 FTS 取证"必须在一份真实标注 `queries.jsonl` 上量出 evidence+graph 相对 evidence 的正向 delta 才算兑现——机制正确不等于收益真实，这一条是硬门。
 
 - **Hermes 会话导入（[ADR-0011](docs/adr/0011-multi-agent-memory-importers.md) 实现修正节）**：`hermes` 源此前只读 curated 记忆（`memories/*.md`），会话一直因「schema 无文档且本机无样例，不猜活格式」而 defer。TencentDB-Agent-Memory（腾讯云开源）的 shipped asset importer 恰好构成一个已发布消费者：其 `agents/asset-import.ts#scanSessions` 读的正是 `$HERMES_HOME/state.db` 的 `messages(session_id, role, content, tool_call_id, tool_calls, tool_name, timestamp)`，defer 条件因此满足（真实样例或 shipped consumer 二选一）。每会话→一条 log 笔记（首条提问 + 末条回复各截 3000 字符，同 codex 口径），幂等键 `(project, "hermes", title)` 不变；schema 无 cwd/workspace 线索，故沿用 `hermes_project` 配置归属，未设仍计入 skipped。安全纪律照旧：`memsrc.OpenReadOnly`（`mode=ro` + WAL 兜底，单连接）只查 `messages` 表，`.env` / `mcp-tokens/` 绝不触碰；表/列结构不认识时**整源报错**而非安静导入 0 条（`probeSessionsLayout`）。附带把 cursor 包内的 `openReadOnly` 下沉为 `memsrc.OpenReadOnly`（第 3 个 sqlite-backed importer，符合 ADR-0011 决策 2 的抽取时机）。双语手册的源清单同批更新。
@@ -153,7 +163,8 @@
 
 > v1.15.1 及更早版本（v1.0.0 – v1.15.1，2026-03 – 2026-10）的变更历史见 [outputs/archive/CHANGELOG-v1.0-v1.15.md](outputs/archive/CHANGELOG-v1.0-v1.15.md)。
 
-[Unreleased]: https://github.com/sky-jiangcheng/repotory/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/sky-jiangcheng/repotory/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/sky-jiangcheng/repotory/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/sky-jiangcheng/repotory/compare/v1.16.2...v2.0.0
 [1.16.2]: https://github.com/sky-jiangcheng/repotory/compare/v1.16.1...v1.16.2
 [1.16.1]: https://github.com/sky-jiangcheng/repotory/compare/v1.16.0...v1.16.1
