@@ -28,11 +28,11 @@ Phase 0（标注）                         Hermes 导入
 
 ### 0.1 语料充实（agent 可做，先于标注）
 
-标注质量取决于语料是否有东西可标。当前真库 7 页全 pending、笔记量少。
+标注质量取决于语料是否有东西可标。2026-10-14 前的真库：7 页全 pending、笔记 4 条。
 
-- [ ] 用户在设置里**批准若干 pending 页**（社区摘要/图谱的前提，Lane 2 也需要）
-- [ ] 跑一次已落地的 Hermes / Claude curated memory 导入（opt-in 手动），充实笔记量
-- [ ] `repotory_integrity` 过一遍，确认 FTS 索引无漂移（**索引漂移会让检索静默漏结果，标注前必须排除**）
+- [ ] 用户在设置里**批准若干 pending 页**（社区摘要/图谱的前提，Lane 2 也需要）——**仍待用户在 GUI 完成**
+- [x] 跑知识源导入（agent 于 2026-10-14 直接逐源触发，结果）：claude 更新 1 条；codex 新建 1 条（55 条跳过：2 个 >32MB 超大会话 + 其余 cwd 无项目匹配，按"查不到项目就跳过不猜"设计）；opencode 0（目录无项目匹配）；openclaw 新建 6 条（先写 `openclaw_project=2` 指向同名项目，语义是路径精确对应）；hermes 0（本机无 memories、无 state.db）；cursor 0（1 会话因 workspace 无匹配被跳过）。**真库笔记 4 → 11 条**。
+- [x] `repotory_integrity`（agent 以只读副本跑，无漂移）：FTS **pass**（5 笔记 / 6 待办全在索引，触发器齐全）；orphan **pass**；schema **pass**（真库已迁至 v23）；scan 覆盖 / 知识缓存各 **warn**（非标注阻塞项）。
 
 验收：笔记数量足够支撑 ≥10 条真实问题（`queryset` 提示 <10 条时只是方向参考，不是证据）。
 
@@ -48,6 +48,8 @@ go run ./cmd/queryset -seed > /tmp/notes.tsv
 ### 0.3 人工标注（用户动作，工具无法代做）
 
 编辑 `/tmp/notes.tsv`：
+
+**2026-10-14 进展**：agent 已在 `outputs/process-logs/phase0-worksheet-draft.tsv` 预填 12 条候选问题（含猜测 `relevant`，行号与该文件内笔记清单一一绑定）。**这只是草稿**——用户必须逐条对照笔记内容确认/改正后（去掉行首 `#` 生效），才能 `-emit`；未核对直接使用 = 门禁失效（见上原则）。目标 ≥15 条，确认之余请补自己的真实问题。
 
 - 每条问题必须是**你真会问的问题**（已有问题 > 编造问题）
 - `relevant=` 填 1-3 个行号，**不凑数**（凑数把门禁结论变成噪音）

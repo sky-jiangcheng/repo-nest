@@ -1,0 +1,48 @@
+# Repotory 检索标注工作表
+#
+# 步骤 1：给每条笔记起一个真实的问题——你确实会问的问题。
+#         已有的问题比编造的更真实；只写你真会问的。
+# 步骤 2：对每个问题，在 relevant= 里填能真正回答它的笔记行号。
+#         填 1-3 条即可。凑数会把门禁的结论变成噪音。
+# 步骤 3：保存后运行 repotory-queryset -emit <本文件> -out queries.jsonl
+#
+# ---- 笔记清单 ----
+# 1	jiangcheng	<environment_context> · 019f7f28	(id=11)
+# 2	CBiPay	CBiPay 样例测试笔记	(id=2)
+# 3	CBiPay	feedback_verify_call_chain	(id=3)
+# 4	CBiPay	悬浮球快捷收录测试	(id=4)
+# 5	CBiPay	CBiPay 项目最近三个月的开发重点是什么?	(id=5)
+# 6	.openclaw-autoclaw	OpenClaw · AGENTS	(id=12)
+# 7	.openclaw-autoclaw	OpenClaw · HEARTBEAT	(id=13)
+# 8	.openclaw-autoclaw	OpenClaw · IDENTITY	(id=14)
+# 9	.openclaw-autoclaw	OpenClaw · SOUL	(id=15)
+# 10	.openclaw-autoclaw	OpenClaw · TOOLS	(id=16)
+# 11	.openclaw-autoclaw	OpenClaw · USER	(id=17)
+#
+# ---- 待标注 ----
+# {"query": "", "relevant": []}
+# 逐行复制上面那条模板并填写；query 不能为空，relevant 至少一个行号。
+#
+# ---- 草稿（agent 起草 2026-10-14，待人工核对。行号以**本文件上面那份笔记清单**为准）----
+# 注意：下面每条的 relevant 是 agent 读笔记内容后的**猜测草稿**。
+#       门禁拿标注当真值量检索，所以每条都必须由你对照笔记内容确认或改正；
+#       没核对就直接使用 = 测的是猜测器不是检索，结论无效。
+#       目标 ≥15 条：确认草稿之余，欢迎补你真会问的问题。
+#       勿混用其他 -seed 文件的行号：每次 -seed 的编号都按项目遍历重排，
+#       本文件的 relevant 只能配上面这份清单。
+# {"query": "CBiPay 项目由哪些子仓库构成，主语言和代码规模是多少？", "relevant": [2]}
+# {"query": "CBiPay 最近三个月的开发重点是什么？", "relevant": [5]}
+# {"query": "CBiPay 的测试要点包括哪几项？", "relevant": [2]}
+# {"query": "为什么不能拿未使用的 SQL 或接口当项目行为的证据？", "relevant": [3]}
+# {"query": "悬浮球（FAB）快捷收录创建的笔记叫什么？", "relevant": [4]}
+# {"query": "OpenClaw 工作区第一次运行要做什么？BOOTSTRAP.md 是什么？", "relevant": [6]}
+# {"query": "怎么让 OpenClaw 的心跳不再发 API 调用？", "relevant": [7]}
+# {"query": "OpenClaw 的 IDENTITY.md 和 SOUL.md 分别怎么配置？", "relevant": [8, 9]}
+# {"query": "OpenClaw 的 TOOLS.md 记录什么内容？", "relevant": [10]}
+# {"query": "USER.md 是关于谁的，应该记录哪些信息？", "relevant": [11]}
+# {"query": "Codex 会话 019f7f28 的工作目录和首次指令是什么？", "relevant": [1]}
+# {"query": "agent 的身份与个性配置在 OpenClaw 哪些文件里？", "relevant": [8, 9]}
+#
+# 说明：上面 12 条是 JSON 模板草稿（保留 # 号未生效）。核对方法：去掉行首 #，
+#       逐条对照笔记清单确认 relevant 行号；删掉你不同意的，补充你自己的。
+#       全部确认后保存，去掉 # 的行才会被 -emit 收录。
