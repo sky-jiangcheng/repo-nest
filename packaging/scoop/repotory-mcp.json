@@ -4,7 +4,7 @@
   "homepage": "https://github.com/sky-jiangcheng/repotory",
   "license": "MIT",
 "url": "https://github.com/sky-jiangcheng/repotory/releases/download/v2.1.0/repotory-mcp-windows-amd64.zip",
-  "hash": "sha256:5a161c9e238edde5b638c767633908afad8e3216e4fd3d7f7a67e3dc5763e270",
+  "hash": "sha256:99021d511ff21dbb1c2ea93c38a1b3927a142ab76a11ed0b576cc4cbc576daad",
   "bin": "repotory-mcp.exe",
   "checkver": {
     "url": "https://api.github.com/repos/sky-jiangcheng/repotory/releases/latest",
