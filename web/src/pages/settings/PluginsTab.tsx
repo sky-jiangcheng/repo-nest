@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  getKnowledgeSources, triggerKnowledgeImport, captureClaudeHandoff,
+  getKnowledgeSources, getKnowledgeSyncStatus, triggerKnowledgeImport, captureClaudeHandoff,
   updateConfig, type SourceStatus,
 } from '../../api/client'
 
@@ -11,16 +11,20 @@ import css from './PluginsTab.module.css'
 
 // B-end / global-memory sources that need an explicit target project (their
 // memory is agent-global, not per-project). Value = project name or numeric id.
-const TARGET_PROJECT_KEYS = ['openclaw_project', 'hermes_project'] as const
+const TARGET_PROJECT_KEYS = ['openclaw_project', 'hermes_project', 'codebuddy_project'] as const
 
 interface Props {
   initialAutoImport: boolean
   initialClaudeCapture: boolean
   initialTargets: Record<string, string>
+  // Full config map from the settings page: per-source periodic-sync switches
+  // live under `sync_source_<name>` keys, so the whole map is the least-brittle
+  // way to seed the toggles without hardcoding the source list twice.
+  initialConfig: Record<string, string>
   showMessage: (msg: string) => void
 }
 
-export default function PluginsTab({ initialAutoImport, initialClaudeCapture, initialTargets, showMessage }: Props) {
+export default function PluginsTab({ initialAutoImport, initialClaudeCapture, initialTargets, initialConfig, showMessage }: Props) {
   const { t } = useTranslation()
   const [sources, setSources] = useState<SourceStatus[]>([])
   const [importingSource, setImportingSource] = useState('')
@@ -32,10 +36,23 @@ export default function PluginsTab({ initialAutoImport, initialClaudeCapture, in
   const [captureProjectId, setCaptureProjectId] = useState('')
   const [saving, setSaving] = useState(false)
   const [capturing, setCapturing] = useState(false)
+  // Per-source sync switch: persisted value lives in config
+  // (`sync_source_<name>`), and this map only records user flips since mount.
+  // Derived default = config, so no seeding effect is needed.
+  const [syncOverrides, setSyncOverrides] = useState<Record<string, boolean>>({})
+  const [lastSyncRun, setLastSyncRun] = useState('')
+  const [lastSyncError, setLastSyncError] = useState('')
 
   useEffect(() => {
     getKnowledgeSources().then(setSources).catch(() => {})
+    // Periodic sync is a global ticker; its last round is one status row for
+    // the whole source list, shown under the list.
+    getKnowledgeSyncStatus()
+      .then((st) => { setLastSyncRun(st.last_run); setLastSyncError(st.last_error) })
+      .catch(() => {})
   }, [])
+
+  const syncEnabledFor = (name: string) => syncOverrides[name] ?? initialConfig[`sync_source_${name}`] === '1'
 
   const handleImportSource = async (name: string) => {
     setImportingSource(name)
@@ -69,6 +86,15 @@ export default function PluginsTab({ initialAutoImport, initialClaudeCapture, in
   const handleClaudeCaptureToggle = (on: boolean) => {
     setClaudeCapture(on)
     void persist('claude_session_capture', on ? '1' : '0', on ? t('settings.claudeCapOn') : t('settings.claudeCapOff'))
+  }
+
+  const handleSyncToggle = (name: string, on: boolean) => {
+    setSyncOverrides((prev) => ({ ...prev, [name]: on }))
+    void persist(
+      `sync_source_${name}`,
+      on ? '1' : '0',
+      on ? t('settings.syncOn', { name }) : t('settings.syncOff', { name }),
+    )
   }
 
   const handleTargetSave = (key: string) => {
@@ -119,27 +145,74 @@ export default function PluginsTab({ initialAutoImport, initialClaudeCapture, in
         {sources.length === 0 ? (
           <div className="empty-hint">{t('settings.noSources')}</div>
         ) : (
-          <ul className={css.pluginList}>
-            {sources.map((s) => (
-              <li key={s.name} className={css.pluginItem}>
-                <div className={css.pluginInfo}>
-                  <span className={css.pluginName}>{s.name}</span>
-                  <span className={css.pluginPath}>{t('settings.fromPlugin', { name: s.plugin || 'builtin' })}</span>
-                </div>
-                {/* Secondary, not primary: five identical filled-blue CTAs in a
-                    row read as one giant primary action and none of them wins.
-                    The row's hover state carries the emphasis instead. */}
-                <button
-                  className={`btn btn-sm ${css.pluginImportBtn}`}
-                  onClick={() => handleImportSource(s.name)}
-                  disabled={importingSource !== '' || !s.enabled}
-                >
-                  {importingSource === s.name ? t('settings.importing') : t('settings.importNow')}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className={css.pluginList}>
+              {sources.map((s) => (
+                <li key={s.name} className={css.pluginItem}>
+                  <div className={css.pluginInfo}>
+                    <div className={css.pluginTop}>
+                      <span className={css.pluginName}>{s.name}</span>
+                      <span className={css.typeChip}>
+                        {t(`settings.sourceTypes.${s.type}`, { defaultValue: s.type })}
+                      </span>
+                      <span
+                        className={`${css.statusDot} ${s.detected ? css.statusDotOn : ''}`}
+                        title={s.detail || undefined}
+                        aria-hidden="true"
+                      />
+                      <span className={css.statusText}>
+                        {s.detected ? t('settings.sourceDetected') : t('settings.sourceNotDetected')}
+                      </span>
+                    </div>
+                    <span className={css.pluginPath}>{t('settings.fromPlugin', { name: s.plugin || 'builtin' })}</span>
+                    {s.detail && <span className={css.pluginDetail}>{s.detail}</span>}
+                  </div>
+                  <div className={css.pluginActions}>
+                    <div className={css.syncToggleWrap}>
+                      <button
+                        className={`${css.toggle} ${syncEnabledFor(s.name) ? css.toggleOn : ''}`}
+                        onClick={() => handleSyncToggle(s.name, !syncEnabledFor(s.name))}
+                        disabled={saving || !s.detected}
+                        aria-pressed={syncEnabledFor(s.name)}
+                        aria-label={t('settings.syncToggleLabel', { name: s.name })}
+                        title={s.detected ? undefined : t('settings.syncHiddenHint')}
+                      >
+                        <span className={css.toggleKnob} />
+                      </button>
+                      <span className={css.syncToggleText}>
+                        {syncEnabledFor(s.name) ? t('settings.syncOnShort') : t('settings.syncOffShort')}
+                      </span>
+                    </div>
+                    {/* Secondary, not primary: five identical filled-blue CTAs in a
+                        row read as one giant primary action and none of them wins.
+                        The row's hover state carries the emphasis instead. */}
+                    <button
+                      className={`btn btn-sm ${css.pluginImportBtn}`}
+                      onClick={() => handleImportSource(s.name)}
+                      disabled={importingSource !== '' || !s.enabled}
+                    >
+                      {importingSource === s.name ? t('settings.importing') : t('settings.importNow')}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className={css.syncStatusLine}>
+              {lastSyncRun
+                ? t('settings.lastSyncAt', { time: lastSyncRun })
+                : t('settings.neverSynced')}
+              {lastSyncRun && lastSyncError && (
+                <span className={css.syncError}> · {t('settings.syncLastError', { msg: lastSyncError })}</span>
+              )}
+            </p>
+          </>
         )}
+      </section>
+
+      {/* --- Periodic sync --- */}
+      <section className="settings-group">
+        <h2 className="settings-group-title">{t('settings.groupSync')}</h2>
+        <p className="form-hint" style={{ marginTop: 0 }}>{t('settings.syncHint')}</p>
       </section>
 
       {/* --- Global-memory sources: target project --- */}

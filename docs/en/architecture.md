@@ -73,7 +73,7 @@ How to read it: **one write, two read paths**. When a note is persisted, trigger
 
 ### Knowledge-source runtime (ADR-0002, amended by C11)
 
-The script-plugin runtime (yaegi) has been removed (C11); the knowledge-source registry and the idempotent upsert pipeline remain, with the six built-in agent-memory sources (claude/codex/opencode/openclaw/hermes/cursor) registered via `RegisterSource`/`RegisterSourceManual`.
+The script-plugin runtime (yaegi) has been removed (C11); the knowledge-source registry and the idempotent upsert pipeline remain, with the eight built-in agent-memory sources (claude/codex/opencode/openclaw/hermes/cursor/codebuddy/codebuddy-memory) registered via `RegisterSource`/`RegisterSourceManual`.
 
 ## Frontend (web/src)
 

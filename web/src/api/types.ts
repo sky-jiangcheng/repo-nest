@@ -229,13 +229,25 @@ export interface ScanStatus {
 export interface SourceStatus {
   name: string
   plugin: string
+  detected: boolean
   enabled: boolean
+  detail: string
+  // Derived display bucket: 'agent-import' | 'user-conversation' |
+  // 'project-extract' | 'manual' (mirrors runtime.SourceType).
+  type: string
 }
 
 export interface ImportRun {
   created: number
   updated: number
   skipped: number
+}
+
+// KnowledgeSyncStatus reports the periodic knowledge sync's last round
+// (matches Go service.KnowledgeSyncStatus).
+export interface KnowledgeSyncStatus {
+  last_run: string
+  last_error: string
 }
 
 // HandoffEntry is one row of the first-screen memory ring (D25): a handoff

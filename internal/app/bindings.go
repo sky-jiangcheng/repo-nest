@@ -65,7 +65,8 @@ import (
 //   Todos: ListTodos, CreateTodo, ToggleTodo, DeleteTodo, ReorderTodos
 //   Config: GetConfig, UpdateConfig, UpdateScanRoots
 //   Exports: GenerateLLMsTxt, ExportNoteAsMarkdown, ExportMemoryJSON
-//   Plugins/knowledge sources: GetKnowledgeSources, TriggerKnowledgeImport,
+//   Plugins/knowledge sources: GetKnowledgeSources, GetKnowledgeSyncStatus,
+//                              TriggerKnowledgeImport,
 //                              TriggerAllKnowledgeImports, ImportClaudeMemory,
 //                              CaptureClaudeHandoff
 //   Memory ring (D25 first screen): ListRecentHandoffs — content-free
@@ -287,6 +288,13 @@ func (a *App) ExportMemoryJSON(limit int64) string { return a.svc.ExportMemoryJS
 
 // GetKnowledgeSources returns registered knowledge importers with their state.
 func (a *App) GetKnowledgeSources() []pluginruntime.SourceStatus { return a.svc.GetKnowledgeSources() }
+
+// GetKnowledgeSyncStatus returns the periodic knowledge sync's last round
+// (when it ran and whether any source in that round failed), for the plugins
+// settings tab's sync status row.
+func (a *App) GetKnowledgeSyncStatus() service.KnowledgeSyncStatus {
+	return a.svc.KnowledgeSyncStatus()
+}
 
 // TriggerKnowledgeImport runs one knowledge source and returns its statistics.
 func (a *App) TriggerKnowledgeImport(name string) (pluginruntime.ImportRun, error) {

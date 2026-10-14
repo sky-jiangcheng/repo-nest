@@ -43,9 +43,82 @@
   min-width: 0;
 }
 
+.pluginTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .pluginName {
   font-weight: 600;
   color: var(--text-primary);
+}
+
+/* Derived display bucket chip (agent-import / user-conversation / …). */
+.typeChip {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* Presence dot: green when the agent's data was found on this machine,
+   grey when the probe reports nothing to import yet. */
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.statusDotOn {
+  background: var(--success);
+}
+
+.statusText {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.pluginDetail {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  overflow-wrap: anywhere;
+}
+
+.pluginActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.syncToggleWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.syncToggleText {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.syncStatusLine {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.syncError {
+  color: var(--danger);
 }
 
 .pluginPath {

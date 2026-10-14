@@ -87,6 +87,12 @@ type Service struct {
 	// gitUserMu guards guser so the git_author config key can be applied at
 	// runtime instead of only at construction time.
 	gitUserMu sync.RWMutex
+
+	// syncMu guards the periodic knowledge-sync status fields below: they are
+	// written by the background ticker and read by KnowledgeSyncStatus.
+	syncMu      sync.Mutex
+	syncLastRun time.Time
+	syncLastErr error
 }
 
 // New creates a Service with production dependencies: the local git CLI
@@ -188,6 +194,13 @@ func (s *Service) Startup() {
 		}
 		s.registerBuiltinImporters()
 		log.Printf("knowledge-source runtime ready: %d source(s)", len(s.rt.SourceStatuses()))
+
+		// Periodic knowledge sync: re-runs the sources whose sync_source_<name>
+		// switch is on, on a scheduler cadence. Started after the importer
+		// registration (it needs the runtime) and before auto-import (both go
+		// through TriggerImport, so the runtime's importMu serializes them).
+		// The first round is one full interval away, never at launch.
+		s.startKnowledgeSyncTicker()
 
 		// Auto-import knowledge sources on startup (issue #36) — but only on an
 		// explicit opt-in. Tracked via bgGo so Shutdown waits for it instead of

@@ -13,6 +13,7 @@ import type {
   ImportResult,
   ImportRun,
   HandoffResult,
+  KnowledgeSyncStatus,
   MergeCandidateReport,
   MergeResult,
   Note,
@@ -534,6 +535,10 @@ export function exportMemoryJSON(limit: number): Promise<string> {
 
 export function getKnowledgeSources(): Promise<SourceStatus[]> {
   return call<SourceStatus[]>({ method: 'GetKnowledgeSources', path: '/plugins/sources' }).then(d => d ?? [])
+}
+
+export function getKnowledgeSyncStatus(): Promise<KnowledgeSyncStatus> {
+  return call<KnowledgeSyncStatus>({ method: 'GetKnowledgeSyncStatus', path: '/plugins/sync-status' }).then(d => d ?? { last_run: '', last_error: '' })
 }
 
 export function triggerKnowledgeImport(name: string): Promise<ImportRun> {

@@ -73,7 +73,7 @@ flowchart TB
 
 ### 知识源运行时（ADR-0002，C11 修订）
 
-脚本插件运行时（yaegi）已移除（C11）；知识源注册表 + 幂等 upsert 管线保留，六个内置 agent 记忆源（claude/codex/opencode/openclaw/hermes/cursor）经 `RegisterSource`/`RegisterSourceManual` 注册。
+脚本插件运行时（yaegi）已移除（C11）；知识源注册表 + 幂等 upsert 管线保留，八个内置 agent 记忆源（claude/codex/opencode/openclaw/hermes/cursor/codebuddy/codebuddy-memory）经 `RegisterSource`/`RegisterSourceManual` 注册。
 
 ## 前端（web/src）
 

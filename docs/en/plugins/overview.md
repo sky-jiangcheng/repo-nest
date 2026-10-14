@@ -7,11 +7,11 @@ order: 8
 
 > **Note**: knowledge-source import is not open to user scripts — the in-process script-plugin runtime (yaegi, [ADR-0002](../adr/0002-c-end-repositioning.md)) was removed in C11. The source list is entirely built in and only grows with releases.
 
-Repotory imports documents into the knowledge base idempotently. All six sources ship **built in** as ordinary Go implementations of `plugin.KnowledgeImporter`; the in-process script-plugin runtime (yaegi) was removed in C11, so there is no user-authored importer entry point.
+Repotory imports documents into the knowledge base idempotently. All eight sources ship **built in** as ordinary Go implementations of `plugin.KnowledgeImporter`; the in-process script-plugin runtime (yaegi) was removed in C11, so there is no user-authored importer entry point.
 
 ```mermaid
 flowchart TB
-    SRC["Knowledge sources<br/>6 built-in agent-memory sources"] --> RUN["Built-in importers read"]
+    SRC["Knowledge sources<br/>8 built-in agent-memory sources"] --> RUN["Built-in importers read"]
     RUN --> KEY["Idempotency key<br/>(project_id, source, title)"]
     KEY --> HIT{"Existing note found?"}
     HIT -->|"yes"| UPD["Update the existing note<br/>content + metadata"]
@@ -27,7 +27,7 @@ flowchart TB
 
 How to read it: all sources **converge on one upsert path**, and idempotency is guaranteed by the triple `(project_id, source, title)`. Re-importing therefore **updates** rather than creating duplicates — running the import again never makes the knowledge base dirtier. Writes go through a trigger that syncs the FTS index, so imported documents are immediately searchable via `repotory_notes_search`.
 
-Note the last branch: **a document that cannot be matched to a project is not stored at all** — it is only counted in `skipped`. When `openclaw` / `hermes` have no target project configured, every one of their documents lands in this branch.
+Note the last branch: **a document that cannot be matched to a project is not stored at all** — it is only counted in `skipped`. When `openclaw` / `hermes` / `codebuddy-memory` have no target project configured, every one of their documents lands in this branch.
 
 ## Built-in knowledge sources
 
@@ -39,21 +39,24 @@ Note the last branch: **a document that cannot be matched to a project is not st
 | `openclaw` | manual | `~/.openclaw-autoclaw/workspace/*.md` | single level, never recursive; **requires a target project** |
 | `hermes` | manual | `$HERMES_HOME` / `~/.hermes/memories/{MEMORY,USER}.md` + `state.db` (`messages` table, read-only) | memory notes + session logs; **requires a target project**; an unrecognized layout fails the **whole source** |
 | `cursor` | manual | `<config>/Cursor/User/globalStorage/state.vscdb` (override with `CURSOR_STATE_DB`) | read-only; first prompt + last reply; an unrecognized layout **fails the whole source** |
+| `codebuddy` | manual | `~/Library/Application Support/CodeBuddyExtension/Data/<uid>/<IDE>/history/*/index.json` + `messages/*.json` | session transcripts; first prompt + last reply; a corrupt single file drops only that session |
+| `codebuddy-memory` | manual | `~/.codebuddy/memery/*.md` + `Public/.memories/*.mdc` | user memory profile + write-rule memory; **requires a target project** |
 
 "Automatic" means the source runs at startup together with `auto_import` (**off by default**; enable it explicitly in **Settings → Plugins**). "Manual" means it only runs when you click that source in **Settings → Plugins** — those are raw session transcripts, large and noisy, which is why they never belong in a startup rescan.
 
 ### Project ownership
 
-Four of the sources carry a project hint of their own (Claude's `-Users-x-Work-Foo` directory name, the session's `cwd`, OpenCode's `directory`, and Cursor's `workspaceId → workspaceStorage/<id>/workspace.json` folder path). The **last path segment** is matched with a three-step rule: exact project name → repository path ending with that segment → project name containing it. No match means the document has no owner and is counted as `skipped`; it is **never** dumped into some "uncategorized" project.
+Five of the sources carry a project hint of their own (Claude's `-Users-x-Work-Foo` directory name, the session's `cwd`, OpenCode's `directory`, Cursor's `workspaceId → workspaceStorage/<id>/workspace.json` folder path, and CodeBuddy's `Workspace Folder:` line in the first user message). The **last path segment** is matched with a three-step rule: exact project name → repository path ending with that segment → project name containing it. No match means the document has no owner and is counted as `skipped`; it is **never** dumped into some "uncategorized" project.
 
-`openclaw` and `hermes` files contain no project hint at all, so their target project comes from configuration:
+`openclaw`, `hermes` and `codebuddy-memory` files contain no project hint at all, so their target project comes from configuration:
 
 | Config key | Purpose |
 |------------|---------|
 | `openclaw_project` | project name or project ID that openclaw notes attach to |
 | `hermes_project` | project name or project ID that hermes notes attach to |
+| `codebuddy_project` | project name or project ID that codebuddy-memory notes attach to |
 
-> ⚠️ **With no value set, both sources skip everything silently**: the import reports no error, every document lands in `skipped`, and not one note is created. The settings page shows no reason — only the `skipped` count gives it away. Set the corresponding key before using either source for the first time.
+> ⚠️ **With no value set, these three sources skip everything silently**: the import reports no error, every document lands in `skipped`, and not one note is created. The settings page shows no reason — only the `skipped` count gives it away. Set the corresponding key before using these sources for the first time.
 
 ### Import statistics
 

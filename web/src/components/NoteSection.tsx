@@ -247,6 +247,12 @@ function NoteCard({
   const { t } = useTranslation()
   const { armed, click } = useConfirmClick(() => { void onDelete(note.id) })
 
+  // Source badges are generic now: any importer source (claude, codex,
+  // opencode, codebuddy-memory, …) gets a chip next to the kind badge.
+  // 'manual' notes were typed by the user and stay unbadged.
+  const sourceLabel = (src: string) =>
+    src === 'codebuddy-memory' ? 'CodeBuddy Memory' : src.charAt(0).toUpperCase() + src.slice(1)
+
   if (editing) {
     return (
       <div className={s.card}>
@@ -271,7 +277,7 @@ function NoteCard({
         <span className={s.titleText}>{note.title || note.content.split('\n')[0] || t('project.noteWord')}</span>
         <div className={s.titleBadges}>
           {note.kind === 'knowledge' && <span className={s.badgeNoteSm}>{t('project.kinds.knowledge')}</span>}
-          {note.source === 'claude' && <span className={`${s.badgeNoteSm} ${s.badgeSource}`}>Claude</span>}
+          {note.source && note.source !== 'manual' && <span className={`${s.badgeNoteSm} ${s.badgeSource}`}>{sourceLabel(note.source)}</span>}
           <button
             className={`pin-btn ${note.pinned ? 'pinned' : ''}`}
             onClick={() => onPin(note)}

@@ -7,11 +7,11 @@ order: 8
 
 > **说明**：知识源导入不对用户脚本开放——进程内脚本插件运行时（yaegi，[ADR-0002](../adr/0002-c-end-repositioning.md)）已随 C11 移除，源清单全部内置、只随版本增长。
 
-Repotory 向知识库幂等导入文档。6 个源全部**内置**，都是普通的 Go 实现（`plugin.KnowledgeImporter`）；进程内脚本插件运行时（yaegi）已随 C11 移除，不存在用户自定义导入源的入口。
+Repotory 向知识库幂等导入文档。8 个源全部**内置**，都是普通的 Go 实现（`plugin.KnowledgeImporter`）；进程内脚本插件运行时（yaegi）已随 C11 移除，不存在用户自定义导入源的入口。
 
 ```mermaid
 flowchart TB
-    SRC["知识源<br/>6 个内置 agent 记忆源"] --> RUN["内置 importer 读取"]
+    SRC["知识源<br/>8 个内置 agent 记忆源"] --> RUN["内置 importer 读取"]
     RUN --> KEY["幂等键<br/>(project_id, source, title)"]
     KEY --> HIT{"命中已有笔记?"}
     HIT -->|"是"| UPD["更新既有笔记<br/>内容 + 元数据"]
@@ -27,7 +27,7 @@ flowchart TB
 
 读图：所有源**汇入同一条 upsert 路径**，幂等性由三元组 `(project_id, source, title)` 保证。因此重复导入是**更新**而非重复创建——重新导入不会把知识库越堆越脏。写入后由触发器同步 FTS 索引，导入的文档立刻可被 `repotory_notes_search` 命中。
 
-注意最后一条分支：**匹配不到项目的文档不会入库**，只计入 `skipped`。`openclaw` / `hermes` 未配置目标项目时全部落入此分支。
+注意最后一条分支：**匹配不到项目的文档不会入库**，只计入 `skipped`。`openclaw` / `hermes` / `codebuddy-memory` 未配置目标项目时全部落入此分支。
 
 ## 内置知识源
 
@@ -39,21 +39,24 @@ flowchart TB
 | `openclaw` | 手动 | `~/.openclaw-autoclaw/workspace/*.md` | 仅单层，不递归；**需配置目标项目** |
 | `hermes` | 手动 | `$HERMES_HOME`/`~/.hermes/memories/{MEMORY,USER}.md` + `state.db`（`messages` 表，只读） | 记忆笔记 + 会话日志；**需配置目标项目**；库表结构不认识则**整源报错** |
 | `cursor` | 手动 | `<config>/Cursor/User/globalStorage/state.vscdb`（`CURSOR_STATE_DB` 可覆盖） | 只读；取首条提问 + 末条回复；格式不认识则**整源报错** |
+| `codebuddy` | 手动 | `~/Library/Application Support/CodeBuddyExtension/Data/<uid>/<IDE>/history/*/index.json` + `messages/*.json` | 会话转录；取首条提问 + 末条回复；单文件坏掉只丢该会话 |
+| `codebuddy-memory` | 手动 | `~/.codebuddy/memery/*.md` + `Public/.memories/*.mdc` | 用户记忆画像 + 写入规则记忆；**需配置目标项目** |
 
 「自动」指应用启动时随 `auto_import` 一起跑（**默认关**，需在 **设置 → 插件** 显式开启）；「手动」指只在 **设置 → 插件** 点该源时才导入 —— 这类源多为原始会话转录，量大且噪音高，不适合每次启动全量重扫。
 
 ### 项目归属
 
-`claude` / `codex` / `opencode` / `cursor` 四个源自带项目线索（Claude 的 `-Users-x-Work-Foo` 目录名、会话的 `cwd`、OpenCode 的 `directory`、Cursor 的 `workspaceId → workspaceStorage/<id>/workspace.json` 里的 folder 路径），取**路径最后一段**后按三级规则匹配：项目名精确匹配 → 仓库路径以该段结尾 → 项目名包含该段。匹配不上则该文档归属为空、计入 `skipped`，**不会**落到某个「未分类」项目。
+`claude` / `codex` / `opencode` / `cursor` / `codebuddy` 五个源自带项目线索（Claude 的 `-Users-x-Work-Foo` 目录名、会话的 `cwd`、OpenCode 的 `directory`、Cursor 的 `workspaceId → workspaceStorage/<id>/workspace.json` 里的 folder 路径、CodeBuddy 首条用户消息的 `Workspace Folder:`），取**路径最后一段**后按三级规则匹配：项目名精确匹配 → 仓库路径以该段结尾 → 项目名包含该段。匹配不上则该文档归属为空、计入 `skipped`，**不会**落到某个「未分类」项目。
 
-`openclaw` 与 `hermes` 的文件本身不含项目线索，因此目标项目由配置键指定：
+`openclaw`、`hermes` 与 `codebuddy-memory` 的文件本身不含项目线索，因此目标项目由配置键指定：
 
 | 配置键 | 作用 |
 |--------|------|
 | `openclaw_project` | openclaw 笔记归属的项目名或项目 ID |
 | `hermes_project` | hermes 笔记归属的项目名或项目 ID |
+| `codebuddy_project` | codebuddy-memory 笔记归属的项目名或项目 ID |
 
-> ⚠️ **未配置时这两个源会静默跳过**：导入不报错，但全部文档计入 `skipped`，一条笔记都不会生成。设置页看不到原因，只能从 `skipped` 计数察觉。首次使用这两个源前请先设置对应配置键。
+> ⚠️ **未配置时这三个源会静默跳过**：导入不报错，但全部文档计入 `skipped`，一条笔记都不会生成。设置页看不到原因，只能从 `skipped` 计数察觉。首次使用这些源前请先设置对应配置键。
 
 ### 导入统计
 

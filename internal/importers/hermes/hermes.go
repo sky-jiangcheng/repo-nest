@@ -22,6 +22,7 @@ package hermes
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,6 +53,41 @@ func New(database *sql.DB) *Importer {
 
 // Source returns the stable source identifier "hermes".
 func (i *Importer) Source() string { return SourceName }
+
+// Probe reports whether Hermes is present on this machine: at least one
+// memories/*.md or the state.db session store exists under the Hermes home.
+// Read-only stat/readdir on memories/ and state.db only — never .env,
+// mcp-tokens/ or anything else in the parent.
+func (i *Importer) Probe() plugin.ProbeResult {
+	mdir, ok := memoriesDir()
+	if !ok {
+		return plugin.ProbeResult{Detail: "无法解析 Hermes 主目录"}
+	}
+	mdocs := 0
+	if entries, err := os.ReadDir(mdir); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") {
+				mdocs++
+			}
+		}
+	}
+	dbPresent := false
+	if path, ok := stateDBPath(); ok {
+		if fi, err := os.Stat(path); err == nil && !fi.IsDir() {
+			dbPresent = true
+		}
+	}
+	switch {
+	case mdocs > 0 && dbPresent:
+		return plugin.ProbeResult{Detected: true, Detail: fmt.Sprintf("~/.hermes：%d 个记忆文件 + state.db 会话库", mdocs)}
+	case mdocs > 0:
+		return plugin.ProbeResult{Detected: true, Detail: fmt.Sprintf("~/.hermes/memories：%d 个记忆文件", mdocs)}
+	case dbPresent:
+		return plugin.ProbeResult{Detected: true, Detail: "~/.hermes/state.db：发现会话库"}
+	default:
+		return plugin.ProbeResult{Detail: "未发现 Hermes 记忆（~/.hermes/memories 与 state.db 均不存在）"}
+	}
+}
 
 // memoriesDir resolves <hermesHome>/memories, honoring $HERMES_HOME over ~/.hermes.
 func memoriesDir() (string, bool) {

@@ -6,6 +6,7 @@ import (
 
 	pluginruntime "repotory/internal/core/plugin/runtime"
 	"repotory/internal/importers/claude"
+	"repotory/internal/importers/codebuddy"
 	"repotory/internal/importers/codex"
 	"repotory/internal/importers/cursor"
 	"repotory/internal/importers/hermes"
@@ -83,6 +84,13 @@ func (s *Service) TriggerAllKnowledgeImports() []pluginruntime.SourceRun {
 //     an unrecognized layout fails the source loudly instead of importing zero
 //     notes quietly. Sessions are attributed through workspaceStorage folder
 //     lookup, so an unmatched workspace skips rather than guessing.
+//   - codebuddy: MANUAL — CodeBuddy session transcripts under
+//     CodeBuddyExtension/Data/<uid>/<IDE>/history/*/index.json +
+//     messages/*.json, attributed per-session via the first-user message's
+//     `Workspace Folder:` line. Two separate sources on purpose (ADR-0011 决策 4):
+//     codebuddy-memory covers the curated agent-GLOBAL memory
+//     (~/.codebuddy/memery/*.md + Public/.memories/*.mdc) and attaches to the
+//     `codebuddy_project` config-named project (unset -> skipped).
 //
 // Manual sources still appear in GetKnowledgeSources, so each stays one-click
 // triggerable. ADR-0011 决策 4.
@@ -93,6 +101,8 @@ func (s *Service) registerBuiltinImporters() {
 	s.rt.RegisterSourceManual(openclaw.SourceName, openclaw.New(s.db))
 	s.rt.RegisterSourceManual(hermes.SourceName, hermes.New(s.db))
 	s.rt.RegisterSourceManual(cursor.SourceName, cursor.New(s.db))
+	s.rt.RegisterSourceManual(codebuddy.SourceName, codebuddy.New(s.db))
+	s.rt.RegisterSourceManual(codebuddy.MemorySourceName, codebuddy.NewMemory(s.db))
 }
 
 // ImportResult summarizes a Claude memory import run.

@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"database/sql"
+	"strings"
 	"testing"
 
 	"repotory/internal/core/plugin"
@@ -69,6 +70,25 @@ func (c countingImporter) Import() ([]plugin.ImportDoc, error) {
 	*c.called++
 	return nil, nil
 }
+
+// probeImporter is a staticImporter that also implements plugin.Prober.
+type probeImporter struct {
+	staticImporter
+	detected bool
+	detail   string
+}
+
+func (p probeImporter) Probe() plugin.ProbeResult {
+	return plugin.ProbeResult{Detected: p.detected, Detail: p.detail}
+}
+
+// panicProbeImporter implements plugin.Prober and explodes when probed, to
+// lock the safeProbe recovery.
+type panicProbeImporter struct {
+	staticImporter
+}
+
+func (p panicProbeImporter) Probe() plugin.ProbeResult { panic("probe exploded") }
 
 func TestTriggerImportWritesNotes(t *testing.T) {
 	db := setupDB(t)
@@ -195,5 +215,51 @@ func TestImportAllSkipsManualSource(t *testing.T) {
 	}
 	if manualRuns != 1 {
 		t.Errorf("manual importer runs = %d, want 1 after explicit trigger", manualRuns)
+	}
+}
+
+// TestSourceStatusesProbe locks the ADR-0022 决策 1 presence contract: a
+// source implementing plugin.Prober contributes detected/detail, and a source
+// without a probe is still reported as present (so the settings page never
+// hides an importable source).
+func TestSourceStatusesProbe(t *testing.T) {
+	rt := New(setupDB(t))
+	rt.RegisterSource("detected", probeImporter{staticImporter: staticImporter{source: "detected"}, detected: true, detail: "found: 3 files"})
+	rt.RegisterSourceManual("absent", probeImporter{staticImporter: staticImporter{source: "absent"}, detected: false, detail: "not installed"})
+	rt.RegisterSource("plain", staticImporter{source: "plain"})
+
+	byName := map[string]SourceStatus{}
+	for _, st := range rt.SourceStatuses() {
+		byName[st.Name] = st
+	}
+
+	d, ok := byName["detected"]
+	if !ok || !d.Detected || d.Detail != "found: 3 files" {
+		t.Fatalf("detected source status wrong: %+v (present=%v)", byName["detected"], ok)
+	}
+	a, ok := byName["absent"]
+	if !ok || a.Detected || a.Detail != "not installed" {
+		t.Fatalf("absent source status wrong: %+v (present=%v)", byName["absent"], ok)
+	}
+	if p := byName["plain"]; !p.Detected || p.Detail != "" {
+		t.Fatalf("non-Prober source should be reported as present with empty detail, got %+v", p)
+	}
+}
+
+// TestSourceStatusesProbePanicRecovered locks safeProbe: one broken probe can
+// never take down the whole settings source list.
+func TestSourceStatusesProbePanicRecovered(t *testing.T) {
+	rt := New(setupDB(t))
+	rt.RegisterSource("boom", panicProbeImporter{staticImporter: staticImporter{source: "boom"}})
+
+	st := rt.SourceStatuses()
+	if len(st) != 1 {
+		t.Fatalf("expected 1 source, got %+v", st)
+	}
+	if st[0].Detected {
+		t.Errorf("panicking probe must not report detected, got %+v", st[0])
+	}
+	if !strings.Contains(st[0].Detail, "探活失败") {
+		t.Errorf("panicking probe should surface a failure detail, got %q", st[0].Detail)
 	}
 }

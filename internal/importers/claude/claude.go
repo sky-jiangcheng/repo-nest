@@ -43,6 +43,46 @@ func New(database *sql.DB) *Importer {
 // Source returns the stable source identifier "claude".
 func (i *Importer) Source() string { return SourceName }
 
+// Probe reports whether Claude's per-project memory actually exists on this
+// machine: at least one memory/*.md (other than the reserved MEMORY.md) under
+// ~/.claude/projects. Read-only, flat listing only — never touches anything
+// outside the projects/ tree.
+func (i *Importer) Probe() plugin.ProbeResult {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return plugin.ProbeResult{Detail: "无法解析用户主目录（Claude 记忆探活）"}
+	}
+	claudeDir := filepath.Join(home, ".claude", "projects")
+	entries, err := os.ReadDir(claudeDir)
+	if err != nil {
+		return plugin.ProbeResult{Detail: "未发现 Claude 项目记忆（~/.claude/projects 不存在）"}
+	}
+	projects, files := 0, 0
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		projects++
+		memEntries, err := os.ReadDir(filepath.Join(claudeDir, e.Name(), "memory"))
+		if err != nil {
+			continue // a project dir without a memory/ subtree is not a memory source
+		}
+		for _, m := range memEntries {
+			if m.IsDir() || !strings.HasSuffix(m.Name(), ".md") {
+				continue
+			}
+			if strings.TrimSuffix(m.Name(), ".md") == "MEMORY" {
+				continue // reserved file, never imported
+			}
+			files++
+		}
+	}
+	if files == 0 {
+		return plugin.ProbeResult{Detail: "未发现 Claude 记忆文件（~/.claude/projects 下没有 memory/*.md）"}
+	}
+	return plugin.ProbeResult{Detected: true, Detail: fmt.Sprintf("~/.claude/projects：%d 个项目目录，%d 个记忆文件", projects, files)}
+}
+
 // Import scans ~/.claude/projects/*/memory/*.md and returns documents to
 // upsert. Files whose project cannot be matched to a Repotory project are
 // returned with ProjectID 0, which the runtime counts as skipped.

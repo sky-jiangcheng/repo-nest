@@ -80,7 +80,7 @@ highlight.js 代码高亮、Mermaid 图、KaTeX 数学公式、GFM Callout 与�
 
 ## 从 agent 记忆导入知识库
 
-应用内置 6 个知识源，把你在各 agent 工具里留下的记忆/会话转录幂等导入为知识笔记（重复导入更新而非重复创建）：
+应用内置 8 个知识源，把你在各 agent 工具里留下的记忆/会话转录幂等导入为知识笔记（重复导入更新而非重复创建）：
 
 | 源 | 触发 | 读什么 |
 |----|------|--------|
@@ -90,13 +90,15 @@ highlight.js 代码高亮、Mermaid 图、KaTeX 数学公式、GFM Callout 与�
 | `openclaw` | 手动 | `~/.openclaw-autoclaw/workspace/*.md` |
 | `hermes` | 手动 | `~/.hermes/memories/{MEMORY,USER}.md` |
 | `cursor` | 手动 | Cursor `globalStorage/state.vscdb` 的会话（best-effort，见下） |
+| `codebuddy` | 手动 | CodeBuddy 会话转录（首条指令 + 末条回复） |
+| `codebuddy-memory` | 手动 | `~/.codebuddy/memery/*.md` + `Public/.memories/*.mdc` |
 
 **设置 → 插件** 可查看全部导入源、逐个手动触发，并看到每个源的 `{created, updated, skipped}` 统计。
 
 三条容易踩的规则：
 
 1. **导入按项目归属，不是全堆进知识库首页。** 文档靠项目名 / 仓库路径匹配到具体项目，匹配不上的计入 `skipped` 而不入库。所以先扫描入库项目、再导入，命中率才高。
-2. **`openclaw` 与 `hermes` 需先配置目标项目**（`openclaw_project` / `hermes_project`），否则静默全部 `skipped`。
+2. **`openclaw`、`hermes` 与 `codebuddy-memory` 需先配置目标项目**（`openclaw_project` / `hermes_project` / `codebuddy_project`），否则静默全部 `skipped`。
 3. **重复导入不是失败。** `created=0` + `updated=N` 说明幂等命中，内容已更新。
 
 **`cursor` 是唯一标 best-effort 的源**：Cursor 的落盘格式未公开且带版本位，所以它只取每场会话的**首条提问 + 末条回复**（不复制整段转录），归属靠 `workspaceStorage/<id>/workspace.json` 的 folder 反查项目——查不到就跳过，绝不猜；而一旦库表结构不是它认识的形状，**整个源直接报错而不是安静导入 0 条**（"没导入"和"你没会话"必须可区分）。读取全程 `mode=ro`，绝不写别人的库。

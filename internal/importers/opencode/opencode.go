@@ -49,6 +49,20 @@ func New(database *sql.DB) *Importer {
 // Source returns the stable source identifier "opencode".
 func (i *Importer) Source() string { return SourceName }
 
+// Probe reports whether OpenCode's session storage exists on this machine:
+// <dataroot>/storage/session is a directory. Read-only stat only; the content
+// walk belongs to Import.
+func (i *Importer) Probe() plugin.ProbeResult {
+	root, ok := sessionRoot()
+	if !ok {
+		return plugin.ProbeResult{Detail: "无法解析 OpenCode 数据目录"}
+	}
+	if st, err := os.Stat(root); err != nil || !st.IsDir() {
+		return plugin.ProbeResult{Detail: "未发现 OpenCode 会话存储（" + root + " 不存在）"}
+	}
+	return plugin.ProbeResult{Detected: true, Detail: "发现 OpenCode 会话存储：" + root}
+}
+
 // sessionFile is the subset of OpenCode's session JSON we rely on. Unknown
 // fields are ignored so schema drift in unrelated fields does not break import.
 type sessionFile struct {

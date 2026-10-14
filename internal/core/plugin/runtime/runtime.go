@@ -4,9 +4,10 @@
 // removed (C11 方案B, amending ADR-0002). What lives here is the registry the
 // built-in knowledge importers register into (RegisterSource /
 // RegisterSourceManual), the trigger/upsert path (TriggerImport -> upsertDoc)
-// and the startup auto-import pass (ImportAll). The six built-in importers
-// (claude, codex, opencode, openclaw, hermes, cursor) are the only tenants —
-// see service.registerBuiltinImporters and docs/plugins/overview.md.
+// and the startup auto-import pass (ImportAll). The eight built-in importers
+// (claude, codex, opencode, openclaw, hermes, cursor, codebuddy,
+// codebuddy-memory) are the only tenants — see service.registerBuiltinImporters
+// and docs/plugins/overview.md.
 package runtime
 
 import (
@@ -19,11 +20,52 @@ import (
 	"repotory/internal/db"
 )
 
+// SourceType classifies a knowledge source for display in the settings page.
+// It is derived from the source name (sourceTypeFor) rather than stored:
+// importers declare their artifact shape, and the UI only needs a stable label
+// plus the four buckets below. Unknown names fall back to Manual so a future
+// or test-only source is never hidden behind an empty label.
+type SourceType string
+
+const (
+	// SourceTypeAgentImport is an agent's curated long-term memory files
+	// (claude ~/.claude/**/memory/*.md, openclaw workspace/*.md, hermes
+	// memories/*.md, codebuddy-memory curated memory) imported as knowledge.
+	SourceTypeAgentImport SourceType = "agent-import"
+	// SourceTypeConversation is a session/transcript feed (codex, opencode,
+	// cursor, codebuddy session history) turned into compact notes.
+	SourceTypeConversation SourceType = "user-conversation"
+	// SourceTypeProjectExtract is a source that mines knowledge out of the
+	// project itself (no built-in importer uses it yet; kept as a bucket).
+	SourceTypeProjectExtract SourceType = "project-extract"
+	// SourceTypeManual is the fallback for unknown or unclassified sources.
+	SourceTypeManual SourceType = "manual"
+)
+
+// sourceTypeFor derives the display bucket from a source name. The mapping
+// mirrors each importer's artifact shape (see internal/importers/*/).
+func sourceTypeFor(name string) SourceType {
+	switch name {
+	case "claude", "openclaw", "hermes", "codebuddy-memory":
+		return SourceTypeAgentImport
+	case "codex", "opencode", "cursor", "codebuddy":
+		return SourceTypeConversation
+	default:
+		return SourceTypeManual
+	}
+}
+
 // SourceStatus describes a registered knowledge source for the settings page.
+// Detected/Detail come from the source's optional probe (did the agent's data
+// actually show up on this machine); Enabled keeps its original meaning (did
+// the last import succeed); Type is the derived display bucket. ADR-0022 决策 1.
 type SourceStatus struct {
-	Name    string `json:"name"`
-	Plugin  string `json:"plugin"`
-	Enabled bool   `json:"enabled"`
+	Name     string     `json:"name"`
+	Plugin   string     `json:"plugin"`
+	Detected bool       `json:"detected"`
+	Enabled  bool       `json:"enabled"`
+	Detail   string     `json:"detail"`
+	Type     SourceType `json:"type"`
 }
 
 // sourceEntry is a registered knowledge importer with its latest run result.
@@ -31,6 +73,7 @@ type sourceEntry struct {
 	name     string
 	plugin   string
 	importFn func() ([]plugin.ImportDoc, error)
+	probeFn  func() plugin.ProbeResult
 	imported int
 	lastErr  error
 	// auto marks sources eligible for the startup "import everything" pass
@@ -60,18 +103,56 @@ func New(database *sql.DB) *Runtime {
 }
 
 // SourceStatuses returns the registered knowledge sources with their state.
+// Presence (Detected/Detail) is checked live on every call: probes are cheap
+// stat/readdir checks, and a fresh answer matches what the user has actually
+// installed rather than what was present at startup.
 func (r *Runtime) SourceStatuses() []SourceStatus {
 	r.mu.Lock()
-	defer r.mu.Unlock()
-	out := make([]SourceStatus, 0, len(r.sources))
+	type snapshot struct {
+		name    string
+		plugin  string
+		enabled bool
+		probeFn func() plugin.ProbeResult
+	}
+	entries := make([]snapshot, 0, len(r.sources))
 	for _, s := range r.sources {
-		out = append(out, SourceStatus{
-			Name:    s.name,
-			Plugin:  s.plugin,
-			Enabled: s.lastErr == nil,
+		entries = append(entries, snapshot{
+			name:    s.name,
+			plugin:  s.plugin,
+			enabled: s.lastErr == nil,
+			probeFn: s.probeFn,
 		})
 	}
+	r.mu.Unlock()
+
+	out := make([]SourceStatus, 0, len(entries))
+	for _, e := range entries {
+		st := SourceStatus{Name: e.name, Plugin: e.plugin, Enabled: e.enabled, Type: sourceTypeFor(e.name)}
+		if e.probeFn != nil {
+			pr := safeProbe(e.probeFn)
+			st.Detected = pr.Detected
+			st.Detail = pr.Detail
+		} else {
+			// Sources without a probe (test doubles, future capabilities) are
+			// still registered importers: treat them as present so the settings
+			// page never hides an importable source just because it lacks a
+			// detection hook.
+			st.Detected = true
+		}
+		out = append(out, st)
+	}
 	return out
+}
+
+// safeProbe runs a source's presence check, recovering any panic so one broken
+// probe can never take down the whole settings page.
+func safeProbe(fn func() plugin.ProbeResult) (pr plugin.ProbeResult) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			pr = plugin.ProbeResult{Detail: "探活失败：" + fmt.Sprint(rec)}
+		}
+	}()
+	return fn()
 }
 
 // ImportRun summarizes a single knowledge import execution.
@@ -241,7 +322,13 @@ func (r *Runtime) registerSource(name string, importer plugin.KnowledgeImporter,
 	if importer == nil {
 		return
 	}
+	e := &sourceEntry{name: name, plugin: "builtin", importFn: importer.Import, auto: auto}
+	// Optional presence check (ADR-0022 决策 1): importers that implement
+	// plugin.Prober contribute their read-only probe to the settings page.
+	if p, ok := importer.(plugin.Prober); ok {
+		e.probeFn = p.Probe
+	}
 	r.mu.Lock()
-	r.sources[name] = &sourceEntry{name: name, plugin: "builtin", importFn: importer.Import, auto: auto}
+	r.sources[name] = e
 	r.mu.Unlock()
 }

@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -63,6 +64,26 @@ func New(database *sql.DB) *Importer {
 
 // Source returns the stable source identifier "codex".
 func (i *Importer) Source() string { return SourceName }
+
+// Probe reports whether Codex session storage exists on this machine: at least
+// one of ~/.codex/sessions or ~/.codex/archived_sessions is a directory.
+// Read-only stat only; the content walk belongs to Import.
+func (i *Importer) Probe() plugin.ProbeResult {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return plugin.ProbeResult{Detail: "无法解析用户主目录（Codex 会话探活）"}
+	}
+	detected := 0
+	for _, root := range sessionRoots(home) {
+		if st, err := os.Stat(root); err == nil && st.IsDir() {
+			detected++
+		}
+	}
+	if detected == 0 {
+		return plugin.ProbeResult{Detail: "未发现 Codex 会话记录（~/.codex/sessions 与 archived_sessions 均不存在）"}
+	}
+	return plugin.ProbeResult{Detected: true, Detail: fmt.Sprintf("~/.codex：发现 %d 个会话存储目录", detected)}
+}
 
 // parsed is the minimal state extracted from one rollout while streaming.
 type parsed struct {

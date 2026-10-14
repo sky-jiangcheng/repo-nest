@@ -29,6 +29,10 @@ var allowedConfigKeys = map[string]bool{
 	// memsrc.TargetProject and ADR-0011.
 	"openclaw_project": true,
 	"hermes_project":   true,
+	// Curated CodeBuddy memory (~/.codebuddy/memery/*.md +
+	// Public/.memories/*.mdc) is agent-GLOBAL, so it attaches to the project
+	// named here — same contract as openclaw_project / hermes_project.
+	"codebuddy_project": true,
 	// M3-A semantic search (ADR-0012). All default-OFF: semantic search runs
 	// only when semantic_search=="1" AND a base_url+model are configured.
 	// embedding_api_key is a SECRET and is redacted in GetConfig.
@@ -81,6 +85,20 @@ var allowedConfigKeys = map[string]bool{
 	"ai_chat_base_url":  true,
 	"ai_chat_model":     true,
 	"ai_chat_api_key":   true,
+	// Periodic knowledge sync. knowledge_sync_interval_minutes is the ticker
+	// cadence (default 240; re-read every round, so a change applies without a
+	// restart). Each sync_source_<name> is the per-source opt-in switch — every
+	// transcript source defaults OFF in code, and curated claude memory
+	// defaults ON. Numeric values only, enforced by the check below.
+	"knowledge_sync_interval_minutes": true,
+	"sync_source_claude":              true,
+	"sync_source_codex":               true,
+	"sync_source_opencode":            true,
+	"sync_source_openclaw":            true,
+	"sync_source_hermes":              true,
+	"sync_source_cursor":              true,
+	"sync_source_codebuddy":           true,
+	"sync_source_codebuddy-memory":    true,
 }
 
 // stringConfigKeys are exempt from the numeric-value check: they carry free-text
@@ -89,6 +107,7 @@ var stringConfigKeys = map[string]bool{
 	"git_author":              true,
 	"openclaw_project":        true,
 	"hermes_project":          true,
+	"codebuddy_project":       true,
 	"embedding_base_url":      true,
 	"embedding_model":         true,
 	"embedding_api_key":       true,

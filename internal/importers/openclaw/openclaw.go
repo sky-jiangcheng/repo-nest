@@ -20,6 +20,7 @@ package openclaw
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,6 +52,31 @@ func New(database *sql.DB) *Importer {
 
 // Source returns the stable source identifier "openclaw".
 func (i *Importer) Source() string { return SourceName }
+
+// Probe reports whether OpenClaw's agent-global memory exists on this machine:
+// at least one .md file in ~/.openclaw-autoclaw/workspace. Flat listing of
+// that ONE allowlisted directory only — never the parent (keys, vault, tokens).
+func (i *Importer) Probe() plugin.ProbeResult {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return plugin.ProbeResult{Detail: "无法解析用户主目录（OpenClaw 记忆探活）"}
+	}
+	dir := filepath.Join(home, ".openclaw-autoclaw", "workspace")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return plugin.ProbeResult{Detail: "未发现 OpenClaw 记忆（~/.openclaw-autoclaw/workspace 不存在）"}
+	}
+	n := 0
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") {
+			n++
+		}
+	}
+	if n == 0 {
+		return plugin.ProbeResult{Detail: "未发现 OpenClaw 记忆文件（workspace/ 下没有 *.md）"}
+	}
+	return plugin.ProbeResult{Detected: true, Detail: fmt.Sprintf("~/.openclaw-autoclaw/workspace：%d 个记忆文件", n)}
+}
 
 // Import reads ONLY ~/.openclaw-autoclaw/workspace/*.md (flat) and yields one
 // note per non-empty file. Returns nil (no-op) when OpenClaw is not installed.

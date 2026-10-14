@@ -83,6 +83,21 @@ func New(database *sql.DB) *Importer { return &Importer{db: database} }
 // Source returns the stable source identifier "cursor".
 func (i *Importer) Source() string { return SourceName }
 
+// Probe reports whether Cursor's session state database exists on this
+// machine. Read-only stat only — the SQLite layout check (and its loud drift
+// error) belongs to Import, not to settings-page presence detection.
+func (i *Importer) Probe() plugin.ProbeResult {
+	statePath, ok := stateDBPath()
+	if !ok {
+		return plugin.ProbeResult{Detail: "无法解析配置目录（Cursor 会话探活）"}
+	}
+	fi, err := os.Stat(statePath)
+	if err != nil || fi.IsDir() {
+		return plugin.ProbeResult{Detail: "未发现 Cursor 会话库（state.vscdb 不存在）"}
+	}
+	return plugin.ProbeResult{Detected: true, Detail: fmt.Sprintf("发现 Cursor 会话库 state.vscdb（%.1f MB）", float64(fi.Size())/(1<<20))}
+}
+
 // composer is one Cursor session header row.
 type composer struct {
 	ComposerID  string
