@@ -331,6 +331,26 @@ func upgradeSchema(db *sql.DB) error {
 		// set. Reserving a number for a migration that may not land for months would
 		// just leave a hole; lane 2 takes v23 and docs/adr/0018 was amended to say so.
 		{id: 22, fn: EnsurePageVersions},
+		// v23: the page vector space + its incremental queue (ADR-0018 lane 2,
+		// first half). note_embeddings is notes-only (vecindex.go: KnnNoteIDs and
+		// PutNoteEmbedding are keyed by note rowid), so wiki_pages had no vector
+		// face and semantic recall could never reach compiled pages. This adds the
+		// page-embed dirty queue and triggers (page_embed_dirty.go); the vec0 table
+		// itself (page_embeddings) is created lazily by the service layer's rebuild
+		// once it has learned the embedding dim, exactly like note_embeddings, so a
+		// database that never enables semantic search never pays for it. The queue
+		// and its triggers are part of the wiki layer's derived structure:
+		// DropWikiSchema drops them (dropPageEmbedDirty) and InitDB re-asserts
+		// EnsurePageEmbedDirty on every open, exactly as page_versions (v22) is
+		// handled — its trigger is also ON wiki_pages, so it cannot outlive a drop.
+		//
+		// It is physically SEPARATE from note_embeddings on purpose: hybrid.FuseRRF
+		// merges bare int64 ids, and wiki_pages.id / project_notes.id are independent
+		// sequences, so sharing one index would fuse page #7 with note #7. The queue
+		// marks a page dirty on any text change or approved-ness change; the drainer
+		// decides re-embed vs remove, and only approved pages are ever embedded
+		// (ADR-0015).
+		{id: 23, fn: pageEmbedDirtyMigration},
 	}
 
 	for _, m := range migrations {

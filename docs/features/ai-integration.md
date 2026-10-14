@@ -41,6 +41,7 @@ Repotory 面向 AI 代理提供读取通道与自检工具，全部复用同一 
 | `wiki_community_summary` | 关 | 让聊天模型起草 `synthesis` 页（第五种页，[ADR-0020](../adr/0020-community-synthesis.md)）；**绝不上定时器**，也无 MCP 工具 | 每个成员页的标题 + 有界摘录（≤900 字节） → 你的 chat 端点 |
 | `community_min_size` | `3` | 社区综述的最小页数门槛；低于它的碎片被丢弃并计入 `dropped_small` | 无——纯本地阈值，不外发 |
 | `community_max_size` | `30` | 社区综述的最大页数门槛；更大的块只报告不综述（计入 `dropped_large`） | 无——纯本地阈值，不外发 |
+| `wiki_graph_search` | 关 | 图感知取证（[ADR-0018](../adr/0018-knowledge-graph-foundation.md) lane 2）：AskAI 的页面证据以检索命中为种子，沿 `ref/part-of/documents` 边扩 1 跳召回邻居并用 PageRank 重排；关时（默认）`evidencePages` 走与开启前**逐条一致**的 FTS 顺序 | 无外发——纯本地 SQL 图遍历；若同时开了 `semantic_search`，页面向量召回沿用它对端点的授权 |
 
 两个密钥键（`embedding_api_key` / `vector_store_api_key`，以及 `ai_chat_api_key`）在读取配置时以掩码返回、不回传界面——后端持真值，界面只显示 `********`。
 

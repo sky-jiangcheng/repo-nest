@@ -105,6 +105,15 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ensure page versions: %w", err)
 	}
 
+	// Same self-healing contract for the page-embed queue (v23, ADR-0018 lane 2).
+	// Its triggers are ON wiki_pages, so this must run after EnsureWikiSchema (above)
+	// has the table; re-asserting here is what restores the queue after a
+	// DropWikiSchema, exactly as EnsurePageVersions restores the snapshot layer.
+	if err := EnsurePageEmbedDirty(db); err != nil {
+		db.Close() //nolint:errcheck
+		return nil, fmt.Errorf("failed to ensure page embed dirty: %w", err)
+	}
+
 	// Triggers cannot backfill: pages that existed before this index was created
 	// would stay unsearchable forever. Rebuild is cheap (pages are a derived,
 	// bounded artifact) and idempotent, and doing it here is what stops the v7

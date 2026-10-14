@@ -160,6 +160,13 @@ func (e *Evidence) tryAdd(item EvidenceItem, prefix string, budget EvidenceBudge
 }
 
 // evidencePages ranks wiki pages, keeping project-owned plus global pages.
+//
+// When wiki_graph_search is OFF (the default), this is exactly the FTS ordering it
+// has always produced — the graph branch below is not entered, so enabling the
+// feature later cannot change today's answers. When ON, the FTS hits seed a 1-hop
+// expansion along ref/part-of/documents edges, re-ranked with PageRank; the result
+// is a SUPERSET of the FTS hits (a hit stays a hit), re-ordered so structurally
+// adjacent pages can surface. See expandPageEvidence and wiki_graph_evidence.go.
 func (s *Service) evidencePages(query string, projectID int64, limit int, budget time.Duration) []EvidenceItem {
 	if budget <= 0 {
 		return nil
@@ -168,14 +175,72 @@ func (s *Service) evidencePages(query string, projectID int64, limit int, budget
 	if err != nil || len(found) == 0 {
 		return nil
 	}
-	out := make([]EvidenceItem, 0, len(found))
-	for i, p := range found {
+	// Project filter first, so both the FTS-order path and the graph path rank the
+	// same visible set (another project's page is skipped, not hidden).
+	visible := found[:0:0]
+	byID := make(map[int64]int, len(found)) // id -> index in found, for O(1) lookup
+	for i := range found {
+		byID[found[i].ID] = i
+	}
+	for _, p := range found {
 		if projectID > 0 && p.ProjectID != 0 && p.ProjectID != projectID {
 			continue // another project's page: correct to skip, not to hide
 		}
+		visible = append(visible, p)
+	}
+	if len(visible) == 0 {
+		return nil
+	}
+
+	// OFF path (default): the exact FTS ordering, unchanged.
+	if !s.graphSearchEnabled() {
+		out := make([]EvidenceItem, 0, len(visible))
+		for i, p := range visible {
+			out = append(out, EvidenceItem{
+				Type: "page", ID: p.ID, Title: p.Title, Slug: p.Slug, Kind: p.Kind,
+				Snippet: clipRunes(p.Content, 600), Rank: i + 1,
+			})
+		}
+		return out
+	}
+
+	// ON path: expand + re-rank over page ids, then map back to items. Neighbours
+	// the FTS pass never returned are loaded here (approved-only, PageHitsByIDs).
+	seedIDs := make([]int64, len(visible))
+	for i, p := range visible {
+		seedIDs[i] = p.ID
+	}
+	ordered := s.expandPageEvidence(seedIDs)
+
+	// Load any neighbour pages not already in the FTS result, so an expanded id has
+	// a title/snippet to render. Approved-only (PageHitsByIDs filters status).
+	var missing []int64
+	for _, id := range ordered {
+		if _, ok := byID[id]; !ok {
+			missing = append(missing, id)
+		}
+	}
+	if len(missing) > 0 {
+		if extra, err := db.PageHitsByIDs(s.db, missing); err == nil {
+			for _, p := range extra {
+				if _, ok := byID[p.ID]; !ok {
+					found = append(found, p)
+					byID[p.ID] = len(found) - 1
+				}
+			}
+		}
+	}
+
+	out := make([]EvidenceItem, 0, len(ordered))
+	for rank, id := range ordered {
+		idx, ok := byID[id]
+		if !ok {
+			continue // a neighbour that vanished between expansion and load
+		}
+		p := found[idx]
 		out = append(out, EvidenceItem{
 			Type: "page", ID: p.ID, Title: p.Title, Slug: p.Slug, Kind: p.Kind,
-			Snippet: clipRunes(p.Content, 600), Rank: i + 1,
+			Snippet: clipRunes(p.Content, 600), Rank: rank + 1,
 		})
 	}
 	return out

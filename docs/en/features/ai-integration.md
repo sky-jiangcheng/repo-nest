@@ -41,6 +41,7 @@ The whitelist in `internal/service/config.go` splits into two groups. **Core con
 | `wiki_community_summary` | off | lets the chat model draft `synthesis` pages (the fifth page kind, [ADR-0020](../adr/0020-community-synthesis.md)); **never scheduled**, and there is no MCP tool for it | Each member page's title + a bounded excerpt (≤900 bytes) → your chat endpoint |
 | `community_min_size` | `3` | smallest community worth summarizing; fragments below it are dropped and counted as `dropped_small` | Nothing — a local-only threshold |
 | `community_max_size` | `30` | largest community worth summarizing; bigger blobs are reported (as `dropped_large`) and not summarized | Nothing — a local-only threshold |
+| `wiki_graph_search` | off | graph-aware evidence ([ADR-0018](../adr/0018-knowledge-graph-foundation.md) lane 2): AskAI's page evidence takes retrieval hits as seeds, expands 1 hop along `ref/part-of/documents` edges and re-ranks with PageRank; when off (the default), `evidencePages` keeps exactly the FTS order it had before | Nothing — a purely local SQL graph walk; if `semantic_search` is also on, page-vector recall inherits that endpoint's consent |
 
 The three key-holding settings (`embedding_api_key`, `vector_store_api_key`, `ai_chat_api_key`) come back masked when configuration is read and are never sent to the UI — the backend holds the real value, the interface shows `********`.
 

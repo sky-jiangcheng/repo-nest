@@ -331,6 +331,16 @@ func (a *App) RebuildEmbeddings() (int, error) {
 	return a.svc.RebuildEmbeddings()
 }
 
+// RebuildPageEmbeddings (re)embeds every APPROVED wiki page into the page vector
+// index (ADR-0018 lane 2, schema v23). Desktop-only admin twin of
+// RebuildEmbeddings: same semantic_search + endpoint gate, but it fills the
+// separate page_embeddings index so graph-aware evidence can recall compiled
+// pages. Kept as its own action because pages and notes embed in different index
+// spaces and a user who only wants pages should not re-pay for every note.
+func (a *App) RebuildPageEmbeddings() (int, error) {
+	return a.svc.RebuildPageEmbeddings()
+}
+
 // AskAI forwards the question (with generated project context for projectID>0)
 // to the OpenAI-compatible chat endpoint configured in Settings → AI, and
 // returns the assistant reply for the Q&A panel.

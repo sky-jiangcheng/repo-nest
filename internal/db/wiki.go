@@ -551,6 +551,11 @@ func DropWikiSchema(db *sql.DB) error {
 	if err := dropPageVersions(db); err != nil {
 		return err
 	}
+	// The page-embed queue's triggers are ON wiki_pages (v23), so they go before
+	// the table — same ordering rule as the FTS index below.
+	if err := dropPageEmbedDirty(db); err != nil {
+		return err
+	}
 	if err := dropWikiFTS(db); err != nil {
 		return err
 	}

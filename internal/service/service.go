@@ -167,6 +167,12 @@ func (s *Service) Startup() {
 		// ahead of the rt guard below rather than being skipped by it.
 		s.startEmbedDrainer()
 
+		// Page-embedding drain (ADR-0018 lane 2): the page twin of the note
+		// drainer above, sharing the same provider and semantic_search gate but
+		// writing to the separate page_embeddings index. Also ahead of the rt
+		// guard: it needs only the queue and the endpoint.
+		s.startPageEmbedDrainer()
+
 		// Wiki lint (ADR-0014 决策 5): the scheduled half of the two trigger paths.
 		// Its first pass is one interval away, so opening the app files no todos.
 		s.startWikiLintTicker()

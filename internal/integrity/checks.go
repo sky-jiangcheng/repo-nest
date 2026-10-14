@@ -39,7 +39,14 @@ const schemaVersionKey = "schema_version"
 // for notes. It deliberately carries no foreign key: SQLite fires row triggers
 // for FK CASCADE actions, so cascading out of a page delete would make deleting
 // a project fail against the append-only guard.
-const ExpectedSchemaVersion = 22
+// v23 added the page vector space's incremental queue (page_embed_dirty + its
+// three wiki_pages triggers, internal/db/page_embed_dirty.go, ADR-0018 lane 2),
+// so approved pages get embedded/re-embedded and un-approved or deleted pages get
+// their vectors removed. The vec0 table itself (page_embeddings, pagevec.go) is
+// created lazily by the service rebuild once the embedding dim is known, exactly
+// like note_embeddings; the queue is part of the wiki layer's derived structure
+// and is dropped/restored with it.
+const ExpectedSchemaVersion = 23
 
 // StaleAfterDays is the age at which the repo_meta knowledge cache is reported
 // as stale. The cache feeds generated knowledge (tech stack, readme excerpt,

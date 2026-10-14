@@ -71,9 +71,16 @@ var allowedConfigKeys = map[string]bool{
 	"wiki_community_summary": true,
 	"community_min_size":     true,
 	"community_max_size":     true,
-	"ai_chat_base_url":       true,
-	"ai_chat_model":          true,
-	"ai_chat_api_key":        true,
+	// M7/ADR-0018 lane 2: graph-aware evidence. Default OFF. When on, AskAI's page
+	// evidence expands a retrieval hit along ref/part-of/documents edges (1-2 hops)
+	// and re-ranks with PageRank; when off, evidencePages keeps the exact FTS order
+	// it has always used (zero behavior regression). Numeric 0/1, so no
+	// stringConfigKeys entry. Independent of semantic_search: graph expansion is
+	// pure local SQL, but page-vector recall within it needs semantic_search on.
+	"wiki_graph_search": true,
+	"ai_chat_base_url":  true,
+	"ai_chat_model":     true,
+	"ai_chat_api_key":   true,
 }
 
 // stringConfigKeys are exempt from the numeric-value check: they carry free-text

@@ -6,19 +6,18 @@
 ## 现状速查（新会话从这里开始）
 
 - 品牌 **Repotory**（原 RepoNest），版本 **v2.0.0**，SSOT 在 `wails.json`。
-- schema **v22**（`page_versions` 页面快照）；ADR-0018 lane 1（关系词表八型）已 **Accepted**（真库演练 PASS，产物 `v21-rehearse/`）；**lane 2 的 schema 号相应改为 v23**。
+- schema **v23**（`page_embeddings` 页面向量空间 + `page_embed_dirty` 增量队列，ADR-0018 lane 2 已落码；`evidencePages` 图感知取证 `wiki_graph_search` 默认关、零回退）；ADR-0018 lane 1（关系词表八型）已 **Accepted**（真库演练 PASS，产物 `v21-rehearse/`）。
 - 近期大项均已落地：插件脚本运行时（yaegi）已移除（C11-B）、全局 CSS Modules 迁移收口（全局 1,227 行）、D25 首屏「记忆环 + 项目状态」并排（`web/src/pages/Home.tsx`）。
 
 ---
 
 ## 当前待办
 
-### M7 Lane 2：页面向量空间 + 图感知取证（schema v23）→ [ADR-0018](docs/adr/0018-knowledge-graph-foundation.md) 第二半
+### M7 Lane 2：页面向量空间 + 图感知取证（schema v23）→ [ADR-0018](docs/adr/0018-knowledge-graph-foundation.md) 第二半 —— **代码已全部落码（2026-10-14）**，仅剩 Phase 0 硬门
 
-- [ ] **Phase 0（前置，用户动作）**：真实标注 query 集 + `abeval` delta。脚手架已就绪：`cmd/queryset`（`-seed` 导出带行号工作表 / `-emit` 解析回 `queries.jsonl`）；标注须人判断（「哪条笔记能回答这个问题」是内容判断，工具只做 id 解析）。**同份标注兼作 M3 语义检索默认上线的门，一次标注两处复用**
-- [ ] `page_embeddings`（vec0，仅 approved 页）：**物理独立于 `note_embeddings`**（`FuseRRF` 裸 int64 对混合 id 串号）+ `page_embed_dirty` 触发器队列（正文真变/迁入 approved 置脏、迁出删向量）；门控挂既有 `semantic_search` 之后不新设开关；`vectorStore()` memo 的失效路径对页面配置同样生效
-- [ ] `evidencePages` 读图（`internal/service/wiki_evidence.go`，注释已预留注入点）：`WITH RECURSIVE` 沿 relation 白名单（`ref`/`part-of`/`documents`，不沿 `contradicts`）1-2 跳扩召回 + 纯 Go PPR 替 bm25 定序；notes 与 pages 按类型分列交织；新门 `wiki_graph_search` 默认关，关时零行为回退
-- [ ] 晋升条件：delta 为正过 `abeval` 门；`page#N` 与 `note#N` 并存不串号专项回归；PPR 纯函数单测 + 递归 CTE 上界；三重预算兜得住邻居扩召回。设计全文见 ADR-0018
+- [x] `page_embeddings`（vec0，仅 approved 页）：物理独立于 `note_embeddings` + `page_embed_dirty` 触发器队列 + `memsrc` 无关的专用 `db.Page*` 助手；门控挂既有 `semantic_search` 之后；`vectorStore()` memo 失效路径对页面配置同样生效。回归：`pagevec_test.go` / `page_embed_dirty_test.go` / `page_embed_drain_test.go`
+- [x] `evidencePages` 读图：`WITH RECURSIVE` 沿白名单（`ref`/`part-of`/`documents`，不沿 `contradicts`）1 跳扩召回 + 纯 Go PPR 替 bm25 定序；notes 与 pages 按类型分列交织；新门 `wiki_graph_search` 默认关，关时零行为回退（`TestEvidencePages_GraphOffIsFTSPure` 钉住逐条一致）
+- [ ] **Phase 0（唯一硬门，用户动作）**：真实标注 query 集 + `abeval` delta。脚手架已就绪：`cmd/queryset`（`-seed` 导出带行号工作表 / `-emit` 解析回 `queries.jsonl`）。lane 2 的核心主张「图感知取证 > 纯 FTS 取证」必须量出 evidence+graph 相对 evidence 的正向 delta 才算兑现。**同份标注兼作 M3 语义检索默认上线的门，一次标注两处复用**
 
 ### 后续路线（草案已成文，按序触发，各自待批准）
 

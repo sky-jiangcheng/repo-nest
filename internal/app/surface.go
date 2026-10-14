@@ -140,6 +140,7 @@ var bindingSurfaces = map[string]BindingSurface{
 	"LayeredProjectContext": {SurfaceDesktopOnly, "", "agent-side assembly is repotory_context; this binding is the UI/CLI preview"},
 	"ListAIModels":          {SurfaceDesktopOnly, "", "model picker in the settings tab; it enumerates a configured endpoint and is not a knowledge capability"},
 	"TestAIChat":            {SurfaceDesktopOnly, "", "settings 'test connection' button"},
+	"RebuildPageEmbeddings": {SurfaceDesktopOnly, "", "admin re-embed of approved pages (ADR-0018 lane 2); same endpoint-spend rationale as RebuildEmbeddings"},
 
 	// ---- wiki compile & review (the human gate) ------------------------------
 	"CompileNote":           {SurfaceDesktopOnly, "", "an agent able to write pending knowledge would bypass the human gate the whole design rests on (ADR-0015)"},
