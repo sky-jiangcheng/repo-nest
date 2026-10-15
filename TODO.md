@@ -5,7 +5,7 @@
 
 ## 现状速查（新会话从这里开始）
 
-- 品牌 **Repotory**（原 RepoNest），版本 **v2.1.0**（2026-10-14），SSOT 在 `wails.json`。
+- 品牌 **Repotory**（原 RepoNest），版本 **v2.2.0**（2026-10-15），SSOT 在 `wails.json`。
 - schema **v23**（`page_embeddings` 页面向量空间 + `page_embed_dirty` 增量队列，ADR-0018 lane 2 已落码；`evidencePages` 图感知取证 `wiki_graph_search` 默认关、零回退）；ADR-0018 lane 1（关系词表八型）已 **Accepted**（真库演练 PASS，产物 `v21-rehearse/`）。
 - 近期大项均已落地：插件脚本运行时（yaegi）已移除（C11-B）、全局 CSS Modules 迁移收口（全局 1,227 行）、D25 首屏「记忆环 + 项目状态」并排（`web/src/pages/Home.tsx`）。
 - **真库事故（2026-10-14，已恢复，损失见「用户动作」）**：`project_notes` 主表页级损坏（101 处 invalid page number，原因未定论；当日数据目录曾出现 15 个「删除时仍被打开」的 sidecar 残留，APFS 本地快照为空）。经 `.recover` 重建 + FTS 三表 rebuild 后换入，quick_check ok、integrity 83/100 零 fail；批页成果（7 页全 approved、7 份版本快照、2 条边）保住。**笔记 75 → 22 条**（AI1 丢 41 条，其余 12 条散布 6 个项目）。损坏原件与首次备份在 `~/Library/Application Support/repotory-corruption-backup-20261014/`。
@@ -18,15 +18,7 @@
 
 - [x] `page_embeddings`（vec0，仅 approved 页）：物理独立于 `note_embeddings` + `page_embed_dirty` 触发器队列 + `memsrc` 无关的专用 `db.Page*` 助手；门控挂既有 `semantic_search` 之后；`vectorStore()` memo 失效路径对页面配置同样生效。回归：`pagevec_test.go` / `page_embed_dirty_test.go` / `page_embed_drain_test.go`
 - [x] `evidencePages` 读图：`WITH RECURSIVE` 沿白名单（`ref`/`part-of`/`documents`，不沿 `contradicts`）1 跳扩召回 + 纯 Go PPR 替 bm25 定序；notes 与 pages 按类型分列交织；新门 `wiki_graph_search` 默认关，关时零行为回退（`TestEvidencePages_GraphOffIsFTSPure` 钉住逐条一致）
-- [ ] **Phase 0（唯一硬门，用户动作）**：真实标注 query 集 + `abeval` delta。脚手架就绪：`cmd/queryset`（`-seed` 导出带行号工作表 / `-emit` 解析回 `queries.jsonl`）。lane 2 的核心主张「图感知取证 > 纯 FTS 取证」必须量出 evidence+graph 相对 evidence 的正向 delta 才算兑现。**同份标注兼作 M3 语义检索默认上线的门，一次标注两处复用**。进度（2026-10-15）：语料已恢复至 58 条并重导 ✅；标注集完成 ✅ —— `.annotation-prep/notes.labeled.tsv`（51 条人工 query，覆盖 51 个 note id）→ `queries.jsonl`，生成器 `build_labeled.py` 可复现；M3 门 **GATE PASS**（k=3/5/10/20/50 全区间），k=10 时 lexical 0.608 / hybrid 0.735 / delta **+0.127**。embedding 走 LM Studio `localhost:1234`（`text-embedding-nomic-embed-text-v1.5`, dim=768），跑门脚本 `.annotation-prep/run-gate.sh`（复制真库注入配置，不动 live、不改用户 `semantic_search`），逐案诊断 `cmd/abevaldiag`。**过程中修了 `internal/db/search.go` 的 CJK 词法不可达**（`escapeFTSOR` 单段中文整句零召回 + LIKE 整句单子串匹配），修前 lexical 0.392 / delta +0.338 —— 其中约六成 delta 是「CJK 词法坏了」的假信号；另修 `updated_at=''` 触发 `julianday` NULL 导致整条查询归零。
-
-  **M7 lane 2 evidence 门（2026-10-15 已落码并实跑）**：`abeval` 增 `-mode evidence`，两臂走真实 `GatherEvidence`（含预算与交织），唯一差异是 `wiki_graph_search` 0/1。标注集 `.annotation-prep/evidence-cases.jsonl`（16 条人工 query，标注 `page` 类型 id）→ **GATE PASS**，k=10 时 FTS 0.719 / graph 0.812 / delta **+0.094**，k=2..20 全区间为正（k=1 为 0，符合「图是扩召回不改首位」）。逐案诊断（`cmd/abevaldiag -mode evidence`）确认 4 例增益全部形如「命中 page6 → 沿边带出 page7」，**无一例回退**，增益可完全归因于图扩展。
-
-  两处必要的类型改造：`internal/search/abeval` 泛型化为 `Case[T comparable]` 并新增 `DocID{Type,ID}` —— `wiki_pages.id` 与 `project_notes.id` 是独立序列，用裸 int64 打分会让 page #7 满足标注的 note #7（正是 wiki_evidence.go 记录的那个 RRF 串号陷阱）。`wiki_evidence_test.go` 原有的 `pageIDEpoch = 1_000_000` 手工编码已删除，改用 `DocID` 从类型上根除。
-
-  **门的强度须打折看待**：真库 7 页仅 2 条边（`ref`），4 页孤立、无一条 `part-of`/`depends`/`documents`。delta 是真的，但它是**在这个稀疏图上的下限**，不能外推为「图感知取证普遍优于 FTS」。要真正兑现 lane 2，需先让编译产出更多页与边再复跑本门。
-
-  **诊断工具自身踩过的坑（已修）**：`abevaldiag` 的 evidence 两臂初版把 `SetConfig` 写在闭包**外**，两个闭包共享最终值 `"1"`，两臂实际都跑图感知 → delta 恒为 0，且看起来像「图没增益」。`notes` 模式早在 `cmd/abeval/main.go` 有时序注释警告过这一点，我在 evidence 分支重犯。已改为闭包内切换并回退验证可复现。**任何双臂 harness 的开关必须在调用时翻，不是 setup 时翻**——一个分不清两臂的诊断比没有诊断更糟，它把「我抹掉了差异」报成「没有差异」。
+- [x] **Phase 0（唯一硬门）—— 两门均已 GATE PASS（2026-10-15，随 v2.2.0 发布）**：真实标注 query 集 + `abeval` delta 全部量出。脚手架：`cmd/queryset`（`-seed` 导出带行号工作表 / `-emit` 解析回 `queries.jsonl`）。**M3 门**：`.annotation-prep/notes.labeled.tsv`（51 条人工 query，覆盖 51 个 note id）→ k=3/5/10/20/50 全区间 PASS，k=10 时 lexical 0.608 / hybrid 0.735 / delta **+0.127**。**M7 lane 2 evidence 门**：`.annotation-prep/evidence-cases.jsonl`（16 条人工 query，标注 `page` 类型 id）→ k=2..20 全区间为正，k=10 时 FTS 0.719 / graph 0.812 / delta **+0.094**，逐案诊断确认 4 例增益全部形如「命中 page6 → 沿边带出 page7」、无一例回退。embedding 走 LM Studio `localhost:1234`（`text-embedding-nomic-embed-text-v1.5`, dim=768），跑门脚本 `.annotation-prep/run-gate.sh` / `run-evidence-gate.sh`（复制真库注入配置，不动 live、不改用户 `semantic_search`），逐案诊断 `cmd/abevaldiag`（两模式）。过程中修了 `internal/db/search.go` 的 CJK 词法不可达（`escapeFTSOR` 单段中文整句零召回 + LIKE 整句单子串匹配）与 `updated_at=''` 触发 `julianday` NULL 导致整条查询归零——修前 delta +0.338 里约六成是「CJK 词法坏了」的假信号，修后 +0.127 才是语义检索的真实增益。另修 `abevaldiag` 两臂开关时序（写在闭包外致两臂同值、delta 恒 0）。**两门的强度限定**：M3 的 delta 真实但幅度小；evidence 门的 delta 是在稀疏图（7 页 2 边）上的下限，不能外推为「图感知普遍优于 FTS」——要真正兑现 lane 2，需先让编译产出更多页与边再复跑。**门已过，剩下的都是决策**（M3 默认上线 / lane 2 晋升条件），见「用户动作」
 
 
 ### 后续路线（草案已成文，按序触发，各自待批准）
@@ -40,7 +32,8 @@
 - [ ] **桌面 GUI 真机冒烟**：扫描→收藏→刷新历史→笔记 CRUD→版本恢复→知识库搜索→MCP 问答，并覆盖本轮新增的合并建议区 / 社区摘要 / 页面版本历史三块界面。（D25 的 ≤1080px 断点已实测修复——记忆环塌陷、搜索框与 handoff 列表被仪表盘遮盖；ADR-0017 已据此晋升 Accepted）
 - [ ] **Hermes sessions 真机核验**：sessions 导入已落码（schema 由 TencentDB-Agent-Memory 的 shipped importer 确证，见 ADR-0011 实现修正节），差一次真机 `~/.hermes/state.db` 跑通 + 设置页点源验证
 - [ ] **OMP 导入向**（等 OMP v1 稳定）；Bleve（需先做「是否替代 FTS5」架构决策）、Pinecone/Milvus（需凭据）按 `vectordb` registry 既有流程待接
-- [ ] **M3 语义检索默认上线**：等 Phase 0 标注集（见上）
+- [ ] **M3 语义检索默认上线（决策）**：Phase 0 门已 GATE PASS（delta +0.127，k 全区间为正）。剩两步：① 用户决策是否把 `semantic_search` 默认打开（涉及「文本发往 embedding 端点」的隐私授权，默认值只能由用户定）；② 若开，需补一条说明默认行为变化的 CHANGELOG/文档条目与迁移口径（参照 v15 自动导入默认关那次「破坏性变更」的写法）
+- [ ] **ADR-0018 lane 2 晋升 Accepted（决策）**：evidence 门已 GATE PASS（+0.094），但 delta 是稀疏图（7 页 2 边）上的**下限**。晋升条件是否写入该限定（如「图密度 ≥ N 条边时复跑本门仍为正」）未定——上一轮提过，待用户拍板
 - [ ] **JetBrains 插件**：缓议，待真实需求信号（issue/star）+ 补 ADR 后立项
 
 ---
