@@ -1,16 +1,28 @@
-// Command abeval runs the M3-A A/B evaluation gate (ADR-0012 决策 4) against the
-// live knowledge base: it executes every labeled query through lexical search
-// (semantic_search off) and hybrid search (on), compares Recall@k / NDCG@k, and
-// exits non-zero unless hybrid beats lexical by the configured margin.
+// Command abeval runs the retrieval A/B evaluation gates against the live
+// knowledge base: it executes every labeled query through two arms of the real
+// retriever, compares Recall@k / NDCG@k, and exits non-zero unless the candidate
+// beats the baseline by the configured margin.
+//
+// Two gates, one scorer (internal/search/abeval):
+//
+//	-mode notes    (default, M3 / ADR-0012 决策 4)
+//	    lexical (semantic_search off) vs hybrid (on), over project_notes.
+//	    cases: {"query": "...", "relevant": [note_id,...]}
+//
+//	-mode evidence (M7 lane 2 / ADR-0018 条件 6)
+//	    pure FTS evidence (wiki_graph_search off) vs graph-aware evidence
+//	    (1-hop expansion + PPR on), over wiki_pages + project_notes.
+//	    cases: {"query": "...", "relevant": [{"type":"page","id":3},...]}
 //
 // Usage:
 //
-//	abeval -cases queries.jsonl -k 10 -min-recall 0.05
+//	abeval -mode notes    -cases queries.jsonl -k 10 -min-recall 0.05
+//	abeval -mode evidence -cases queries.evidence.jsonl -k 10 -min-recall 0.05
 //
-// queries.jsonl — one JSON object per line: {"query": "...", "relevant": [id,...]}
-// (ids are project_notes.id that actually answer the query). Hybrid needs the
-// embedding endpoint configured (semantic_search/embedding_* settings); if it is
-// absent, hybrid == lexical and the gate correctly fails (no evidence gained).
+// Both gates run on a throwaway copy of the database, never the live one. The
+// notes gate's hybrid arm needs the embedding endpoint configured
+// (embedding_* settings); if it is absent, hybrid == lexical and the gate
+// correctly fails (no evidence gained).
 package main
 
 import (
@@ -39,15 +51,27 @@ type labeledCase struct {
 func main() {
 	platform.SetPrivateUmask()
 
+	mode := flag.String("mode", "notes", "gate to run: notes (M3 semantic) | evidence (M7 graph-aware)")
 	casesPath := flag.String("cases", "", "path to labeled queries.jsonl (required)")
 	k := flag.Int("k", 10, "cutoff for recall@k / ndcg@k")
-	minRecall := flag.Float64("min-recall", 0.05, "required recall@k gain (hybrid-lexical) to pass the gate")
+	minRecall := flag.Float64("min-recall", 0.05, "required recall@k gain (candidate-baseline) to pass the gate")
 	dbPath := flag.String("db", "", "database path (default: the app's DB)")
 	flag.Parse()
 
 	if *casesPath == "" {
 		log.Fatal("abeval: -cases is required")
 	}
+
+	// The evidence gate is a separate measurement with its own case format and
+	// its own config key; it shares the scorer but nothing else. Dispatch before
+	// the notes-only setup so neither gate has to carry the other's flags.
+	if *mode == "evidence" {
+		os.Exit(runEvidenceGate(*casesPath, *dbPath, *k, *minRecall))
+	}
+	if *mode != "notes" {
+		log.Fatalf("abeval: unknown -mode %q (want notes|evidence)", *mode)
+	}
+
 	cases, err := loadCases(*casesPath)
 	if err != nil {
 		log.Fatalf("abeval: load cases: %v", err)
@@ -146,13 +170,13 @@ func restoreOnSignal(restore func()) error {
 	return nil
 }
 
-func loadCases(path string) ([]abeval.Case, error) {
+func loadCases(path string) ([]abeval.Case[int64], error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	var out []abeval.Case
+	var out []abeval.Case[int64]
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 4<<20)
 	for sc.Scan() {
@@ -164,7 +188,7 @@ func loadCases(path string) ([]abeval.Case, error) {
 		if err := json.Unmarshal(line, &c); err != nil {
 			return nil, fmt.Errorf("bad line %q: %w", string(line), err)
 		}
-		out = append(out, abeval.Case{Query: c.Query, Relevant: c.Relevant})
+		out = append(out, abeval.Case[int64]{Query: c.Query, Relevant: c.Relevant})
 	}
 	return out, sc.Err()
 }

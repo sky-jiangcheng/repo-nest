@@ -154,7 +154,7 @@ func convert(in, out string) error {
 		return err
 	}
 
-	var cases []abeval.Case
+	var cases []abeval.Case[int64]
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 4<<20)
 	lineNo := 0
@@ -188,7 +188,7 @@ func convert(in, out string) error {
 			}
 			relevant = append(relevant, id)
 		}
-		cases = append(cases, abeval.Case{Query: strings.TrimSpace(c.Query), Relevant: relevant})
+		cases = append(cases, abeval.Case[int64]{Query: strings.TrimSpace(c.Query), Relevant: relevant})
 	}
 	if err := sc.Err(); err != nil {
 		return err

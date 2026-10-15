@@ -21,17 +21,13 @@ import (
 
 // id-space encoding shared by both retrievers under test.
 //
-// This is load-bearing, not tidiness: page ids and note ids come from separate
-// sequences, so note #7 and page #7 are both real objects. Comparing them as one
-// id would make Recall@k count the wrong hit — the same cross-type collision that
-// keeps SearchAll out of the RRF fuse today.
-const pageIDEpoch = int64(1_000_000)
-
-func encodedRef(item EvidenceItem) int64 {
-	if item.Type == "page" {
-		return pageIDEpoch + item.ID
-	}
-	return item.ID
+// abeval.DocID carries the type tag, so page ids and note ids cannot be confused:
+// {page,7} never satisfies a label of {note,7}. This used to be a hand-rolled
+// int64 epoch (page ids += 1_000_000), which enforced the same separation but
+// only by convention — any new caller that forgot the offset reintroduced the
+// cross-type collision that keeps SearchAll out of the RRF fuse.
+func encodedRef(item EvidenceItem) abeval.DocID {
+	return abeval.DocID{Type: item.Type, ID: item.ID}
 }
 
 // legacyNoteIDs reproduces the pre-W2 behaviour exactly: the notes ListNotes
@@ -52,10 +48,10 @@ func legacyNoteIDs(t *testing.T, svc *Service, projectID int64) []int64 {
 	return out
 }
 
-func evidenceIDs(t *testing.T, svc *Service, projectID int64, query string) []int64 {
+func evidenceIDs(t *testing.T, svc *Service, projectID int64, query string) []abeval.DocID {
 	t.Helper()
 	ev := svc.GatherEvidence(projectID, query, EvidenceBudget{})
-	out := make([]int64, 0, len(ev.Items))
+	out := make([]abeval.DocID, 0, len(ev.Items))
 	for _, it := range ev.Items {
 		out = append(out, encodedRef(it))
 	}
@@ -114,21 +110,21 @@ func buildGateCorpus(t *testing.T, svc *Service) (projectID int64, noteIDs, page
 	return projectID, noteIDs, pageIDs
 }
 
-func gateCases(noteIDs, pageIDs []int64) []abeval.Case {
+func gateCases(noteIDs, pageIDs []int64) []abeval.Case[abeval.DocID] {
 	at := func(ids []int64, i int) int64 { return ids[i] }
-	return []abeval.Case{
+	return []abeval.Case[abeval.DocID]{
 		{Query: "payment gateway retry idempotency backoff",
-			Relevant: []int64{at(noteIDs, 0), pageIDEpoch + at(pageIDs, 0)}},
+			Relevant: []abeval.DocID{{Type: "note", ID: at(noteIDs, 0)}, {Type: "page", ID: at(pageIDs, 0)}}},
 		{Query: "when does the session timeout rotate refresh tokens",
-			Relevant: []int64{at(noteIDs, 1), pageIDEpoch + at(pageIDs, 1)}},
+			Relevant: []abeval.DocID{{Type: "note", ID: at(noteIDs, 1)}, {Type: "page", ID: at(pageIDs, 1)}}},
 		{Query: "release checklist migration dry run rollback",
-			Relevant: []int64{at(noteIDs, 2), pageIDEpoch + at(pageIDs, 2)}},
+			Relevant: []abeval.DocID{{Type: "note", ID: at(noteIDs, 2)}, {Type: "page", ID: at(pageIDs, 2)}}},
 		{Query: "why sqlite-vec zero CGO vector storage",
-			Relevant: []int64{at(noteIDs, 3), pageIDEpoch + at(pageIDs, 3)}},
+			Relevant: []abeval.DocID{{Type: "note", ID: at(noteIDs, 3)}, {Type: "page", ID: at(pageIDs, 3)}}},
 		{Query: "handoff notes refuse notes_update overwrite",
-			Relevant: []int64{at(noteIDs, 4), pageIDEpoch + at(pageIDs, 4)}},
+			Relevant: []abeval.DocID{{Type: "note", ID: at(noteIDs, 4)}, {Type: "page", ID: at(pageIDs, 4)}}},
 		{Query: "scan depth directory descent repositories",
-			Relevant: []int64{at(noteIDs, 5), pageIDEpoch + at(pageIDs, 5)}},
+			Relevant: []abeval.DocID{{Type: "note", ID: at(noteIDs, 5)}, {Type: "page", ID: at(pageIDs, 5)}}},
 	}
 }
 
@@ -165,8 +161,14 @@ func TestEvidenceRetrievalGate_BeatsLegacyStuffing(t *testing.T) {
 	cases := gateCases(noteIDs, pageIDs)
 	const k = 8
 	lex, hyb, dRecall, dNDCG := abeval.Compare(cases, k,
-		func(q string) []int64 { return legacy },
-		func(q string) []int64 { return evidenceIDs(t, svc, projectID, q) })
+		func(q string) []abeval.DocID {
+			out := make([]abeval.DocID, 0, len(legacy))
+			for _, id := range legacy {
+				out = append(out, abeval.DocID{Type: "note", ID: id})
+			}
+			return out
+		},
+		func(q string) []abeval.DocID { return evidenceIDs(t, svc, projectID, q) })
 
 	t.Logf("legacy (the 10 OLDEST notes, per ListNotes): %s", lex.SummaryLine("legacy"))
 	t.Logf("evidence retrieval      : %s", hyb.SummaryLine("evidence"))

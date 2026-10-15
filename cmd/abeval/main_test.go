@@ -81,7 +81,7 @@ func TestLabeledCaseShapeMatchesAbevalCase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := abeval.Case{Query: "q", Relevant: []int64{7}}
+	want := abeval.Case[int64]{Query: "q", Relevant: []int64{7}}
 	if cases[0].Query != want.Query || len(cases[0].Relevant) != 1 || cases[0].Relevant[0] != want.Relevant[0] {
 		t.Errorf("parsed %+v, want %+v — labeledCase and abeval.Case have drifted", cases[0], want)
 	}
