@@ -30,6 +30,7 @@ web/package.json.md5
 # Node / Node 产物
 web/node_modules/
 web/dist/
+web/dist-server/
 ide/vscode/node_modules/
 ide/vscode/out/
 

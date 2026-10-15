@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -62,6 +64,12 @@ func main() {
 	platform.SetPrivateUmask() // owner-only files: DB sidecars, logs, exports
 
 	port := flag.String("port", envOr("REPOTORY_HTTP_PORT", "18765"), "HTTP port for the headless API (loopback only)")
+	// webDist serves the built frontend (web/dist) from this process so a
+	// browser can reach the SPA and the /api JSON-RPC bridge on a single
+	// origin — no separate dev server or cross-origin proxy required. Used by
+	// the rehearsal stack (.annotation-prep/rehearse) against a copy DB.
+	// Empty (default) leaves the server API-only, exactly as production runs.
+	webDist := flag.String("web-dist", envOr("REPOTORY_WEB_DIST", ""), "directory of the built web frontend to serve (optional, API-only when empty)")
 	flag.Parse()
 
 	log.Printf("Repotory headless server %s starting on 127.0.0.1:%s", version.Version, *port)
@@ -91,6 +99,12 @@ func main() {
 	// Bind the same App object the desktop Wails layer exposes, so the browser
 	// frontend can reach every capability via /api/rpc (see httpapi/rpc.go).
 	mux := httpapi.New(svc, app.New(svc))
+
+	// When webDist is supplied, serve the built SPA from the same origin as the
+	// API so the browser talks to /api/rpc directly (no node proxy, which this
+	// runtime intercepts). /api/* always routes to the RPC mux; everything else
+	// serves a real static file or falls back to index.html (client routing).
+	root := newWebHandler(*webDist, mux)
 	// Drift guard for the invariant stated above: if someone shortens either
 	// ceiling, fail loudly at startup instead of silently reintroducing the
 	// "committed but reported as failed" behaviour.
@@ -101,7 +115,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              "127.0.0.1:" + *port,
-		Handler:           mux,
+		Handler:           root,
 		ReadHeaderTimeout: headerTimeout,
 		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
@@ -145,4 +159,56 @@ func envOr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// newWebHandler wraps the RPC mux with optional static SPA serving.
+//
+// webDist == ""  -> API only (production behaviour, unchanged).
+// webDist != ""  -> /api/* routes to the mux; all other paths serve a file
+//                   from webDist, falling back to index.html for client-side
+//                   routes (React Router). Path traversal is rejected: any
+//                   resolved path escaping webDist is forced to the SPA root.
+//                   A miss on a path that looks like a static asset (it has a
+//                   non-.html extension) is a real 404 instead: falling back
+//                   there would return HTML with 200 for a .js request and the
+//                   browser would fail the module on MIME type — a frontend
+//                   phantom that hides the actual "file missing" cause.
+func newWebHandler(webDist string, api http.Handler) http.Handler {
+	if webDist == "" {
+		return api
+	}
+	// Resolve once at startup: relative --web-dist values stop depending on
+	// the process working directory staying unchanged for the server lifetime.
+	cleanRoot, err := filepath.Abs(webDist)
+	if err != nil {
+		log.Fatalf("invalid --web-dist %q: %v", webDist, err)
+	}
+	log.Printf("serving web dist from %s", cleanRoot)
+	fileServer := http.FileServer(http.Dir(cleanRoot))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api") {
+			api.ServeHTTP(w, r)
+			return
+		}
+		rel := strings.TrimPrefix(r.URL.Path, "/")
+		full := filepath.Join(cleanRoot, filepath.Clean("/"+rel))
+		if !strings.HasPrefix(full, cleanRoot) {
+			serveIndex(w, r, cleanRoot)
+			return
+		}
+		if info, statErr := os.Stat(full); statErr == nil && !info.IsDir() {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+		if ext := filepath.Ext(r.URL.Path); ext != "" && ext != ".html" {
+			http.NotFound(w, r)
+			return
+		}
+		serveIndex(w, r, cleanRoot)
+	})
+}
+
+func serveIndex(w http.ResponseWriter, r *http.Request, dist string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeFile(w, r, filepath.Join(dist, "index.html"))
 }

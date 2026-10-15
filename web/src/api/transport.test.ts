@@ -84,6 +84,31 @@ describe('connection health', () => {
     expect(ok).toBe(true)
     expect(getConnectionKind()).toBe('ok')
   })
+
+  it('probes the RPC bridge in browser mode (no Wails)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ result: { status: 'ok', version: '2.2.0' } }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const ok = await checkHealth()
+    expect(fetchMock).toHaveBeenCalledWith('/api/rpc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ method: 'Health', args: [] }),
+    })
+    expect(ok).toBe(true)
+    expect(getConnectionKind()).toBe('ok')
+  })
+
+  it('marks backend-down when the RPC bridge probe fails in browser mode', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    const kinds: string[] = []
+    subscribeConnection(k => kinds.push(k))
+    const ok = await checkHealth()
+    expect(ok).toBe(false)
+    expect(kinds).toContain('backend-down')
+  })
 })
 
 // --- Streaming ask (askAIWithEvidenceStream) ----------------------------------

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:server": "tsc && vite build --mode server --outDir dist-server",
     "preview": "vite preview",
     "lint": "eslint src",
     "test": "vitest run"

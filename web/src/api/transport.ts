@@ -88,18 +88,32 @@ function notify(kind: ConnectionKind) {
   for (const l of listeners) l(kind)
 }
 
+/** Shared Health-response interpretation: normalizes legacy shapes and
+ * publishes the connection state to subscribers. */
+function interpretHealth(r: { ok?: boolean; status?: string } | undefined | null): boolean {
+  const ok = r?.ok ?? r?.status === 'ok'
+  notify(ok ? 'ok' : 'backend-down')
+  return ok
+}
+
+const onHealthFailure = (): boolean => {
+  notify('backend-down')
+  return false
+}
+
 /** Health check: resolves true when backend responds, false otherwise. */
 export function checkHealth(): Promise<boolean> {
-  if (!isWails()) return Promise.resolve(true)
-  return wail<{ ok?: boolean; status?: string }>('Health').then(r => {
-    // The Go binding returns status: "ok"; accept the legacy ok boolean too.
-    const ok = r?.ok ?? r?.status === 'ok'
-    notify(ok ? 'ok' : 'backend-down')
-    return ok
-  }).catch(() => {
-    notify('backend-down')
-    return false
-  })
+  if (!isWails()) {
+    // Browser/standalone mode: the RPC bridge is the real transport, so probe
+    // it with an actual Health call. A constant true here would keep the
+    // connection banner green even when the headless server is down.
+    return rpc<{ ok?: boolean; status?: string }>('Health', [])
+      .then(interpretHealth)
+      .catch(onHealthFailure)
+  }
+  return wail<{ ok?: boolean; status?: string }>('Health')
+    .then(interpretHealth)
+    .catch(onHealthFailure)
 }
 
 /** Start periodic health polling. Returns a cleanup function. */
