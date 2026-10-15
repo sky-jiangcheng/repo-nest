@@ -4,13 +4,19 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
-## [Unreleased]
+## [2.2.0] - 2026-10-15
 
 ### 新增
 
+- **图感知取证的 delta 门禁有了跑法（`abeval -mode evidence`，M7 lane 2 硬门）**：lane 2 的核心主张「图感知取证 > 纯 FTS 取证」此前无法度量——`cmd/abeval` 只量 notes 的 lexical vs hybrid，`GatherEvidence` 的图扩展走的是另一条路。新增 evidence 模式：两臂都走**真实** `GatherEvidence`（含三重预算与 pages/notes 位置交织），唯一差异是 `wiki_graph_search` 0/1。同时报告图密度（页数/边数）——扩展只能带出种子的邻居，零边时 delta 0 是结构必然而非检索失败，不打印这行，读者只能靠猜看到底是哪种。配套 `internal/search/abeval` 泛型化为 `Case[T comparable]` 并新增 `DocID{Type,ID}`：`wiki_pages.id` 与 `project_notes.id` 是独立自增序列，用裸 int64 打分会让 **page #7 满足标注的 note #7**——正是 `wiki_evidence.go` 注释反复警告的 RRF 串号陷阱；`wiki_evidence_test.go` 原有的 `pageIDEpoch = 1_000_000` 手工编码随之删除，装载器主动拒绝裸数字 `relevant`，让类型系统在入口拒绝歧义。新增 `cmd/abevaldiag -mode evidence` 逐案诊断（哪些 query 靠图拿到分、增益形如什么）。**如实记录门的强度**：真库 7 页仅 2 条边（都是 `ref`，4 页孤立），16 条人工标注 query 上 k=10 delta **+0.094**、k=2..20 全区间为正、无一例回退，增益可完全归因于「命中一页 → 沿边带出邻接页」；但这是**在这个稀疏图上的下限**，不能外推为「图感知取证普遍优于 FTS」——要真正兑现 lane 2，需先让编译产出更多页与边再复跑本门
+
 ### 变更
 
+- **`queries.jsonl` 不再进入版本库**：它的 `relevant` 就是 `project_notes.id` 映射，与 `.annotation-prep/` 同属本地标注中间物（工作表、真库一次性副本、生成脚本），已一并加入 `.gitignore`
+
 ### 修复
+
+- **中文查询在词法检索上几乎零召回（三条独立路径，均已修复）**：① `escapeFTSOR` 对单段 CJK 死路——中文无空格，整句是一个 term，`len(parts) < 2` 直接返回 `""`，OR 松弛永不触发；现改为把纯 CJK run 切成**重叠 3-rune trigram**（正是 trigram 索引的存储粒度），配 `isCJKRun` 只认纯 CJK run（`FastAPI登录` 这类混合串不猜边界），bm25 让含 5 个 trigram 的笔记排在含 1 个的之前——不需要词典，也不需要 CGO 分词器。② LIKE 回退把整句当一个 `%...%` 匹配——`ftsUsable` 因短 term（如「里」）否决整句后走此路，而带空格的 query 永不命中；现改为整句空结果时按 term OR 重试，**只在空结果时触发**，与 FTS 路径同守「绝不顶掉已有答案」。③ 一条坏时间戳藏掉全部结果——导入笔记可能带 `updated_at = ''`（空串非 NULL），`julianday('')` 为 NULL 使整个 rank 表达式 NULL，scan 进 float64 失败，`SearchNotes` 吞掉 error 返回空集；该 bug 一直存在，只是此前没有 query 触及那条笔记，OR 松弛让它浮出水面。现以 `COALESCE(julianday(updated_at), julianday('now'))` 兜底。另修 OR 表达式无上限（600 个互异汉字会膨胀出 598 个 OR phrase），加 `maxFTSORTerms = 32`（真实问句实测 17）。**门禁结论因此改变**：修前 M3 门 lexical 0.392 / delta +0.338，其中约六成是「CJK 词法坏了」的假信号；修后 lexical 0.608 / hybrid 0.735 / **delta +0.127**，k=3/5/10/20/50 全区间 PASS——hybrid 从「大幅碾压」回到「稳定小幅领先」，这才是语义检索的真实增益。回归 7 例，每例都验证过「回退修复即失败」
 
 ## [2.1.0] - 2026-10-14
 
@@ -163,7 +169,8 @@
 
 > v1.15.1 及更早版本（v1.0.0 – v1.15.1，2026-03 – 2026-10）的变更历史见 [outputs/archive/CHANGELOG-v1.0-v1.15.md](outputs/archive/CHANGELOG-v1.0-v1.15.md)。
 
-[Unreleased]: https://github.com/sky-jiangcheng/repotory/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/sky-jiangcheng/repotory/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/sky-jiangcheng/repotory/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/sky-jiangcheng/repotory/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/sky-jiangcheng/repotory/compare/v1.16.2...v2.0.0
 [1.16.2]: https://github.com/sky-jiangcheng/repotory/compare/v1.16.1...v1.16.2
