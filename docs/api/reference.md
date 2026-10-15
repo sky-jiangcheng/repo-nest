@@ -31,6 +31,21 @@ Repotory 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 
 > **信任边界**：该服务**无认证**，返回内容即用户完整本地知识库。安全性完全依赖 `cmd/server` 只绑定 `127.0.0.1`——可达性等价于「本机上的另一个进程」。**禁止**改为 `0.0.0.0` 或经反代暴露到网络；需要远程访问时应先补认证方案并提交 ADR。
 
+### 可选：同源托管前端（`--web-dist`）
+
+默认纯 API，与生产一致。加 `--web-dist <目录>`（或环境变量 `REPOTORY_WEB_DIST`）后，同一进程把构建好的前端一并服务，浏览器即可**单源**访问页面与 `/api/rpc`，无需另起开发服务器或跨域代理：
+
+```bash
+cd web && npm run build:server              # base /，输出 web/dist-server
+cd .. && go build -o repotory-server ./cmd/server
+./repotory-server --port 18766 --web-dist web/dist-server
+```
+
+- `/api/*` 永远路由到 RPC mux；其余路径优先匹配静态文件，未命中回退 `index.html`（客户端路由）
+- 缺失的静态资源（带非 `.html` 扩展名的路径）返回真 `404`，不回退 HTML——资源缺失不会被伪装成 MIME 错误
+- 相对路径在启动时解析为绝对路径，并在日志打印实际服务目录；路径穿越强制回落根，信任边界不变（仍仅 loopback）
+- 前端配套只有 `build:server` 一种产物可配合此开关：桌面构建 `npm run build` 的 `web/dist` 是 base `./`（wails:// origin 专用），混用会让页面在一种运行时下白屏
+
 ---
 
 ## `/api/rpc`（JSON-RPC 桥）

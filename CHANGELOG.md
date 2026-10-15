@@ -4,6 +4,16 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [Unreleased]
+
+### 新增
+
+- **headless 服务可同源托管构建的前端（`cmd/server --web-dist`）**：headless 此前纯 API，浏览器要看到页面只能另起 Vite 代理——而本运行时的 node 出站被 shim 注入代理后连 `127.0.0.1` 都 ECONNREFUSED，演练链路卡死在「页面打不开」。现在 `--web-dist <目录>`（或 `REPOTORY_WEB_DIST`）让同一进程把构建产物一并服务：`/api/*` 仍路由到 RPC mux，其余路径静态文件 + `index.html` SPA 回退，路径穿越强制回落根；缺失的静态资源（非 `.html` 扩展名）返回真 404 而非兜成 HTML——资源缺失不再伪装成前端 MIME 幻影。默认空 = 纯 API，生产行为不变；相对路径在启动时解析为绝对路径并打印实际服务目录。配套 web 侧新增 `npm run build:server`（`--mode server`，base `/`，输出 `web/dist-server`）：深链接（如 `/project/1`）直达不再因相对 `./assets` 落进 SPA 回退而白屏；桌面构建（base `./`，`web/dist`）不受影响，两产物隔离。手册新增「同源托管前端」节（中英双份）
+
+### 修复
+
+- **浏览器（非 Wails）模式健康检查恒真**：`checkHealth()` 在无 Wails 绑定时直接 `Promise.resolve(true)`——headless/自托管场景下后端已停，连接横幅却永远绿色。现改为走真实 `/api/rpc` Health 探活，失败如实标记 `backend-down`
+
 ## [2.2.0] - 2026-10-15
 
 ### 新增
