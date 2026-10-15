@@ -161,13 +161,23 @@ func envOr(key, def string) string {
 	return def
 }
 
+// isAPIPath reports whether a request must reach the RPC mux even when static
+// hosting is on. It mirrors httpapi.New's registrations: every route lives
+// under /api except /health. Without the /health clause the SPA fallback would
+// swallow it into index.html (200 text/html instead of the JSON health
+// payload). TestNewWebHandlerRouting pins this against httpapi's route set.
+func isAPIPath(p string) bool {
+	return p == "/api" || strings.HasPrefix(p, "/api/") || p == "/health"
+}
+
 // newWebHandler wraps the RPC mux with optional static SPA serving.
 //
 // webDist == ""  -> API only (production behaviour, unchanged).
-// webDist != ""  -> /api/* routes to the mux; all other paths serve a file
-//                   from webDist, falling back to index.html for client-side
-//                   routes (React Router). Path traversal is rejected: any
-//                   resolved path escaping webDist is forced to the SPA root.
+// webDist != ""  -> API paths (see isAPIPath) route to the mux; all other
+//                   paths serve a file from webDist, falling back to
+//                   index.html for client-side routes (React Router). Path
+//                   traversal is rejected: any resolved path escaping webDist
+//                   is forced to the SPA root.
 //                   A miss on a path that looks like a static asset (it has a
 //                   non-.html extension) is a real 404 instead: falling back
 //                   there would return HTML with 200 for a .js request and the
@@ -186,7 +196,7 @@ func newWebHandler(webDist string, api http.Handler) http.Handler {
 	log.Printf("serving web dist from %s", cleanRoot)
 	fileServer := http.FileServer(http.Dir(cleanRoot))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api") {
+		if isAPIPath(r.URL.Path) {
 			api.ServeHTTP(w, r)
 			return
 		}

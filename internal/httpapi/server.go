@@ -45,6 +45,9 @@ func New(svc *service.Service, bound any) http.Handler {
 	mux := http.NewServeMux()
 	h := &handler{svc: svc, bound: reflect.ValueOf(bound)}
 
+	// NOTE: every pattern here must be claimed by cmd/server's isAPIPath, or a
+	// --web-dist run swallows it into the SPA index.html fallback. A test in
+	// cmd/server parses this file and pins that invariant.
 	mux.HandleFunc("/health", h.health)
 	mux.HandleFunc("/api/ai_context", h.aiContext)
 	mux.HandleFunc("/api/ai/ask-stream", h.aiAskStream)
