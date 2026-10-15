@@ -293,3 +293,190 @@ func TestSearchNotes_NoRelaxationWhenANDMatches(t *testing.T) {
 		t.Fatalf("expected only 'both' (strict AND), got %d: %+v", len(hits), hits)
 	}
 }
+
+// -- CJK lexical reachability --
+// Both regressions below are the same bug seen from two code paths: a Chinese
+// question reached db.SearchNotes and returned ZERO rows, so the whole M3-A
+// delta measured "CJK is unreachable lexically" rather than "semantics help".
+
+func TestEscapeFTSOR_CJKRunBecomesTrigrams(t *testing.T) {
+	// A single CJK term must NOT collapse to "" — that was the dead end.
+	got := escapeFTSOR("中英文切换按钮")
+	want := `"中英文" OR "英文切" OR "文切换" OR "切换按" OR "换按钮"`
+	if got != want {
+		t.Errorf("escapeFTSOR(CJK run) = %q, want %q", got, want)
+	}
+
+	// Stopword filtering still applies.
+	if got := escapeFTSOR("the and for"); got != "" {
+		t.Errorf("all-stopword query should still yield \"\", got %q", got)
+	}
+	// A 2-rune CJK term is below trigram width and cannot match, so it is the
+	// only part and relaxation correctly declines.
+	if got := escapeFTSOR("登录"); got != "" {
+		t.Errorf("sub-trigram CJK term should yield \"\", got %q", got)
+	}
+	// Mixed terms: the ASCII half is untouched, the CJK half is expanded.
+	got = escapeFTSOR("FastAPI 登录模块")
+	if got != `"FastAPI" OR "登录模" OR "录模块"` {
+		t.Errorf("escapeFTSOR(mixed) = %q", got)
+	}
+}
+
+func TestIsCJKRun(t *testing.T) {
+	cases := map[string]bool{
+		"中英文切换":   true,
+		"ログイン":   true, // kana
+		"한국어":     true, // hangul
+		"FastAPI":   false,
+		"FastAPI登录": false, // mixed: not guessed at
+		"":          false,
+	}
+	for in, want := range cases {
+		if got := isCJKRun([]rune(in)); got != want {
+			t.Errorf("isCJKRun(%q) = %v, want %v", in, got, want)
+		}
+	}
+}
+
+func TestSearchNotes_LongCJKQuestionFindsNote(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+	pid := createTestProject(t, db, "cjk-project")
+
+	if _, err := CreateNoteEx(db, pid, "国际化", "中英文切换按钮已经加好了，页面 lang 属性跟着切换", "", "other", "manual"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CreateNoteEx(db, pid, "无关", "完全不同的主题，关于性能优化", "", "other", "manual"); err != nil {
+		t.Fatal(err)
+	}
+
+	// A realistic Chinese question: no spaces, far longer than any note's
+	// contiguous run. Pre-fix this returned 0 rows via BOTH the strict AND and
+	// the escapeFTSOR bail-out.
+	hits, err := SearchNotes(db, "看板页面的中英文切换按钮会切换哪些文案")
+	if err != nil {
+		t.Fatalf("SearchNotes: %v", err)
+	}
+	if len(hits) == 0 {
+		t.Fatal("long CJK question returned no hits — lexical CJK is unreachable again")
+	}
+	if hits[0].Title != "国际化" {
+		t.Errorf("expected '国际化' ranked first, got %s", hits[0].Title)
+	}
+}
+
+func TestSearchNotes_MixedQueryWithShortTermFindsNote(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+	pid := createTestProject(t, db, "mixed-cjk-project")
+
+	if _, err := CreateNoteEx(db, pid, "health", "app.mount 根路径会遮蔽 health 路由", "", "other", "manual"); err != nil {
+		t.Fatal(err)
+	}
+	// '里' is 1 rune -> ftsUsable false -> the LIKE fallback, which pre-fix
+	// matched the whole query as ONE substring and so never matched anything.
+	hits, err := SearchNotes(db, "FastAPI 里 health 探测不到")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 {
+		t.Fatal("mixed query with a 1-rune term returned no hits")
+	}
+	if hits[0].Title != "health" {
+		t.Errorf("expected 'health' ranked first, got %s", hits[0].Title)
+	}
+}
+
+func TestSearchNotes_LikeFallbackUnchangedWhenMatchExists(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+	pid := createTestProject(t, db, "no-regress-project")
+
+	if _, err := CreateNoteEx(db, pid, "exact", "prefix suffix", "", "other", "manual"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CreateNoteEx(db, pid, "prefix only", "unrelated body", "", "other", "manual"); err != nil {
+		t.Fatal(err)
+	}
+	// The whole query matches doc 1, so OR-relaxation must NOT fire and pull
+	// in doc 2 — same "never displace a working answer" rule as the FTS path.
+	hits, err := SearchNotes(db, "prefix suffix")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 1 || hits[0].Title != "exact" {
+		t.Errorf("expected only the exact match, got %d: %+v", len(hits), hits)
+	}
+}
+
+func TestSearchNotes_EmptyTimestampDoesNotKillQuery(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+	pid := createTestProject(t, db, "bad-ts-project")
+
+	// A note whose updated_at is an empty STRING (not NULL) — the shape an
+	// import can produce. julianday('') is NULL, which used to make the whole
+	// rank expression NULL; scanning that into float64 failed the query, and
+	// SearchNotes turns an error into ZERO results, so this one bad row hid
+	// every other match in the corpus.
+	if _, err := CreateNoteEx(db, pid, "健康检查", "health 探测不到时的排查", "", "other", "manual"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CreateNoteEx(db, pid, "另一个", "health 相关的其他说明", "", "other", "manual"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("UPDATE project_notes SET updated_at = '' WHERE title = '另一个'"); err != nil {
+		t.Fatal(err)
+	}
+
+	// '里' forces the LIKE path, whose OR-relaxation surfaces BOTH notes — so
+	// the bad-timestamp row is actually scanned. Pre-fix that scan failed and
+	// SearchNotes reported ZERO results for the whole query.
+	hits, err := SearchNotes(db, "里 health 探测不到")
+	if err != nil {
+		t.Fatalf("SearchNotes must not error on an empty timestamp: %v", err)
+	}
+	if len(hits) < 2 {
+		t.Fatalf("expected both notes despite the empty timestamp, got %d: %+v", len(hits), hits)
+	}
+}
+
+func TestEscapeFTSOR_CappedForPathologicalInput(t *testing.T) {
+	// A pasted paragraph expands to one phrase per trigram, so without a cap
+	// 600 distinct runes become 598 OR'd phrases — a MATCH string nobody wants
+	// evaluated. A real question stays far below the cap.
+	var b strings.Builder
+	for r := rune(0x4E00); r < 0x4E00+600; r++ {
+		b.WriteRune(r)
+	}
+	expr := escapeFTSOR(b.String())
+	if got := strings.Count(expr, " OR ") + 1; got > maxFTSORTerms {
+		t.Errorf("pathological CJK input produced %d OR terms, cap is %d", got, maxFTSORTerms)
+	}
+	if got := strings.Count(escapeFTSOR("看板页面的中英文切换按钮会切换哪些文案"), " OR ") + 1; got > maxFTSORTerms {
+		t.Errorf("a real question produced %d OR terms, over cap %d — cap is too tight", got, maxFTSORTerms)
+	}
+}
+
+func TestLikeTerms(t *testing.T) {
+	cases := map[string][]string{
+		"FastAPI 里 health 探测不到": {"FastAPI", "里", "health", "探测不到"},
+		"login  login":              {"login"}, // deduped
+		"one":                       {"one"},
+		"health,":                   {"health"}, // punctuation trimmed
+	}
+	for in, want := range cases {
+		got := likeTerms(in)
+		if len(got) != len(want) {
+			t.Errorf("likeTerms(%q) = %v, want %v", in, got, want)
+			continue
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("likeTerms(%q) = %v, want %v", in, got, want)
+				break
+			}
+		}
+	}
+}
