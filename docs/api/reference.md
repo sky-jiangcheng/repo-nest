@@ -41,7 +41,7 @@ cd .. && go build -o repotory-server ./cmd/server
 ./repotory-server --port 18766 --web-dist web/dist-server
 ```
 
-- `/api/*` 永远路由到 RPC mux；其余路径优先匹配静态文件，未命中回退 `index.html`（客户端路由）
+- `/api/*` 与 `/health` 永远路由到 API mux（`cmd/server` 的 `isAPIPath` 与 `httpapi` 注册面由测试钉住同步）；其余路径优先匹配静态文件，未命中回退 `index.html`（客户端路由）
 - 缺失的静态资源（带非 `.html` 扩展名的路径）返回真 `404`，不回退 HTML——资源缺失不会被伪装成 MIME 错误
 - 相对路径在启动时解析为绝对路径，并在日志打印实际服务目录；路径穿越强制回落根，信任边界不变（仍仅 loopback）
 - 前端配套只有 `build:server` 一种产物可配合此开关：桌面构建 `npm run build` 的 `web/dist` 是 base `./`（wails:// origin 专用），混用会让页面在一种运行时下白屏

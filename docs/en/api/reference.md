@@ -41,7 +41,7 @@ cd .. && go build -o repotory-server ./cmd/server
 ./repotory-server --port 18766 --web-dist web/dist-server
 ```
 
-- `/api/*` always routes to the RPC mux; every other path prefers a real static file and falls back to `index.html` (client-side routing)
+- `/api/*` and `/health` always route to the API mux (`cmd/server`'s `isAPIPath` is pinned against `httpapi`'s registered routes by a test); every other path prefers a real static file and falls back to `index.html` (client-side routing)
 - A missing static asset (a path with a non-`.html` extension) is a real `404`, not an HTML fallback — missing files are never disguised as MIME errors
 - Relative paths are resolved to absolute at startup and the actual serving directory is logged; path traversal is forced back to the root, and the trust boundary is unchanged (loopback only)
 - Only the `build:server` frontend artifact works with this flag: the desktop build `npm run build` produces `web/dist` with base `./` (wails:// origin only) — mixing them blanks the page under one runtime
