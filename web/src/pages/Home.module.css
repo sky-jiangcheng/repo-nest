@@ -1,137 +1,97 @@
-/* Home (D25 first screen, ADR-0017): memory-ring entry + project status,
-   side by side. The left column is the agent-memory entry (recent handoffs +
-   global search); the right column embeds the intact Dashboard — the ADR
-   requires it kept on the first screen, unchanged and visible by default.
+/* Home — The Repotory Knowledge Hub & AI Dialogue Workbench.
+   Features:
+   1. Memory Ring (recent handoffs & global search)
+   2. Intelligent Knowledge Assistant (interactive chat with knowledge base, citations & project cards)
+   3. Featured Projects & Developer Dashboard Portal */
 
-   Height model: .mainContent is a flex column with its own page scroller.
-   In wide mode this grid fills it exactly (height: 100%) and each column
-   scrolls internally — Dashboard brings its own .scroll container, so the
-   wrapper must hand it a definite height (min-height: 0 is load-bearing).
-   In stacked mode (<= 1080px) the page scrolls naturally again and the
-   Dashboard wrapper gets a viewport-based height so its internal scroller
-   keeps working without touching Dashboard's own CSS. */
-
-.grid {
-  display: grid;
-  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
-  gap: 24px;
-  height: 100%;
-  min-height: 0;
-}
-
-.ring {
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
+.page {
+  display: flex !important;
+  flex-direction: column !important;
   gap: 20px;
-  padding-right: 4px;
+  min-height: 100%;
+  padding-bottom: 30px;
 }
 
-.ringHead h2 {
-  margin: 0 0 4px;
-  font-size: 18px;
-}
-
-.ringSub {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.searchBlock {
+/* Memory-ring strip */
+.ring {
+  flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.hits {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.hit {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  width: 100%;
-  text-align: left;
-  background: none;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 8px 10px;
-  cursor: pointer;
 }
 
-.hit:hover {
-  background: var(--bg-hover);
-}
-
-.hitBody {
+.ringHead {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
 }
 
-.hitTitle {
-  font-size: 13px;
+.ringHead h2 {
+  margin: 0;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.hitSub {
+.ringSub {
+  margin: 0;
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
+}
+
+.ringEmpty {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.noHits {
-  font-size: 13px;
-  color: var(--text-muted);
-  padding: 4px 2px;
-}
-
-.handoffBlock h3 {
-  margin: 0 0 8px;
-  font-size: 14px;
-}
-
 .handoffList {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 2px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .handoffItem {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  width: 100%;
+  gap: 2px;
+  max-width: 240px;
   text-align: left;
-  background: none;
+  background: var(--bg-primary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 10px 12px;
+  padding: 6px 10px;
   cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
 }
 
 .handoffItem:hover {
   background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .handoffTitle {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -139,45 +99,270 @@
 
 .handoffMeta {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
+.handoffProject {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .autoBadge {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--accent);
   background: var(--accent-soft);
   border-radius: var(--radius-sm);
-  padding: 0 6px;
+  padding: 0 5px;
 }
 
-.dashWrap {
-  min-height: 0;
-  height: 100%;
+.searchEntry {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all var(--transition-fast);
 }
 
-@media (max-width: 1080px) {
-  .grid {
-    grid-template-columns: 1fr;
-    height: auto;
-  }
+.searchEntry:hover {
+  border-color: var(--accent);
+}
 
+.searchEntryLabel {
+  color: var(--text-primary);
+}
+
+.searchEntryHint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Chat Assistant Stage */
+.chatArea {
+  display: flex;
+  flex-direction: column;
+  min-height: 520px;
+}
+
+/* Status & Dashboard Portal Section */
+.statusSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+}
+
+.statusSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.statusTitleArea {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.statusSectionTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.statusSectionHint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.openDashboardBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.openDashboardBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.arrowIcon {
+  font-size: 13px;
+  transition: transform var(--transition-fast);
+}
+
+.openDashboardBtn:hover .arrowIcon {
+  transform: translateX(2px);
+}
+
+/* Status Grid */
+.statusGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.projectQuickCard {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.projectQuickCard:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.quickCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quickCardName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.starIcon {
+  color: #f59e0b;
+}
+
+.quickCardPath {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quickCardFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.quickCardLink {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* Today Dev Summary Card */
+.todaySummaryCard {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.todayHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.todayStats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.todayStatItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.todayStatValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.todayStatLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.todayLink {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.todayLink:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
   .ring {
-    overflow-y: visible;
-    /* min-height: 0 above is what lets this column scroll inside a fixed-height
-       grid row in wide mode. In stacked mode the row is content-sized, so that
-       permission is actively harmful: the row collapsed to the header's 52px while
-       the column's content needed 181px, and the search box and handoff list —
-       no longer clipped by overflow — spilled out and were painted UNDERNEATH the
-       Dashboard, which starts at the same y with an opaque background. Measured in
-       headless Chrome at 1024px, not inferred. */
-    min-height: auto;
+    align-items: stretch;
   }
-
-  .dashWrap {
-    height: calc(100vh - 200px);
-    min-height: 460px;
+  .handoffList {
+    flex-basis: 100%;
+    order: 3;
+  }
+  .searchEntryHint {
+    display: none;
+  }
+  .statusGrid {
+    grid-template-columns: 1fr;
   }
 }

@@ -305,7 +305,7 @@ func (s *Service) layerFacts(projectID int64, query string, limit int, want Memo
 			continue
 		}
 		keep = append(keep, EvidenceItem{
-			Type: "note", ID: h.ID, Title: firstNonEmpty(h.Title, firstLine(n.Content)),
+			Type: "note", ID: h.ID, ProjectID: h.ProjectID, Title: firstNonEmpty(h.Title, firstLine(n.Content)),
 			Kind: string(want), Snippet: clipRunes(h.Snippet, 400), Rank: len(keep) + 1,
 		})
 	}

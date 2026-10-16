@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, fireEvent, within, cleanup } from '@testing-library/react'
+import { render, screen, waitFor, cleanup } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 // Partial mock: override the backend-calling endpoints, keep everything else
 // (getConnectionKind etc.) real so components like StatusBar keep working.
+// The ring no longer searches inline (ADR-0024 moved search to /search), so
+// searchAll is not part of this surface anymore.
 vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>()
   return {
     ...actual,
     listRecentHandoffs: vi.fn(),
-    searchAll: vi.fn(),
     getProjects: vi.fn(),
     getSummary: vi.fn(),
     getTodoCounts: vi.fn(),
@@ -32,7 +33,6 @@ vi.mock('react-i18next', () => ({
 
 import {
   listRecentHandoffs,
-  searchAll,
   getProjects,
   getSummary,
   getTodoCounts,
@@ -47,7 +47,6 @@ import {
 import Home from './Home'
 
 const mockList = vi.mocked(listRecentHandoffs)
-const mockSearch = vi.mocked(searchAll)
 const mockGetProjects = vi.mocked(getProjects)
 const mockGetSummary = vi.mocked(getSummary)
 const mockGetTodoCounts = vi.mocked(getTodoCounts)
@@ -90,9 +89,8 @@ const flush = async () => { await waitFor(() => {}) }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  // Memory ring.
+  // Memory ring strip.
   mockList.mockResolvedValue([])
-  mockSearch.mockResolvedValue([])
   // Embedded Dashboard panel — same shapes the real endpoints produce after
   // their own null fallbacks.
   mockGetProjects.mockResolvedValue([])
@@ -111,15 +109,16 @@ beforeEach(() => {
   mockGetScanStatus.mockResolvedValue({ running: false, backfilling: false, message: '', progress: 0, total: 0 })
 })
 
-describe('Home memory ring (D25 first screen)', () => {
-  it('renders recent handoffs with project name and the auto-captured badge', async () => {
+describe('Home workbench (ADR-0024 single-column first screen)', () => {
+  it('renders recent handoffs in the memory-ring strip with project name and the auto-captured badge', async () => {
     mockList.mockResolvedValue([
       entry({ note_id: 1, auto_captured: true }),
       entry({ note_id: 2, project_name: 'Beta', title: 'Session Handoff 2026-10-11 09:30', auto_captured: false }),
     ])
     renderHome()
+    const ring = screen.getByRole('region', { name: '记忆环' })
     expect(await screen.findByText('Session Handoff 2026-10-12 15:04')).toBeTruthy()
-    expect(screen.getByText('Alpha')).toBeTruthy()
+    expect(ring.textContent).toContain('Alpha')
     expect(screen.getByText('Session Handoff 2026-10-11 09:30')).toBeTruthy()
     // Exactly one auto badge: the manual entry must not be flagged.
     expect(screen.getAllByText('自动')).toHaveLength(1)
@@ -130,44 +129,17 @@ describe('Home memory ring (D25 first screen)', () => {
     expect(await screen.findByText('还没有 handoff——会话结束或手动捕捉后会出现在这里')).toBeTruthy()
   })
 
-  it('searches globally (debounced) and renders note/todo hits', async () => {
-    mockSearch.mockResolvedValue([
-      { type: 'note', id: 5, project_id: 2, project_name: 'Alpha', title: '登录排查笔记', snippet: '关于 <mark>登录</mark> 的记录', updated_at: '2026-10-12 10:00:00' },
-      { type: 'todo', id: 9, project_id: 3, project_name: 'Beta', title: '修复登录超时', snippet: '', updated_at: '2026-10-12 10:00:00' },
-    ])
+  it('links the strip search entry to the top-level /search page', async () => {
     renderHome()
     await flush()
-    // Scope to the ring section: the embedded Dashboard carries a second
-    // searchbox (ProjectSearchDropdown) with the same accessible name. The
-    // ring is the first region carrying this label in DOM order.
-    const ring = screen.getAllByRole('region', { name: '记忆环' })[0]
-    fireEvent.change(within(ring).getByRole('searchbox', { name: '全局检索' }), { target: { value: '登录' } })
-    // Debounce (150ms) + fetch settle.
-    await waitFor(() => expect(mockSearch).toHaveBeenCalledWith('登录'), { timeout: 2000 })
-    expect(await screen.findByText('登录排查笔记')).toBeTruthy()
-    expect(screen.getByText('修复登录超时')).toBeTruthy()
-    // Both hit types get their shared.css type chip.
-    expect(document.querySelector('.hit-type-note')).not.toBeNull()
-    expect(document.querySelector('.hit-type-todo')).not.toBeNull()
+    const link = screen.getByRole('link', { name: /全局搜索/ })
+    expect(link.getAttribute('href')).toBe('/search')
   })
 
-  it('clears results when the query is emptied', async () => {
-    mockSearch.mockResolvedValue([
-      { type: 'note', id: 5, project_id: 2, project_name: 'Alpha', title: '登录排查笔记', snippet: '', updated_at: '2026-10-12 10:00:00' },
-    ])
+  it('keeps the project status panels on the same screen (ADR-0017, merged layout)', async () => {
     renderHome()
     await flush()
-    const box = within(screen.getByRole('region', { name: '记忆环' })).getByRole('searchbox', { name: '全局检索' })
-    fireEvent.change(box, { target: { value: '登录' } })
-    await screen.findByText('登录排查笔记')
-    fireEvent.change(box, { target: { value: '' } })
-    await waitFor(() => expect(screen.queryByText('登录排查笔记')).toBeNull(), { timeout: 2000 })
-  })
-
-  it('keeps the project status panel mounted beside the ring (ADR-0017)', async () => {
-    renderHome()
-    await flush()
-    // Dashboard renders its (visually hidden) page title; its presence proves
+    // Dashboard renders its (visually hidden) panel title; its presence proves
     // the status overview is on the same screen, not hidden or routed away.
     expect(screen.getAllByText('dashboard.title').length).toBeGreaterThan(0)
   })

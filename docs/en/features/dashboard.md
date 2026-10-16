@@ -7,18 +7,25 @@ order: 2
 
 The dashboard shows daily commit statistics, goal progress, and a year-long commit heatmap across all projects.
 
+> **Merged into Home (ADR-0024)**: the dashboard panels are now the body of the single-column **home workbench** — the app opens straight onto this content; the main navigation swaps "Dashboard" for "Search", and old `/dashboard` links redirect to Home. This page keeps the "Dashboard" title for the project-status panels on the home screen (one top-to-bottom column, no longer side-by-side with the memory ring).
+
 ## Page structure (top to bottom)
 
 ```mermaid
 flowchart TB
-    RING["① Goal progress<br/>progress ring · summary bar"] --> HEAT["② Commit heatmap<br/>last 52 weeks · click to jump to a day"]
+    STRIP["Memory-ring strip<br/>recent handoffs · global search entry"] --> RING["① Goal progress<br/>progress ring · summary bar"]
+    RING --> HEAT["② Commit heatmap<br/>last 52 weeks · click to jump to a day"]
     HEAT --> CTRL["③ Controls<br/>date switch · combined search<br/>filters · sorting · rescan"]
     CTRL --> GRID["④ Project grid"]
     GRID --> STAR["Starred: full stat card<br/>goal bar · team total"]
     GRID --> PLAIN["Unstarred: minimal card<br/>name + star button"]
 ```
 
-How to read it: the page is a **vertical reading order** in four bands. The heatmap (②) is the global time view, the control bar (③) is its operating panel (switching the date changes both the heatmap and the project cards at once), and the project grid (④) splits cards by starred state — unstarred shows only the name, and you have to star a repository before it shows statistics. All three bands follow the **git author setting** (see [Settings](settings.md#author-configuration)).
+How to read it: the page is a **vertical reading order** with a memory-ring strip on top, then four bands. The heatmap (②) is the global time view, the control bar (③) is its operating panel (switching the date changes both the heatmap and the project cards at once), and the project grid (④) splits cards by starred state — unstarred shows only the name, and you have to star a repository before it shows statistics. All three bands follow the **git author setting** (see [Settings](settings.md#author-configuration)).
+
+### Memory-ring strip (page top, ADR-0024)
+
+A horizontal memory band at the very top of the home screen: the "Memory Ring" label on the left, **recent session handoffs** in the middle (click to open the owning project; auto-captured ones carry an "Auto" badge), and the **global search entry** on the right — it opens the standalone [global search page](search.md). With no handoffs yet, a placeholder hint is shown; on narrow screens the band wraps.
 
 ### Goal progress
 

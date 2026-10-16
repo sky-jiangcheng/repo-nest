@@ -1,0 +1,21 @@
+{
+  "navLabel": "Open global search",
+  "homeEntry": "Global search",
+  "homeEntryHint": "Notes · Todos · Projects",
+  "title": "Global search",
+  "placeholder": "Search notes, todos and projects…",
+  "results": "Search results",
+  "resultsCount": "{{count}} results",
+  "groupProjects": "Projects",
+  "groupNotes": "Notes",
+  "groupTodos": "Todos",
+  "noResults": "No matching results",
+  "tryHotTags": "Try starting from a hot tag",
+  "hotProjects": "Hot projects",
+  "hotProjectsSub": "Ranked by recent personal additions",
+  "recentAdded": "Recently +{{count}}",
+  "noHotProjects": "No project data yet — configure scan roots in Settings first",
+  "hotTags": "Hot tags",
+  "hotTagsHint": "Click a tag to search it",
+  "noHotTags": "No tags in notes yet"
+}

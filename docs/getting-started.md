@@ -136,6 +136,7 @@ go build -o repotory-mcp ./cmd/mcp/
 ## 下一步
 
 - [数据与备份](data-management.md)：备份、换机迁移、重置与卸载
-- [仪表盘](features/dashboard.md)：目标进度、热力图与排序
+- [首页工作台（仪表盘）](features/dashboard.md)：目标进度、热力图与排序
+- [全局搜索](features/search.md)：跨项目检索与热门推荐
 - [知识库与笔记](features/knowledge.md)：块编辑器与全文搜索
 - [设置](features/settings.md)：扫描、标准、外观、插件

@@ -66,14 +66,16 @@ func (b EvidenceBudget) withDefaults() EvidenceBudget {
 
 // EvidenceItem is one retrieved unit with a citation reference the answer can use.
 type EvidenceItem struct {
-	Ref     string `json:"ref"`  // "P1" / "N3" — what the answer cites
-	Type    string `json:"type"` // "page" | "note"
-	ID      int64  `json:"id"`   // stable id within its own type
-	Title   string `json:"title"`
-	Slug    string `json:"slug,omitempty"` // pages only
-	Kind    string `json:"kind"`           // page kind or note kind
-	Snippet string `json:"snippet"`
-	Rank    int    `json:"rank"` // 1-based position in its own ranked list
+	Ref         string `json:"ref"`  // "P1" / "N3" — what the answer cites
+	Type        string `json:"type"` // "page" | "note"
+	ID          int64  `json:"id"`   // stable id within its own type
+	ProjectID   int64  `json:"project_id"`
+	ProjectName string `json:"project_name,omitempty"`
+	Title       string `json:"title"`
+	Slug        string `json:"slug,omitempty"` // pages only
+	Kind        string `json:"kind"`           // page kind or note kind
+	Snippet     string `json:"snippet"`
+	Rank        int    `json:"rank"` // 1-based position in its own ranked list
 }
 
 // Evidence is a budgeted, citable set plus an honest account of what did not fit.
@@ -137,6 +139,20 @@ func (s *Service) GatherEvidence(projectID int64, query string, budget EvidenceB
 		ev.Truncated = true
 	}
 	ev.ElapsedMS = time.Since(start).Milliseconds()
+
+	// Populate project names for evidence items where project ID is known
+	if projs, err := db.GetAllProjects(s.db); err == nil {
+		pNames := make(map[int64]string, len(projs))
+		for _, pr := range projs {
+			pNames[pr.ID] = pr.Name
+		}
+		for i := range ev.Items {
+			if ev.Items[i].ProjectID > 0 {
+				ev.Items[i].ProjectName = pNames[ev.Items[i].ProjectID]
+			}
+		}
+	}
+
 	return ev
 }
 
@@ -197,7 +213,7 @@ func (s *Service) evidencePages(query string, projectID int64, limit int, budget
 		out := make([]EvidenceItem, 0, len(visible))
 		for i, p := range visible {
 			out = append(out, EvidenceItem{
-				Type: "page", ID: p.ID, Title: p.Title, Slug: p.Slug, Kind: p.Kind,
+				Type: "page", ID: p.ID, ProjectID: p.ProjectID, Title: p.Title, Slug: p.Slug, Kind: p.Kind,
 				Snippet: clipRunes(p.Content, 600), Rank: i + 1,
 			})
 		}
@@ -239,7 +255,7 @@ func (s *Service) evidencePages(query string, projectID int64, limit int, budget
 		}
 		p := found[idx]
 		out = append(out, EvidenceItem{
-			Type: "page", ID: p.ID, Title: p.Title, Slug: p.Slug, Kind: p.Kind,
+			Type: "page", ID: p.ID, ProjectID: p.ProjectID, Title: p.Title, Slug: p.Slug, Kind: p.Kind,
 			Snippet: clipRunes(p.Content, 600), Rank: rank + 1,
 		})
 	}
@@ -266,7 +282,7 @@ func (s *Service) evidenceNotes(query string, projectID int64, limit int, start 
 			continue
 		}
 		out = append(out, EvidenceItem{
-			Type: "note", ID: h.ID, Title: h.Title, Kind: "note",
+			Type: "note", ID: h.ID, ProjectID: h.ProjectID, Title: h.Title, Kind: "note",
 			Snippet: clipRunes(h.Snippet, 400), Rank: i + 1,
 		})
 	}

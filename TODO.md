@@ -5,9 +5,9 @@
 
 ## 现状速查（新会话从这里开始）
 
-- 品牌 **Repotory**（原 RepoNest），版本 **v2.2.0**（2026-10-15），SSOT 在 `wails.json`。
-- schema **v23**（`page_embeddings` 页面向量空间 + `page_embed_dirty` 增量队列，ADR-0018 lane 2 已落码；`evidencePages` 图感知取证 `wiki_graph_search` 默认关、零回退）；ADR-0018 lane 1（关系词表八型）已 **Accepted**（真库演练 PASS，产物 `v21-rehearse/`）。
-- 近期大项均已落地：插件脚本运行时（yaegi）已移除（C11-B）、全局 CSS Modules 迁移收口（全局 1,227 行）、D25 首屏「记忆环 + 项目状态」并排（`web/src/pages/Home.tsx`）。
+- 品牌 **Repotory**（原 RepoNest），版本 **v2.4.0**（2026-10-16），SSOT 在 `wails.json`。
+- schema **v24**（ADR-0023 笔记归属 `project_kind` 已随 v2.3.0 发布；`page_embeddings` 页面向量空间 + `page_embed_dirty` 增量队列，ADR-0018 lane 2 已落码；`evidencePages` 图感知取证 `wiki_graph_search` 默认关、零回退）；ADR-0018 lane 1（关系词表八型）已 **Accepted**（真库演练 PASS，产物 `v21-rehearse/`）。
+- 近期大项均已落地：插件脚本运行时（yaegi）已移除（C11-B）、全局 CSS Modules 迁移收口（全局 1,227 行）、D25 首屏经 **ADR-0024** 演进为**首页工作台**——单栏融合仪表盘 + 记忆环条（`web/src/pages/Home.tsx`），全局搜索独立为 `/search` 顶级页（空闲态含热门项目 / 热门标签推荐，`web/src/pages/Search.tsx`），`/dashboard` 重定向到 `/`，导航以「搜索」取代「仪表盘」。
 - **真库事故（2026-10-14，已恢复，损失见「用户动作」）**：`project_notes` 主表页级损坏（101 处 invalid page number，原因未定论；当日数据目录曾出现 15 个「删除时仍被打开」的 sidecar 残留，APFS 本地快照为空）。经 `.recover` 重建 + FTS 三表 rebuild 后换入，quick_check ok、integrity 83/100 零 fail；批页成果（7 页全 approved、7 份版本快照、2 条边）保住。**笔记 75 → 22 条**（AI1 丢 41 条，其余 12 条散布 6 个项目）。损坏原件与首次备份在 `~/Library/Application Support/repotory-corruption-backup-20261014/`。
 
 ---

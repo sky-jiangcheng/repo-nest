@@ -301,6 +301,8 @@ export interface EvidenceItem {
   ref: string // "P1" / "N2" — positional label from this retrieval only
   type: 'page' | 'note'
   id: number
+  project_id?: number
+  project_name?: string
   title: string
   slug?: string
   kind: string

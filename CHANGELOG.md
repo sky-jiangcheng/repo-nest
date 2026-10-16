@@ -4,6 +4,25 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [Unreleased]
+
+## [2.4.0] - 2026-10-16
+
+### 新增
+
+- **首页演进为知识库智能对话工作台，与仪表盘权责分离**：此前 `/` 直接完整嵌入仪表盘，造成「首页即仪表盘+1」的严重功能冗余。现重新理清两端定位：
+  - **仪表盘 (`/dashboard`)** 恢复为独立顶级页与主导航直达项，专注呈现开发动态统计、热力图日历、工作日新增行数目标、全量代码扫描与项目列表多维过滤；
+  - **首页 (`/`)** 聚焦为 **人与知识库的智能交互中心**：顶部保留记忆环条（最近 handoff 状态与快捷恢复），主体接入全新 **知识库智能助手工作台（`HomeKnowledgeAssistant`）**，底部提供重点项目速览与今日动态卡片（并附「进入完整仪表盘」直达链接）。
+- **人与知识库流式对话与项目/知识卡片联动交互**：
+  - **检索范围切换**：支持「全库知识与全部项目」跨项目检索与「指定单个项目」问答无缝切换；
+  - **流式问答与本地弹性兜底**：配置 AI 端点时走 `askAIWithEvidenceStream` 逐字流式回复；未配置时无缝回退为本地 FTS5 全量索引匹配，保障开箱即用；
+  - **对话嵌入项目卡片 (`ProjectCard`)**：回答中自动识别涉及项目，渲染带仓库数、活动动态与路径的项目卡片，**点击卡片直接跳转进入项目详情页 (`/project/:id`)**；
+  - **对话嵌入引用知识卡片 (`KnowledgeCard`)**：回答中引用的知识笔记与 Wiki 页面渲染为卡片，标明 `[N#]/[P#]` 引用代号、所属项目与文本摘要，**点击卡片直接跳转并定位进入项目笔记或知识详情页 (`/project/:id?tab=notes&noteId=N`)**；
+  - **回答一键沉淀**：支持复制回复、一键「存为知识笔记」（保存至关联项目）、一键「存为 Wiki 页面」（严格继承本次引用的证据链）；
+  - **快捷探索预设**：空闲态提供多维度快捷提问卡片（梳理项目架构依赖、最近交接记录、最佳实践参考等），点击一键提问。
+- **全局搜索独立成页与热门推荐（`/search`，ADR-0024）**：单输入框检索全部项目的笔记、待办与项目名，结果按「项目 / 笔记 / 待办」分组，查询同步 `?q=` 可深链；空闲态推荐热门项目 top 6 与热门标签 top 12。
+- **后端证据项扩展所属项目元数据**：`internal/service/wiki_evidence.go` 的 `EvidenceItem` 补充 `ProjectID` 与 `ProjectName`，取证层（页面与笔记）在召回时自动注入项目归属，为跨项目对话与精准跳转提供底层数据支撑。
+
 ## [2.3.0] - 2026-10-16
 
 ### 新增
@@ -186,7 +205,9 @@
 
 > v1.15.1 及更早版本（v1.0.0 – v1.15.1，2026-03 – 2026-10）的变更历史见 [outputs/archive/CHANGELOG-v1.0-v1.15.md](outputs/archive/CHANGELOG-v1.0-v1.15.md)。
 
-[Unreleased]: https://github.com/sky-jiangcheng/repotory/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/sky-jiangcheng/repotory/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/sky-jiangcheng/repotory/compare/v2.3.0...v2.4.0
+[2.3.0]: https://github.com/sky-jiangcheng/repotory/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/sky-jiangcheng/repotory/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/sky-jiangcheng/repotory/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/sky-jiangcheng/repotory/compare/v1.16.2...v2.0.0

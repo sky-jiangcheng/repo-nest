@@ -126,6 +126,7 @@ Development mode: `wails dev` (frontend hot reload + Wails binding injection). T
 ## Next Steps
 
 - [Data and Backup](data-management.md): backup, migrating to a new machine, reset, and uninstall
-- [Dashboard](features/dashboard.md): goal progress, heatmap, and sorting
+- [Home workbench (Dashboard)](features/dashboard.md): goal progress, heatmap, and sorting
+- [Global Search](features/search.md): cross-project search and hot recommendations
 - [Knowledge Base and Notes](features/knowledge.md): the block editor and full-text search
 - [Settings](features/settings.md): scanning, daily code target, appearance, plugins

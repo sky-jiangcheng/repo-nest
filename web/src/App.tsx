@@ -14,11 +14,13 @@ import BrandMark from './components/BrandMark'
 import { ToastContext } from './hooks/useToast'
 import s from './App.module.css'
 
-// Lazy-loaded pages. The initial route (Home, the D25 memory-ring + project
-// status first screen) is still eagerly loaded by the browser, but subsequent
-// navigations only fetch the chunks that are needed.
+// Lazy-loaded pages. The initial route (Home, the ADR-0024 single-column
+// workbench: dashboard panels + memory-ring strip on one flow) is still
+// eagerly loaded by the browser, but subsequent navigations only fetch the
+// chunks that are needed.
 const Home = lazy(() => import('./pages/Home'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
+const SearchPage = lazy(() => import('./pages/Search'))
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Knowledge = lazy(() => import('./pages/Knowledge'))
@@ -47,7 +49,7 @@ function PageLoader() {
 // the whole app with no way back. Uses the standalone ErrorBoundary component
 // with resetKey-based auto-recovery on route changes.
 
-function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
+function NavBar() {
   const { pathname } = useLocation()
   const { t } = useTranslation()
   const [langOpen, setLangOpen] = useState(false)
@@ -79,11 +81,14 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
             <Link to="/" className={navClass(pathname === '/')}>
               {t('nav.home', { defaultValue: '首页' })}
             </Link>
+            <Link to="/dashboard" className={navClass(pathname === '/dashboard')}>
+              {t('nav.dashboard', { defaultValue: '仪表盘' })}
+            </Link>
+            <Link to="/search" className={navClass(pathname === '/search')}>
+              {t('nav.search')}
+            </Link>
             <Link to="/knowledge" className={navClass(pathname === '/knowledge')}>
               {t('nav.knowledge')}
-            </Link>
-            <Link to="/dashboard" className={navClass(pathname === '/dashboard' || pathname.startsWith('/project'))}>
-              {t('nav.dashboard')}
             </Link>
             <Link to="/review" className={navClass(pathname === '/review')}>
               {t('nav.review')}
@@ -119,18 +124,18 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
               </div>
             )}
           </div>
+          {/* Global search is now a top-level page (ADR-0024); the palette
+              stays reachable via ⌘K for keyboard-first quick switching. */}
           <div role="search">
-            <button
+            <Link
+              to="/search"
               className={`${s.navPaletteBtn}`}
-              onClick={onOpenPalette}
-              aria-label={t('nav.searchLabel', { defaultValue: 'Open search (⌘K)' })}
-              title={t('nav.searchLabel', { defaultValue: 'Open search (⌘K)' })}
-              aria-haspopup="dialog"
+              aria-label={t('search:navLabel', { defaultValue: '打开全局搜索' })}
+              title={t('search:navLabel', { defaultValue: '打开全局搜索' })}
             >
               <Icon name="search" size={14} />
               <span>{t('nav.search')}</span>
-              <kbd className={`${s.navKbd}`}>⌘K</kbd>
-            </button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -239,7 +244,7 @@ function App() {
             <div className="conn-banner" role="alert" aria-live="polite">{connBanner}</div>
           )}
           <a className={s.skipLink} href="#main-content" onClick={skipToContent}>{t('common.show', { defaultValue: 'Skip to main content' })}</a>
-          <NavBar onOpenPalette={() => setPaletteOpen(true)} />
+          <NavBar />
           <main id="main-content" className={s.mainContent} tabIndex={-1}>
             <RoutedApp />
           </main>
@@ -265,6 +270,7 @@ function RoutedApp() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/project/:id" element={<ProjectDetail />} />
           <Route path="/knowledge" element={<Knowledge />} />
           <Route path="/review" element={<Review />} />

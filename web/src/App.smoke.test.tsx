@@ -39,6 +39,7 @@ function installWailsBindings() {
     // panel calls its own summary/heatmap/status endpoints on mount.
     ListRecentHandoffs: () => Promise.resolve([]),
     ListProjects: () => Promise.resolve([]),
+    GetProjects: () => Promise.resolve([]),
     GetSummary: () => Promise.resolve(null),
     GetTodoCounts: () => Promise.resolve([]),
     GetNoteCounts: () => Promise.resolve([]),

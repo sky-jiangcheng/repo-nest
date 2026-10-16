@@ -9,6 +9,8 @@
 - 日期：2026-10-08
 - 关联：[ADR-0006](0006-scope-freeze.md)（范围冻结与功能分级）、[ADR-0008](0008-pwa-removal.md)（PWA 移出主构建，遗产清理先例）、[ADR-0009](0009-ide-presence.md)（IDE 存在感与分发策略）、TODO D25（仪表盘生产力门面收缩，本 ADR 修正其删除/隐藏倾向）、docs/positioning-brief.md（定位简报）
 
+> **2026-10-16 修订注记**：「界面对齐」一节描述的「记忆环 + 项目状态」**两栏并排**布局已被 [ADR-0024](0024-home-workbench-merge-search-page.md) 修订为**单栏融合**（首页工作台化，`/dashboard` 并入 `/`）；「记忆环与项目状态同屏、仪表盘不移出首屏、不默认隐藏、不删除」的立场本身不变。
+
 ## 背景
 
 产品对外叙事已收敛为「本地优先的跨 agent 项目记忆层」（`scan → context → handoff` 闭环，见 positioning-brief），但仓库内部仍存在两套叙事残留：**agent 侧**（MCP 13 工具、CLI、init 脚本、多 agent 导入器）与**人侧界面**（桌面应用：Dashboard、项目状态、目标环、热力图、知识库编辑）。讨论「是否拆成两个产品」时，必须区分两件不同的事：

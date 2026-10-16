@@ -138,6 +138,9 @@
      misalignment rather than a choice. */
   height: 30px;
   padding: 0 12px;
+  /* ADR-0024: the trigger is now a Link to /search, not a button — kill the
+     default anchor text decoration so the pill look is preserved. */
+  text-decoration: none;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-tertiary);
@@ -153,18 +156,8 @@
   color: var(--text-primary);
 }
 
-.navKbd {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  color: var(--text-tertiary);
-}
-
 @media (max-width: 640px) {
-  .navKbd, .navPaletteBtn span:not(.navKbd) { display: none; }
+  .navPaletteBtn span { display: none; }
 
   /* Tighten every horizontal step so brand + 3 links + 2 controls fit a 390px
      viewport without scrolling: wordmark drops its label, link padding halves,
