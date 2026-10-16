@@ -1,6 +1,6 @@
 ---
 title: Architecture Decision Records (ADR)
-order: 23
+order: 24
 ---
 
 # Architecture Decision Records (ADR)
@@ -28,10 +28,12 @@ order: 23
 | [0019](0019-entity-resolution-merge.md) | Entity resolution and concept merging — fixing "concept splitting", where merging is always human-triggered | Proposed (**implemented 2026-10-13**: structural blocking, the merge transaction, the model second opinion filing `[lint] merge` todos, and the review page's merge area; criteria 1-4 met, criterion 5's real-DB rehearsal awaits the user; the vector-similarity branch still waits on lane 2) |
 | [0020](0020-community-synthesis.md) | Community summaries — let the synthesis layer grow on its own via Label Propagation | Proposed (**implemented 2026-10-13**: 待决 4 landed as synchronous with hard budgets — no job, no `compile_jobs` rebuild; criteria 1/2/3/5 met, criterion 4's real-DB rehearsal awaits the user) |
 | [0021](0021-temporal-graph-page-versions.md) | Temporal graph — `page_versions` snapshots make safely revising approved conclusions possible | Proposed (**foundation implemented 2026-10-13 as schema v22**: trigger-written snapshots, append-only guards, per-page backfill; criteria 1/2 met; criterion 4 was rewritten the same day into "backfill reconciliation on the live database" because the real database was advanced to v22 without a rehearsal, leaving the original wording inapplicable, and the reconciliation now presupposes approved pages (approving is a human-only act); criterion 3 waits with `revise_page`) |
-| [0023](0023-note-ownership-knowledge-organize.md) | Note ownership and knowledge-base organize — imports stop silently dropping knowledge, floating knowledge gets a landing spot and a way home | Proposed (**design approved by the user 2026-10-16; S1–S5 implemented, all gates green**: `projects` gains `project_kind` (scanned/import_placeholder/default, standalone v24), a seeded "Uncategorized" default row, import `ProjectID=0` switches from drop to mixed landing (codebuddy-memory included), placeholders auto-promote on scan, knowledge-base organize = project-level reassignment, default project exempt from cleanup, source-repo-gone → manual optional delete; **Accepted awaits the live-DB copy rehearsal**; starting schema v23). *Note: the English mirror of 0022 is still missing — a pre-existing bilingual drift, not introduced here.* |
+| [0022](0022-agent-memory-discovery-sync.md) | Auto-discovery and scheduled sync of agent memory — source type visible to the user (M8) | Proposed (design pending review; the CodeBuddy wiring is an independent first-step item) |
+| [0023](0023-note-ownership-knowledge-organize.md) | Note ownership and knowledge-base organize — imports stop silently dropping knowledge, floating knowledge gets a landing spot and a way home | Proposed (**design approved by the user 2026-10-16; S1–S5 implemented, all gates green**: `projects` gains `project_kind` (scanned/import_placeholder/default, standalone v24), a seeded "Uncategorized" default row, import `ProjectID=0` switches from drop to mixed landing (codebuddy-memory included), placeholders auto-promote on scan, knowledge-base organize = project-level reassignment, default project exempt from cleanup, source-repo-gone → manual optional delete; **Accepted awaits the live-DB copy rehearsal**; starting schema v23) |
+| [0024](0024-home-workbench-merge-search-page.md) | Home workbench — merge home with dashboard, split global search into its own page, add recommendations | **Accepted (2026-10-16)**: `/` is a single-column fused Dashboard; `/dashboard` redirects; navigation replaces "Dashboard" with "Search"; `/search` empty state shows hot projects / hot tags; revises ADR-0017 §4 two-column wording, the "dashboard stays on the first screen" principle unchanged |
 
 ## Conventions
 
 - One ADR per major irreversible decision: Background → Decision → Consequences
 - Superseded ADRs keep their original text and banner; they are never deleted
-- New ADRs increment from `0024`, file name `NNNN-kebab-title.md`
+- New ADRs increment from `0025`, file name `NNNN-kebab-title.md`

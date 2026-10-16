@@ -55,6 +55,7 @@ docs/**/*.html
 .trae-html-share-packages/
 .workbuddy/
 .zcode/
+.zwork/
 
 # Release artifacts / 发布产物
 # Built by scripts/build-release-assets.sh; ~40MB of cross-compiled binaries.

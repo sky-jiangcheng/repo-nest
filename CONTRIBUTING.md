@@ -30,7 +30,10 @@ go build -o repotory-mcp ./cmd/mcp/
 go test ./...            # Go 全量测试（service/db/knowledge/scanner/diff…）
 cd web && npm test       # vitest
 cd web && npm run build  # tsc 严格检查（ESLint 现状见 TODO.md）
+node scripts/check-docs-mirror.mjs  # 双语文档 1:1 镜像守卫（docs/** ↔ docs/en/**）
 ```
+
+> 双语文档镜像守卫：`docs/**/*.md`（中文源）与 `docs/en/**/*.md`（英文源）必须互为 1:1。改一边、只改一边的「双语漂移」会被 `scripts/check-docs-mirror.mjs` 在 CI（`docs-mirror` job）拦下。有意只出中文的研究文档（`competitive-positioning.md`、`positioning-brief.md`、`product-review/*`）在该脚本的 `ZH_ONLY` 白名单里；新增此类文档时同步登记白名单，否则守卫会误报。
 
 ## 架构约定
 
@@ -57,7 +60,7 @@ cd web && npm run build  # tsc 严格检查（ESLint 现状见 TODO.md）
 
 ## PR 检查清单
 
-- [ ] `go test ./...`、`npm test`、`npm run build` 全绿
+- [ ] `go test ./...`、`npm test`、`npm run build` 全绿；`node scripts/check-docs-mirror.mjs`（双语文档 1:1 镜像守卫，CI `docs-mirror` job）通过
 - [ ] 不触碰范围冻结与冻结标识（或已在 Issue/ADR 中说明理由）
 - [ ] 绑定面变更已同步 API 参考；用户可见变更已更新手册与 CHANGELOG
 - [ ] 新增依赖有明确理由（本项目依赖极简：wails、mcp-go、yaegi、modernc sqlite）

@@ -120,6 +120,29 @@ jobs:
       - name: Verify icon derivatives match build/icon.svg
         run: node scripts/generate-icons.mjs --check
 
+  # ------------------------------------------------- Docs mirror ----
+  # The bilingual manual (docs/**/*.md 中文源 ↔ docs/en/**/*.md 英文源) must stay
+  # 1:1. A half-migration ("只改一边") historically let the English site describe a
+  # product architecture that did not exist — that is exactly what this gate
+  # turns into a hard failure. Pure node, zero deps, no build: it just diffs the
+  # two .md trees and (for intentionally-Chinese-only research docs) checks them
+  # against the whitelist inside the script.
+  docs-mirror:
+    name: Docs ZH/EN 1:1 mirror
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe50 # v7
+        with:
+          node-version: '20'
+
+      - name: Check ZH/EN mirror
+        run: node scripts/check-docs-mirror.mjs
+
   # --------------------------------------------------------------- Web ----
   web-test:
     name: Web typecheck, test & build

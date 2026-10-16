@@ -6,6 +6,23 @@
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-10-16
+
+### 新增
+
+- **导航栏主题切换器（moon/dark/system 三态）**：顶栏新增主题下拉，可在「跟随系统 / 亮色 / 暗色」间切换，选择经 `storeTheme` 持久化、刷新后保留；`utils/theme` 导出 `ThemeMode` 与 `storeTheme`，图标映射 sun/moon/monitor。
+- **主题命名统一 + 首页 UI 精修**：`App.tsx`/`App.module.css` 梳理主题相关命名（旧 `moon` 语义与 `dark` 归一），首页（`Home.module.css`）补 tooltip 与 `:focus-visible` 焦点样式，可访问性改善；中/英 `common.json` 文案随主题命名同步。
+
+### 变更
+
+- **CI 新增 `docs-mirror` 硬门（双语文档 1:1 守卫）**：`scripts/check-docs-mirror.mjs` 递归比对 `docs/**/*.md`（中文源）与 `docs/en/**/*.md`（英文源），任何「只改一边」的漂移直接拦下——这正是 2026-10 英文站曾讲出不存在产品架构的根因；有意只出中文的研究文档（`competitive-positioning` / `positioning-brief` / `product-review/*`）走脚本内 `ZH_ONLY` 白名单。纯 node 零依赖，接入 `ci.yml` 新 job。
+- **补齐双语文档镜像（消除既有漂移）**：补上缺失的 `docs/en/adr/0022`（agent 记忆自动发现与定时同步）与 `docs/en/adr/0024`（首页工作台化）两份英文镜像，并同步中英文 `adr/index.md`（0022/0024 两行、递增号推进到 0025）。
+
+### 修复
+
+- **`AGENTS.md` 高频陷阱指针修正**：`ExpectedSchemaVersion` 实际位于 `internal/integrity/checks.go`（非 `migrate.go`），A 计数 21→24 份；双语漂移陷阱条新增「已有 CI `docs-mirror` 守卫」指引。
+- **`.gitignore` 补 `.zwork/`**：本地 agent 会话产物目录（与 `.easyclaw/` `.workbuddy/` `.zcode/` 同类）此前未忽略，有误提交风险；一并把 `CONTRIBUTING.md` 登记新守卫门与本地校验命令。
+
 ## [2.4.0] - 2026-10-16
 
 ### 新增
@@ -205,7 +222,8 @@
 
 > v1.15.1 及更早版本（v1.0.0 – v1.15.1，2026-03 – 2026-10）的变更历史见 [outputs/archive/CHANGELOG-v1.0-v1.15.md](outputs/archive/CHANGELOG-v1.0-v1.15.md)。
 
-[Unreleased]: https://github.com/sky-jiangcheng/repotory/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/sky-jiangcheng/repotory/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/sky-jiangcheng/repotory/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/sky-jiangcheng/repotory/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/sky-jiangcheng/repotory/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/sky-jiangcheng/repotory/compare/v2.1.0...v2.2.0
