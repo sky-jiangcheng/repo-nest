@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 修复
+
+- **CI `docs-mirror` job 的 `setup-node` SHA 钉成 38 位短 SHA，首个运行即在 Set up job 被 GitHub 拒绝**：该 job 随 v2.5.0 的 bump 提交进入 `ci.yml`，v2.5.0 发布当天的 CI run 是它的第一次运行——结果从未真正跑到镜像比对，就在解析 action 时报「the provided ref is the shortened version of a commit SHA」。修复为与其余 5 处引用一致的完整 40 位 SHA（与 release.yml / pages.yml 同值）。
+
 ## [2.5.0] - 2026-10-16
 
 ### 新增
