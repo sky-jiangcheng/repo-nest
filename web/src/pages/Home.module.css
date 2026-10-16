@@ -351,6 +351,27 @@
   text-decoration: underline;
 }
 
+/* Focus-visible rings for keyboard navigation */
+.searchEntry:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+}
+
+.projectQuickCard:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+}
+
+.todayLink:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+}
+
+.handoffItem:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+}
+
 @media (max-width: 640px) {
   .ring {
     align-items: stretch;

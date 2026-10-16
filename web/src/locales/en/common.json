@@ -8,7 +8,13 @@
     "searchLabel": "Open search (⌘K)",
     "main": "Main navigation",
     "language": "Switch language",
-    "review": "Review"
+    "review": "Review",
+    "theme": "Theme",
+    "themes": {
+      "light": "Bright side of the moon",
+      "dark": "Dark side of the moon",
+      "system": "Follow system"
+    }
   },
   "home": {
     "title": "Home",
@@ -52,7 +58,8 @@
     "goToSettings": "Configure AI",
     "quickProjectsTitle": "Featured Projects",
     "viewAllDashboard": "Open Full Dashboard",
-    "todayActivity": "Today's Dev Activity"
+    "todayActivity": "Today's Dev Activity",
+    "todayCardTooltip": "Today's dev activity: shows lines added today and number of repositories involved."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -200,9 +207,9 @@
     "enterAuthor": "Please enter a Git author name",
     "appearanceDesc": "Choose your preferred interface theme.",
     "themes": {
-      "light": "Light",
+      "light": "Bright side of the moon",
       "lightDesc": "Always use light theme",
-      "dark": "Dark",
+      "dark": "Dark side of the moon",
       "darkDesc": "Always use dark theme",
       "system": "Follow system",
       "systemDesc": "Automatically match system appearance"
@@ -250,27 +257,27 @@
     "targetSaved": "Target project saved for {{source}}",
     "save": "Save",
     "saving": "Saving…",
-"groupImport": "Knowledge import",
-  "sourceTypes": {
-    "agent-import": "Agent memory",
-    "user-conversation": "Session history",
-    "project-extract": "Project extract",
-    "manual": "Manual"
-  },
-  "sourceDetected": "Data found",
-  "sourceNotDetected": "No data found",
-  "syncToggleLabel": "Toggle periodic sync for {{name}}",
-  "syncOn": "Periodic sync enabled for {{name}}",
-  "syncOff": "Periodic sync disabled for {{name}}",
-  "syncOnShort": "On",
-  "syncOffShort": "Off",
-  "syncHiddenHint": "No data detected for this source on this machine; periodic sync will skip it",
-  "lastSyncAt": "Last periodic sync: {{time}}",
-  "neverSynced": "Periodic sync has not run yet",
-  "syncLastError": "Last sync error: {{msg}}",
-  "groupSync": "Periodic sync",
-  "syncHint": "Automatically imports enabled sources on a fixed interval (default 240 minutes); sources with no detected data are skipped. Manual imports still work via the per-source button.",
-  "groupTargets": "Global-memory sources · target project",
+    "groupImport": "Knowledge import",
+    "sourceTypes": {
+      "agent-import": "Agent memory",
+      "user-conversation": "Session history",
+      "project-extract": "Project extract",
+      "manual": "Manual"
+    },
+    "sourceDetected": "Data found",
+    "sourceNotDetected": "No data found",
+    "syncToggleLabel": "Toggle periodic sync for {{name}}",
+    "syncOn": "Periodic sync enabled for {{name}}",
+    "syncOff": "Periodic sync disabled for {{name}}",
+    "syncOnShort": "On",
+    "syncOffShort": "Off",
+    "syncHiddenHint": "No data detected for this source on this machine; periodic sync will skip it",
+    "lastSyncAt": "Last periodic sync: {{time}}",
+    "neverSynced": "Periodic sync has not run yet",
+    "syncLastError": "Last sync error: {{msg}}",
+    "groupSync": "Periodic sync",
+    "syncHint": "Automatically imports enabled sources on a fixed interval (default 240 minutes); sources with no detected data are skipped. Manual imports still work via the per-source button.",
+    "groupTargets": "Global-memory sources · target project",
     "groupCapture": "Claude session capture",
     "captureProjectLabel": "Capture by project ID",
     "subtitle": "Manage scan scope, metrics and knowledge sources",

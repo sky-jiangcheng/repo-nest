@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next'
 import CommandPalette from './components/CommandPalette'
 import ToastHost, { type ToastItem } from './components/Toast'
 import { listenImportCompleted } from './api/transport'
-import { applyTheme, getStoredTheme, listenSystemTheme } from './utils/theme'
+import { applyTheme, getStoredTheme, listenSystemTheme, storeTheme, type ThemeMode } from './utils/theme'
 import ErrorBoundary from './components/ErrorBoundary'
 import { setLanguage, getCurrentLanguage } from './i18n'
 import { getConnectionKind, subscribeConnection, startHealthPoll } from './api/transport'
 import Icon from './components/Icon'
+import type { IconName } from './components/Icon'
 import QuickCaptureFab from './components/QuickCaptureFab'
 import BrandMark from './components/BrandMark'
 import { ToastContext } from './hooks/useToast'
@@ -53,8 +54,11 @@ function NavBar() {
   const { pathname } = useLocation()
   const { t } = useTranslation()
   const [langOpen, setLangOpen] = useState(false)
-  const currentLang = getCurrentLanguage()
+  const [themeOpen, setThemeOpen] = useState(false)
+  const [themeMode, setThemeMode] = useState<ThemeMode>(getStoredTheme())
   const langRef = useRef<HTMLDivElement>(null)
+  const themeRef = useRef<HTMLDivElement>(null)
+  const currentLang = getCurrentLanguage()
 
   // Close the language dropdown on outside clicks.
   useEffect(() => {
@@ -66,6 +70,22 @@ function NavBar() {
     return () => document.removeEventListener('mousedown', handler)
   }, [langOpen])
 
+  // Close the theme dropdown on outside clicks.
+  useEffect(() => {
+    if (!themeOpen) return
+    const handler = (e: MouseEvent) => {
+      if (themeRef.current && !themeRef.current.contains(e.target as Node)) setThemeOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [themeOpen])
+
+  const getThemeIcon = (mode: ThemeMode) => {
+    if (mode === 'light') return 'sun'
+    if (mode === 'dark') return 'moon'
+    return 'monitor'
+  }
+
   return (
     <header>
       <nav className={`${s.navbar}`} aria-label={t('nav.main')}>
@@ -75,7 +95,7 @@ function NavBar() {
                 the mark is a compact nest-and-card silhouette, and below
                 ~24px the bowl's inner arc closes up and it reads as a blob. */}
             <BrandMark size={26} className={`${s.navBrandMark}`} />
-            <span className={`${s.NavBrandName}`}>Repotory</span>
+            <span className={`${s.navBrandName}`}>Repotory</span>
           </Link>
           <div className={`${s.navLinks}`}>
             <Link to="/" className={navClass(pathname === '/')}>
@@ -119,6 +139,39 @@ function NavBar() {
                     onClick={() => { setLanguage(opt.code); setLangOpen(false) }}
                   >
                     <span>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className={`${s.themeSwitcher}`} ref={themeRef}>
+            <button
+              className={`${s.navThemeBtn}`}
+              onClick={() => setThemeOpen(v => !v)}
+              aria-label={t('nav.theme')}
+              title={t('nav.theme')}
+            >
+              <Icon name={getThemeIcon(themeMode) as IconName} size={14} />
+            </button>
+            {themeOpen && (
+              <div className={`${s.themeDropdown}`}>
+                {[ 
+                  { value: 'light' as const, labelKey: 'nav.themes.light', icon: 'sun' },
+                  { value: 'dark' as const, labelKey: 'nav.themes.dark', icon: 'moon' },
+                  { value: 'system' as const, labelKey: 'nav.themes.system', icon: 'monitor' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    className={`${s.themeOption} ${themeMode === opt.value ? s.themeOptionActive : ''}`}
+                    onClick={() => {
+                      setThemeMode(opt.value)
+                      storeTheme(opt.value)
+                      applyTheme(opt.value)
+                      setThemeOpen(false)
+                    }}
+                  >
+                    <Icon name={opt.icon as IconName} size={14} />
+                    <span>{t(opt.labelKey)}</span>
                   </button>
                 ))}
               </div>

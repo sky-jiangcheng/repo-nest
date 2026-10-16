@@ -102,7 +102,7 @@ export default function Home() {
           </ul>
         )}
 
-        <Link to="/search" className={s.searchEntry}>
+        <Link to="/search" className={s.searchEntry} title={t("search:homeEntryHint")}>
           <Icon name="search" size={14} />
           <span className={s.searchEntryLabel}>{t('search:homeEntry', { defaultValue: '全局搜索' })}</span>
           <span className={s.searchEntryHint}>{t('search:homeEntryHint', { defaultValue: '笔记 · 待办 · 项目' })}</span>
@@ -166,7 +166,7 @@ export default function Home() {
           ))}
 
           {/* Today's Dev Activity Summary Card */}
-          <div className={s.todaySummaryCard}>
+          <div className={s.todaySummaryCard} title={t("home.todayCardTooltip")}>
             <div className={s.todayHead}>
               <Icon name="zap" size={14} />
               <span>{t('home.todayActivity', { defaultValue: '今日开发动态' })}</span>

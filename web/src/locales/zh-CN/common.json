@@ -8,7 +8,13 @@
     "searchLabel": "打开搜索 (⌘K)",
     "main": "主导航",
     "language": "切换语言",
-    "review": "审核"
+    "review": "审核",
+    "theme": "主题",
+    "themes": {
+      "light": "月之亮面",
+      "dark": "月之暗面",
+      "system": "跟随系统"
+    }
   },
   "home": {
     "title": "首页",
@@ -52,7 +58,8 @@
     "goToSettings": "前往配置 AI",
     "quickProjectsTitle": "重点项目速览",
     "viewAllDashboard": "进入完整仪表盘",
-    "todayActivity": "今日开发动态"
+    "todayActivity": "今日开发动态",
+    "todayCardTooltip": "今日开发动态：显示今日新增代码行数和涉及的仓库数量"
   },
   "dashboard": {
     "title": "仪表盘",
@@ -199,9 +206,9 @@
     "enterAuthor": "请输入 Git 作者名称",
     "appearanceDesc": "选择你喜欢的界面主题风格。",
     "themes": {
-      "light": "浅色",
+      "light": "月之亮面",
       "lightDesc": "始终使用浅色主题",
-      "dark": "深色",
+      "dark": "月之暗面",
       "darkDesc": "始终使用深色主题",
       "system": "跟随系统",
       "systemDesc": "自动匹配系统外观设置"
