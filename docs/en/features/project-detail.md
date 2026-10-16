@@ -24,6 +24,7 @@ How to read it: vertically top to bottom, with the header card in the top-left a
 ### Header card
 
 - Project name and path, automatic/manual grouping marker
+- **Landing-project badge** ([ADR-0023](../adr/0023-note-ownership-knowledge-organize.md)): a "Unfiled repo" placeholder created by repo name when imported knowledge matched no project, or the "Uncategorized" default project that catches global memory with no repo path, is badged beside the title, and its path is the associated repo (a placeholder is promoted to a real project once a scan finds that repo)
 - **Split down / merge up**: adjust the grouping level (a single transaction; notes and todos move with it)
 - Summary stats: sub-repo count, active days, file changes, added/deleted lines
 

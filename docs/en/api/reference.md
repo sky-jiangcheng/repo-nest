@@ -73,13 +73,18 @@ cd .. && go build -o repotory-server ./cmd/server
 | `ToggleStar` | `(id) → bool` | toggle star, returns the new state (atomic UPDATE) |
 | `UpdateProjectLevel` | `(id, "up"\|"down") → {success, new_level}` | merge/split projects (single transaction) |
 | `RefreshProjectHistory` | `(id) → {success}` | backfill the last 365 days of stats for this project |
+| `ListOrganizeGroups` | `() → OrganizeGroup[]` | knowledge-base organize: lists landing projects (kind `import_placeholder` / `default`) that still hold unfiled notes, with their note count and whether a scanned repository points at them. Read-only, no MCP twin — organizing is a human act (see [ADR-0023](../adr/0023-note-ownership-knowledge-organize.md)) |
+| `ReassignLandingNotes` | `(sourceId, targetId) → int` | re-file every note from a landing project into a target real project (or "Uncategorized"); returns the number moved. Source must be a landing project; target must be a scanned project or the default. No MCP twin |
+| `DeleteLandingProject` | `(id, deleteNotes bool) → error` | delete an `import_placeholder` landing project; when it still holds notes `deleteNotes` must be true to confirm removing them along with it. The default and scanned projects are always refused — deletion is a confirmed action, never an automatic cascade. No MCP twin |
+
+**OrganizeGroup**: `{ project_id, name, root_path, kind, note_count, repo_bound }`.
 
 **ProjectResponse** (excerpt):
 
 ```json
 {
   "id": 1, "name": "my-project", "root_path": "/Users/me/code/my-project",
-  "is_starred": true, "repo_count": 2,
+  "is_starred": true, "repo_count": 2, "project_kind": "scanned",
   "total_added": 1200, "total_deleted": 300,
   "my_added": 800, "my_deleted": 200, "my_files": 15,
   "is_workday": true, "below_standard": false

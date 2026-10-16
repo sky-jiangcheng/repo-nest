@@ -95,13 +95,19 @@ Six built-in sources idempotently import the memory and session transcripts you 
 
 Three rules that are easy to trip over:
 
-1. **Imports land on a project, they do not pile onto the knowledge home page.** Documents are matched to a specific project by project name / repository path; whatever does not match is counted as `skipped` and not stored. So scan the projects first — hit rate depends on that order.
-2. **`openclaw` and `hermes` need their target project configured first** (`openclaw_project` / `hermes_project`); otherwise the entire source is silently skipped.
+1. **Imports land on a project, but a non-match is no longer dropped.** Documents are matched to a specific project by project name / repository path; whatever does not match (ADR-0023) lands on a **"Unfiled repo" placeholder** named after the repo (promoted to a real project once a scan finds that same repo), or on the always-present **Uncategorized** default project when there is no repo path — and can be re-filed later from the **Organize** area at the bottom of this page. Scanning projects first still raises the hit rate.
+2. **`openclaw`, `hermes` and `codebuddy-memory` target projects are now optional** (`openclaw_project` / `hermes_project` / `codebuddy_project`): set one to attach all their notes to it, or leave it unset and they land on Uncategorized — no more silent skipping.
 3. **A repeat import is not a failure.** `created=0` plus `updated=N` means idempotency worked and the content was refreshed.
 
-**`cursor` is the only best-effort source**: Cursor's on-disk format is undocumented and versioned, so it takes only the **first prompt and last reply** of each session (never a full transcript), resolves ownership through `workspaceStorage/<id>/workspace.json` and skips what it cannot match rather than guessing — and when the database shape is not one it recognizes, **the whole source fails loudly instead of quietly importing zero notes** (because "nothing imported" must stay distinguishable from "you have no sessions"). Every read opens that file `mode=ro`; another application's data is never written.
+**`cursor` is the only best-effort source**: Cursor's on-disk format is undocumented and versioned, so it takes only the **first prompt and last reply** of each session (never a full transcript), resolves ownership through `workspaceStorage/<id>/workspace.json` and, as of ADR-0023, files a folder that matches no project onto a placeholder rather than skipping it — and when the database shape is not one it recognizes, **the whole source fails loudly instead of quietly importing zero notes** (because "nothing imported" must stay distinguishable from "you have no sessions"). Every read opens that file `mode=ro`; another application's data is never written.
 
 Imported notes carry `kind` = `knowledge` (memory files) or `log` (session records) and are findable by full-text search as soon as they are written; with semantic search enabled they are also picked up by vector recall without another rebuild (see above). Full paths, matching rules and limitations per source are in [Knowledge source plugins](../plugins/overview.md).
+
+### Landing & organize ([ADR-0023](../adr/0023-note-ownership-knowledge-organize.md))
+
+Knowledge imported with no matching project is no longer lost — it lands on a **placeholder** (an "Unfiled repo" project named after the repo) or the **Uncategorized** default project, marked in the data by `project_kind`. The **Organize** area at the bottom of this page lets you re-file a batch of notes from a placeholder / Uncategorized bucket into a real project (or back into Uncategorized), or **confirm-delete** an emptied or orphaned placeholder (Uncategorized is never deletable; deletion is always a manual confirmation, never an automatic cascade). Project cards and the detail page badge these two buckets and show the associated repo path.
+
+For browsing, clicking a note in the knowledge base now **jumps straight to that note in the project's Notes tab and highlights it** (`/project/:id?tab=notes&noteId=N`) instead of only opening the project.
 
 ## Knowledge pages and the review queue
 

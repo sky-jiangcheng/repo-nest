@@ -1,6 +1,6 @@
 ---
 title: 架构决策（ADR）
-order: 23
+order: 24
 ---
 
 # 架构决策记录（ADR）
@@ -29,9 +29,10 @@ order: 23
 | [0020](0020-community-synthesis.md) | 社区摘要——用 Label Propagation 让 synthesis 层自己长出来 | Proposed（**2026-10-13 已落码**：待决 4 定为同步 + 硬预算，不做 job、不重建 `compile_jobs`；条件 1/2/3/5 满足，条件 4 真库演练待用户跑） |
 | [0021](0021-temporal-graph-page-versions.md) | 时态图——`page_versions` 快照让「修订已批准结论」可以安全发生 | Proposed（**2026-10-13 地基已落码 = schema v22**：触发器写入 + append-only 守卫 + 逐页回填；条件 1/2 满足；条件 4 于同日改写为「真库落地后的回填对账」——真库当天在无演练下推进到 v22，原措辞失去对象，改写后的对账需先有 approved 页（批准是人独有的动作）；条件 3 随 `revise_page` 等待） |
 | [0022](0022-agent-memory-discovery-sync.md) | 自动发现与定时同步 agent 记忆——来源类型用户可见（M8） | Proposed（方案待评审；CodeBuddy 接线可先行） |
+| [0023](0023-note-ownership-knowledge-organize.md) | 笔记归属与知识库整理——导入不再静默丢知识，漂着的知识有落点、可归口 | Proposed（**2026-10-16 设计经用户批准、S1–S5 已落码**：projects 加 `project_kind`（scanned/import_placeholder/default，v24 单开）、默认「未分类」种子行、导入 `ProjectID=0` 由丢弃改混合落点（含 codebuddy-memory）、占位随扫描自动转正、知识库整理=项目级归口、默认项目清理豁免、仓库消失→手动可选连删；`go test ./...`+`-race`+web build/test/lint+build-docs 全绿；**Accepted 只差真库副本演练**，起点 schema v23） |
 
 ## 约定
 
 - 每个重大不可逆决策一篇：背景 → 决策 → 后果
 - 被 superseded 的 ADR 保留原文与横幅，不删除
-- 新 ADR 从 `0022` 递增编号，文件名 `NNNN-kebab-title.md`
+- 新 ADR 从 `0024` 递增编号，文件名 `NNNN-kebab-title.md`
