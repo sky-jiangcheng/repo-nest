@@ -2,7 +2,7 @@
   "name": "repotory-vscode",
   "displayName": "Repotory",
   "publisher": "sky-jiangcheng",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Repotory inside your IDE: load session context, write session handoffs and search your local knowledge base from the command palette, status bar and sidebar. One VSIX covers VS Code, Cursor and Windsurf.",
   "license": "MIT",
   "engines": {
