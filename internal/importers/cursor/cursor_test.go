@@ -182,14 +182,30 @@ func TestImportProducesOneAttributedNote(t *testing.T) {
 	if err != nil {
 		t.Fatalf("import: %v", err)
 	}
-	if len(docs) != 1 {
-		ids := make([]string, 0, len(docs))
-		for _, d := range docs {
-			ids = append(ids, d.Title)
+	attributedIdx := -1
+	unattributed := 0
+	for i, doc := range docs {
+		if doc.ProjectID > 0 {
+			attributedIdx = i
+		} else {
+			unattributed++
 		}
-		t.Fatalf("got %d docs (%v), want exactly the one attributable non-subagent session", len(docs), ids)
 	}
-	d := docs[0]
+	if attributedIdx == -1 {
+		t.Fatalf("no attributed (project-resolved) doc among %d docs", len(docs))
+	}
+	// The orphan workspace (a real folder that matches no project) is now emitted
+	// with ProjectID==0 + a RepoPath so the runtime lands it on a placeholder
+	// instead of silently dropping it (ADR-0023). Previously it produced nothing.
+	if unattributed != 1 {
+		t.Fatalf("want exactly one unattributed to-be-landed doc, got %d (of %d total)", unattributed, len(docs))
+	}
+	for _, doc := range docs {
+		if doc.ProjectID == 0 && strings.TrimSpace(doc.RepoPath) == "" {
+			t.Error("unattributed doc must carry RepoPath so the runtime can land a placeholder")
+		}
+	}
+	d := docs[attributedIdx]
 	if d.Source != "cursor" || d.Kind != "log" || d.Tags != "cursor" {
 		t.Errorf("source/kind/tags = %q/%q/%q", d.Source, d.Kind, d.Tags)
 	}
@@ -331,8 +347,11 @@ func TestExcerptsTolerateMissingSide(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(docs) != 2 {
-		t.Fatalf("got %d docs, want the fixture session plus the one-sided one", len(docs))
+	// 3 docs now: the resolved fixture session, the one-sided session added here,
+	// and the fixture's orphan workspace — which ADR-0023 makes the importer emit
+	// with ProjectID==0 + RepoPath for the runtime to land (it used to be skipped).
+	if len(docs) != 3 {
+		t.Fatalf("got %d docs, want the fixture session + the one-sided one + the to-be-landed orphan", len(docs))
 	}
 	var found bool
 	for _, d := range docs {

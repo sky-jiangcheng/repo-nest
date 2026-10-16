@@ -43,10 +43,26 @@ type Prober interface {
 // ImportDoc is a single document produced by a KnowledgeImporter, to be
 // upserted into the knowledge base.
 type ImportDoc struct {
-	ProjectID int64  // target project; 0 to skip
-	Title     string // note title
-	Content   string // note body (Markdown)
-	Tags      string // comma-separated tags
-	Kind      string // note kind: knowledge | log | idea | other
-	Source    string // provenance, e.g. "claude"
+	// ProjectID is the resolved target project. 0 means "the importer could not
+	// match a project"; the runtime then LANDS the note rather than dropping it
+	// (ADR-0023): onto a placeholder project keyed by RepoPath when one is known,
+	// else onto the seeded default ("Uncategorized") project. A truly non-empty
+	// RepoPath is what lets an unmatched repo-scoped source still get a home.
+	ProjectID int64
+	// RepoPath is the source's repository/workspace path (a real filesystem path
+	// when the importer has one). Used only when ProjectID == 0 to create or reuse
+	// an import-placeholder project; because it is stored as the placeholder's
+	// root_path, a later scan that discovers the same repo adopts the row and
+	// promotes it to a real project. Empty for agent-global sources (openclaw,
+	// hermes, codebuddy-memory), which then land on the default project.
+	RepoPath string
+	// RepoName optionally overrides the placeholder project's display name; when
+	// empty the runtime uses the base name of RepoPath. Sources whose match key is
+	// a decoded label rather than a real path (claude) set this.
+	RepoName string
+	Title    string // note title
+	Content  string // note body (Markdown)
+	Tags     string // comma-separated tags
+	Kind     string // note kind: knowledge | log | idea | other
+	Source   string // provenance, e.g. "claude"
 }

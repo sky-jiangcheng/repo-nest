@@ -31,6 +31,9 @@ import (
 // Desktop-only (no MCP equivalent by design — GUI state, admin, or file UX):
 //   Projects: UpdateProjectLevel, ToggleStar, RefreshProjectHistory,
 //             GetRepoCommits, GetProjectCommits
+//   Organize (ADR-0023): ListOrganizeGroups, ReassignLandingNotes,
+//             DeleteLandingProject — human curation of landing buckets; the
+//             delete is a confirmed action, never an automatic cascade.
 //   AI: AskAIWithEvidence, FileAnswerAsPage, StartAskStream (evidence-gated Q&A,
 //       its query-loop filing, and the streaming variant; desktop UI consumers by
 //       design — StartAskStream rides Wails events, so no MCP/HTTP twin)
@@ -115,6 +118,28 @@ func (a *App) UpdateProjectLevel(id int64, direction string) (*service.LevelUpda
 
 // ToggleStar flips the starred status of a project.
 func (a *App) ToggleStar(projectID int64) (bool, error) { return a.svc.ToggleStar(projectID) }
+
+// --- Organize (ADR-0023) ----------------------------------------------------
+// Desktop-only: these back the knowledge-base "organize" surface that lands
+// unfiled notes (import placeholders / the default bucket) onto real projects.
+// Deliberately no MCP twin — organizing is a human curation act, and Delete-
+// LandingProject is the user-confirmed "delete this placeholder and its notes".
+
+// ListOrganizeGroups returns the landing projects (placeholders / default) that
+// still hold notes, for the organize view.
+func (a *App) ListOrganizeGroups() []domain.OrganizeGroup { return a.svc.ListOrganizeGroups() }
+
+// ReassignLandingNotes moves every note from a landing project to a target real
+// (or default) project and returns the count moved.
+func (a *App) ReassignLandingNotes(sourceID, targetID int64) (int, error) {
+	return a.svc.ReassignLandingNotes(sourceID, targetID)
+}
+
+// DeleteLandingProject removes an import-placeholder project; deleteNotes confirms
+// removing the notes still in it. The default and scanned projects are rejected.
+func (a *App) DeleteLandingProject(id int64, deleteNotes bool) error {
+	return a.svc.DeleteLandingProject(id, deleteNotes)
+}
 
 // RefreshProjectHistory triggers a full 365-day stats backfill for a single
 // project's repositories.

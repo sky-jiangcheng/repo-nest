@@ -1,10 +1,13 @@
 package service
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
 	"repotory/internal/db"
+	"repotory/internal/domain"
 )
 
 func TestResolveProjectByIDAndName(t *testing.T) {
@@ -16,7 +19,9 @@ func TestResolveProjectByIDAndName(t *testing.T) {
 		t.Fatalf("empty query with 2 projects should return candidates, got %+v", got)
 	}
 
-	byID := s.ResolveProject("1")
+	// Resolve by the seeded project's actual id (the default landing project
+	// occupies id=1 now, so the first user project is not necessarily id 1).
+	byID := s.ResolveProject(strconv.Itoa(int(pid)))
 	if byID.Project == nil || byID.Project.ID != pid {
 		t.Fatalf("numeric query should resolve by ID, got %+v", byID)
 	}
@@ -102,12 +107,22 @@ func TestBuildProjectContextHandoffNotesFirst(t *testing.T) {
 
 func TestBuildProjectContextAmbiguousReturnsCatalog(t *testing.T) {
 	s, _ := setupService(t)
-	seedProject(t, s.db, "alpha", "/home/me/alpha")
-	seedProject(t, s.db, "beta", "/home/me/beta")
+	idA := seedProject(t, s.db, "alpha", "/home/me/alpha")
+	idB := seedProject(t, s.db, "beta", "/home/me/beta")
 
 	doc := s.BuildProjectContext(s.ResolveProject(""))
-	if !strings.Contains(doc, "| 1 | alpha |") || !strings.Contains(doc, "| 2 | beta |") {
-		t.Errorf("ambiguous request should render a project catalog\n%s", doc)
+	for _, want := range []string{
+		fmt.Sprintf("| %d | alpha |", idA),
+		fmt.Sprintf("| %d | beta |", idB),
+	} {
+		if !strings.Contains(doc, want) {
+			t.Errorf("ambiguous request should render both real projects in the catalog; want %q in\n%s", want, doc)
+		}
+	}
+	// The seeded default ("Uncategorized") landing project has no repo to build
+	// context from and must never surface as a candidate (ADR-0023).
+	if strings.Contains(doc, domain.DefaultProjectName) || strings.Contains(doc, domain.DefaultProjectRootPath) {
+		t.Errorf("catalog must not list the default landing project\n%s", doc)
 	}
 }
 

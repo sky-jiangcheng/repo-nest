@@ -98,11 +98,11 @@ func TestCopyForToolingMigratesTheCopyNotTheSource(t *testing.T) {
 
 	// The copy is current and usable.
 	var got int
-	if err := cp.DB.QueryRow(`SELECT value = '23' FROM app_config WHERE key='schema_version'`).Scan(&got); err != nil {
+	if err := cp.DB.QueryRow(`SELECT value = '24' FROM app_config WHERE key='schema_version'`).Scan(&got); err != nil {
 		t.Fatalf("read copy version: %v", err)
 	}
 	if got != 1 {
-		t.Fatal("the copy should have been migrated to v23")
+		t.Fatal("the copy should have been migrated to v24")
 	}
 	var snaps int
 	if err := cp.DB.QueryRow(`SELECT COUNT(*) FROM page_versions`).Scan(&snaps); err != nil {
@@ -220,14 +220,14 @@ func TestCopyForToolingRefusesBadSources(t *testing.T) {
 // an error: nothing downstream looks wrong.
 func TestRequireSchemaVersion(t *testing.T) {
 	database := setupTestDB(t)
-	if err := RequireSchemaVersion(database, 23); err != nil {
+	if err := RequireSchemaVersion(database, 24); err != nil {
 		t.Fatalf("a current database should pass, got %v", err)
 	}
 	if err := RequireSchemaVersion(database, 99); !errors.Is(err, ErrSchemaBehind) {
 		t.Fatalf("a behind database must return ErrSchemaBehind, got %v", err)
 	} else {
 		// The remedy has to be in the message, or the error is just a shrug.
-		for _, want := range []string{"v23", "v99", "desktop app", "copy"} {
+		for _, want := range []string{"v24", "v99", "desktop app", "copy"} {
 			if !strings.Contains(err.Error(), want) {
 				t.Fatalf("error %q should mention %q", err.Error(), want)
 			}

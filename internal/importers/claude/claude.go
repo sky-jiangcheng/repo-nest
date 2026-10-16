@@ -138,11 +138,16 @@ func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 				continue
 			}
 			docs = append(docs, plugin.ImportDoc{
-				ProjectID: pid, // 0 when no project matched -> skipped by runtime
-				Title:     NoteTitle(base),
-				Content:   StripFrontmatter(string(raw)),
-				Kind:      "knowledge",
-				Source:    SourceName,
+				ProjectID: pid, // 0 when no project matched -> the runtime lands it (ADR-0023)
+				// Claude's match key is a decoded label, not a real repo path, so the
+				// placeholder is keyed on a synthetic URI (it will not auto-promote on
+				// scan — the ADR calls this out) but carries the human repo name.
+				RepoPath: "import://claude/" + e.Name(),
+				RepoName: displayName,
+				Title:    NoteTitle(base),
+				Content:  StripFrontmatter(string(raw)),
+				Kind:     "knowledge",
+				Source:   SourceName,
 			})
 		}
 	}

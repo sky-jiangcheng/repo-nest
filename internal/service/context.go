@@ -44,6 +44,12 @@ func (s *Service) ResolveProject(query string) *ProjectResolution {
 		log.Printf("resolve project error: %v", err)
 		return &ProjectResolution{}
 	}
+	// Only repository-backed projects are valid context targets. The seeded
+	// default ("Uncategorized") and any import-placeholder projects are organize
+	// staging buckets with no repo, README or commit history to build context
+	// from (ADR-0023); leaving them in would defeat both the "single project
+	// auto-resolve" convenience and a clean disambiguation catalog.
+	projects = filterRealProjects(projects)
 	if len(projects) == 0 {
 		return &ProjectResolution{}
 	}
@@ -301,6 +307,20 @@ func (s *Service) BuildProjectContext(res *ProjectResolution) string {
 	}
 
 	return strings.TrimRight(b.String(), "\n") + "\n"
+}
+
+// filterRealProjects keeps only scanner-backed projects (kind='scanned'),
+// dropping the synthetic default ("Uncategorized") and any import-placeholder
+// landing projects, which have no repository to build AI context from
+// (ADR-0023). ResolveProject and the context catalog operate on this subset.
+func filterRealProjects(projects []domain.Project) []domain.Project {
+	real := make([]domain.Project, 0, len(projects))
+	for _, p := range projects {
+		if p.ProjectKind == domain.ProjectKindScanned {
+			real = append(real, p)
+		}
+	}
+	return real
 }
 
 // renderProjectCatalog lists projects when a context request is ambiguous, so

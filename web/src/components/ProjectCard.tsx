@@ -29,6 +29,17 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
 
   const reachedGoal = isWorkday && myAdded > 0 && myAdded >= dailyGoal
 
+  // Landing buckets (ADR-0023) are flagged so unfiled knowledge is obvious on the
+  // dashboard: an import placeholder (a repo an import landed notes on) or the
+  // default "Uncategorized" bucket. Scanner projects get no badge. root_path is
+  // surfaced as the tooltip since the flat row is too dense to show the full path.
+  const kindBadge =
+    project.project_kind === 'import_placeholder'
+      ? { label: t('project.kindPlaceholder', { defaultValue: '未归类仓库' }), cls: s.badgePlaceholder }
+      : project.project_kind === 'default'
+        ? { label: t('project.kindDefault', { defaultValue: '未分类' }), cls: s.badgeDefault }
+        : null
+
   const handleStarClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -60,7 +71,8 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
         </button>
         {/* Unstarred repos only show name + star button (no detail page) — clicking
             would lead to an empty detail page with no stats, so it is non-interactive. */}
-        <span className={s.name}>{project.name}</span>
+        <span className={s.name} title={project.root_path}>{project.name}</span>
+        {kindBadge && <span className={`badge ${kindBadge.cls}`}>{kindBadge.label}</span>}
       </div>
     )
   }
@@ -81,7 +93,7 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
         <Icon name="star" size={16} filled />
       </button>
       <Link to={to} className={`${s.card} ${s.flat} ${reachedGoal ? s.goalReached : ''}`}>
-        <span className={s.flatName}>{project.name}</span>
+        <span className={s.flatName} title={project.root_path}>{project.name}</span>
         <span className={s.flatStats}>
           <span className={s.pair}>
             <span className={s.label}>{t('project.todayAdded')}</span>
@@ -101,6 +113,7 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
           </span>
         </span>
         <span className={s.badges}>
+          {kindBadge && <span className={`badge ${kindBadge.cls}`} title={project.root_path}>{kindBadge.label}</span>}
           {reachedGoal && <span className={`badge ${s.badgeGoal}`} title={t('project.goalReached', { defaultValue: '已达成今日目标' })}>{t('project.goalBadge')}</span>}
           {noteCount !== undefined && noteCount > 0 && (
             <span className={`badge ${s.badgeNote}`} title={t('project.noteBadgeTitle')}>{noteCount}</span>

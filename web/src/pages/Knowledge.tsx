@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { stripMarkdown } from '../utils/markdown'
 import DOMPurify from 'dompurify'
 import KnowledgeCard from './knowledge/KnowledgeCard'
+import KnowledgeOrganize from './knowledge/KnowledgeOrganize'
 import ErrorBanner from '../components/ErrorBanner'
 import Icon from '../components/Icon'
 import { useKnowledgePage } from '../hooks/useKnowledgePage'
@@ -119,7 +120,11 @@ function KnowledgePage() {
               {hits.map(h => (
                 <Link
                   key={`${h.type}-${h.id}`}
-                  to={`/project/${h.project_id}`}
+                  to={
+                    h.type === 'note'
+                      ? `/project/${h.project_id}?tab=notes&noteId=${h.id}`
+                      : `/project/${h.project_id}?tab=todos`
+                  }
                   className={s.hitItem}
                 >
                   <div className={s.hitHead}>
@@ -142,7 +147,7 @@ function KnowledgePage() {
               </div>
               <div className={s.recentList}>
                 {recentNotes.map(n => (
-                  <Link key={n.id} to={`/project/${n.project_id}`} className={s.recentItem}>
+                  <Link key={n.id} to={`/project/${n.project_id}?tab=notes&noteId=${n.id}`} className={s.recentItem}>
                     <span className={s.recentTitle}>{n.title || stripMarkdown(n.content, 40)}</span>
                     <span className={s.recentProject}>{n.project_name}</span>
                     <span className={s.recentTime}>{n.updated_at.slice(0, 10)}</span>
@@ -250,6 +255,11 @@ function KnowledgePage() {
           </div>
         </>
       )}
+
+      {/* Always mounted (search mode too); renders nothing when no landing bucket
+          awaits filing. The organize surface is where imported-but-unmatched notes
+          are assigned to a real project — the ADR-0023 landing counterpart. */}
+      <KnowledgeOrganize />
     </div>
   )
 }

@@ -23,9 +23,12 @@ import s from './NoteSection.module.css'
 interface Props {
   projectId: number
   autoNew?: boolean
+  // Note id to scroll to and briefly flash once notes have loaded — set by the
+  // ?noteId= deep link from the Knowledge page (ADR-0023).
+  focusNoteId?: number
 }
 
-function NoteSection({ projectId, autoNew = false }: Props) {
+function NoteSection({ projectId, autoNew = false, focusNoteId }: Props) {
   const { t } = useTranslation()
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,6 +36,9 @@ function NoteSection({ projectId, autoNew = false }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [filter, setFilter] = useState<KindFilter>('all')
   const [saving, setSaving] = useState(false)
+  // The note id currently flashing due to a ?noteId= deep link.
+  const [flashId, setFlashId] = useState<number | null>(null)
+  const focusedRef = useRef(false)
 
   const [draft, setDraft, clearDraft] = useNoteDraft(projectId)
   const { data: projectsData } = useApiData(() => getProjects(undefined, false), [], { cacheKey: 'projects:all' })
@@ -69,6 +75,25 @@ function NoteSection({ projectId, autoNew = false }: Props) {
   }, [autoNew])
 
   const filteredNotes = useFilteredNotes(notes, filter)
+
+  // Deep-link focus: once the list has loaded, scroll the targeted note into view
+  // and flash it briefly so a Knowledge-page click lands the user on the exact
+  // note, not just the project's notes tab (ADR-0023). Guarded so a filter
+  // toggle or refetch does not re-trigger the animation.
+  useEffect(() => {
+    if (loading || focusNoteId == null || focusedRef.current) return
+    focusedRef.current = true
+    const el = document.querySelector(`[data-note-id="${focusNoteId}"]`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // Defer the state change out of the effect body (react-hooks/set-state-in-effect).
+    const raf = requestAnimationFrame(() => setFlashId(focusNoteId))
+    const timer = window.setTimeout(() => setFlashId(null), 2400)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(timer)
+    }
+  }, [loading, focusNoteId])
 
   const startNew = () => {
     setIsNew(true)
@@ -192,6 +217,7 @@ function NoteSection({ projectId, autoNew = false }: Props) {
             <NoteCard
               key={note.id}
               note={note}
+              highlighted={flashId === note.id}
               editing={editingId === note.id}
               editDraft={editDraft}
               onEditDraftChange={setEditDraft}
@@ -226,10 +252,11 @@ function NoteSection({ projectId, autoNew = false }: Props) {
 
 /** NoteCard renders one note, switching to the inline editor when editing. */
 function NoteCard({
-  note, editing, editDraft, onEditDraftChange, onSaveEdit, onCancelEdit, saving,
+  note, highlighted, editing, editDraft, onEditDraftChange, onSaveEdit, onCancelEdit, saving,
   projects, currentProjectId, onMoveProject, onPin, onEdit, onOpenHistory, onDelete,
 }: {
   note: Note
+  highlighted: boolean
   editing: boolean
   editDraft: NoteDraft
   onEditDraftChange: (d: NoteDraft) => void
@@ -255,7 +282,7 @@ function NoteCard({
 
   if (editing) {
     return (
-      <div className={s.card}>
+      <div className={`${s.card} ${highlighted ? s.cardFlash : ''}`} data-note-id={note.id}>
         <NoteEditor
           value={editDraft}
           onChange={onEditDraftChange}
@@ -272,7 +299,7 @@ function NoteCard({
   }
 
   return (
-    <div className={`${s.card} ${note.pinned ? s.cardPinned : ''}`}>
+    <div className={`${s.card} ${note.pinned ? s.cardPinned : ''} ${highlighted ? s.cardFlash : ''}`} data-note-id={note.id}>
       <div className={s.titleRow}>
         <span className={s.titleText}>{note.title || note.content.split('\n')[0] || t('project.noteWord')}</span>
         <div className={s.titleBadges}>

@@ -10,6 +10,11 @@ export interface Project {
   is_auto_grouped: boolean
   is_starred: boolean
   created_at: string
+  // 'scanned' | 'import_placeholder' | 'default' (ADR-0023). The dashboard shows
+  // placeholder/default buckets with a badge so unfiled knowledge is visible.
+  // Optional only so pre-existing test mocks keep compiling — the Go binding
+  // always sends it (json tag, no omitempty), so runtime values are never absent.
+  project_kind?: string
   repo_count: number
   total_added: number
   total_deleted: number
@@ -26,7 +31,21 @@ export interface ProjectDetail {
   root_path: string
   level_override: number
   is_auto_grouped: boolean
+  // See Project.project_kind — always present from Go, optional for mocks.
+  project_kind?: string
   repos: RepoInfo[]
+}
+
+// OrganizeGroup mirrors internal/domain.OrganizeGroup (ADR-0023): a landing
+// project (import placeholder / the default bucket) that still holds unfiled
+// notes, offered for reassignment in the knowledge-base organize view.
+export interface OrganizeGroup {
+  project_id: number
+  name: string
+  root_path: string
+  kind: string
+  note_count: number
+  repo_bound: boolean
 }
 
 export interface RepoInfo {

@@ -47,8 +47,15 @@ func CleanupStaleDataTx(tx *sql.Tx, scannedPaths []string) error {
 		args...); err != nil {
 		return err
 	}
+	// The default ("Uncategorized") landing project is exempt: it has no repos by
+	// design and is empty until an import uses it, so the "no repos/notes/todos"
+	// test below would otherwise delete the very row imports depend on
+	// (ADR-0023). Import placeholders are NOT exempt — an emptied placeholder
+	// (all notes organized away) should be cleaned, while one that still holds
+	// notes is kept by the notes predicate regardless of kind.
 	_, err := tx.Exec(
-		"DELETE FROM projects WHERE NOT EXISTS (SELECT 1 FROM repositories WHERE repositories.project_id = projects.id) " +
+		"DELETE FROM projects WHERE project_kind != 'default' " +
+			"AND NOT EXISTS (SELECT 1 FROM repositories WHERE repositories.project_id = projects.id) " +
 			"AND NOT EXISTS (SELECT 1 FROM project_notes WHERE project_notes.project_id = projects.id) " +
 			"AND NOT EXISTS (SELECT 1 FROM project_todos WHERE project_todos.project_id = projects.id)")
 	return err

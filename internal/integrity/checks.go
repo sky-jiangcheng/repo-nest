@@ -46,7 +46,13 @@ const schemaVersionKey = "schema_version"
 // created lazily by the service rebuild once the embedding dim is known, exactly
 // like note_embeddings; the queue is part of the wiki layer's derived structure
 // and is dropped/restored with it.
-const ExpectedSchemaVersion = 23
+// v24 added projects.project_kind (scanned / import_placeholder / default) and
+// seeded the single "Uncategorized" default landing project (internal/db's
+// EnsureProjectKind, ADR-0023), so an external-knowledge import that matches no
+// project lands a note on a placeholder or the default instead of silently
+// dropping it. Additive: one ALTERed column with a constant default + one
+// idempotent seed, enum validated in Go (no CHECK rebuild).
+const ExpectedSchemaVersion = 24
 
 // StaleAfterDays is the age at which the repo_meta knowledge cache is reported
 // as stale. The cache feeds generated knowledge (tech stack, readme excerpt,
@@ -538,14 +544,20 @@ func checkScanCoverage(db *sql.DB) Check {
 	}{
 		{"scan_roots", "SELECT COUNT(*) FROM scan_roots"},
 		{"repositories", "SELECT COUNT(*) FROM repositories"},
-		{"projects", "SELECT COUNT(*) FROM projects"},
+		// Scan coverage is a statement about the scanner's output, so it counts
+		// only scanner-origin projects. The seeded default ("Uncategorized") and
+		// any import-placeholder landing projects are never "collected" by a scan
+		// (they are not scan artifacts), so including them would report a permanent
+		// "discovered but never collected" warning over rows no scan was ever
+		// supposed to touch (ADR-0023).
+		{"projects", "SELECT COUNT(*) FROM projects WHERE project_kind = 'scanned'"},
 		// COALESCE covers rows written before migration v5 made collected NOT
 		// NULL, where the column reads as NULL instead of FALSE.
-		{"uncollected", "SELECT COUNT(*) FROM projects WHERE COALESCE(collected, 0) = 0"},
+		{"uncollected", "SELECT COUNT(*) FROM projects WHERE project_kind = 'scanned' AND COALESCE(collected, 0) = 0"},
 		// MarkProjectCollectedTx always stamps collected_at together with the
 		// flag, so a collected project without one had its flag set by something
 		// else and its "collected" claim is unbacked.
-		{"collected_without_timestamp", "SELECT COUNT(*) FROM projects WHERE COALESCE(collected, 0) = 1 AND collected_at IS NULL"},
+		{"collected_without_timestamp", "SELECT COUNT(*) FROM projects WHERE project_kind = 'scanned' AND COALESCE(collected, 0) = 1 AND collected_at IS NULL"},
 	}
 	for _, q := range queries {
 		v, err := count(db, q.query)

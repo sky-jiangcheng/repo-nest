@@ -391,6 +391,12 @@ func (s *Service) ListProjects() []domain.Project {
 		log.Printf("list projects error: %v", err)
 		return []domain.Project{}
 	}
+	// The agent-facing list offers only scanner-backed projects: the seeded
+	// default ("Uncategorized") and any import-placeholder landing bucket have no
+	// repository to act on, and this must match the context resolver's candidate
+	// set so an id picked here also resolves in repotory_context (ADR-0023). The
+	// desktop dashboard uses GetProjects, which still surfaces these buckets.
+	projects = filterRealProjects(projects)
 	if projects == nil {
 		return []domain.Project{}
 	}

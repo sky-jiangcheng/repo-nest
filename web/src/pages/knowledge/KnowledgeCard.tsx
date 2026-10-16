@@ -45,7 +45,7 @@ export default function KnowledgeCard({ note, exporting, onPin, onExport, onSele
           <Icon name="pin" size={15} />
         </button>
       </div>
-      <Link to={`/project/${note.project_id}`} className={s.body}>
+      <Link to={`/project/${note.project_id}?tab=notes&noteId=${note.id}`} className={s.body}>
         <div className={s.title}>{note.title || stripMarkdown(note.content, 40)}</div>
         <div className={`${s.snippet} markdown-body`} dangerouslySetInnerHTML={{ __html: renderMarkdown(stripMarkdown(note.content, 120)) }} />
         <div className={s.foot}>

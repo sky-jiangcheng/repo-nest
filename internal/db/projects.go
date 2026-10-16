@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"repotory/internal/domain"
 )
 
 const (
 	searchProjectsLimit = 50
-	projectColumns      = "id, name, root_path, level_override, is_auto_grouped, is_starred, created_at"
+	projectColumns      = "id, name, root_path, level_override, is_auto_grouped, is_starred, created_at, project_kind"
 )
 
 // GetAllProjects returns all projects, starred first then by name.
@@ -23,7 +25,7 @@ func GetAllProjects(db *sql.DB) ([]Project, error) {
 	var projects []Project
 	for rows.Next() {
 		var p Project
-		if err := rows.Scan(&p.ID, &p.Name, &p.RootPath, &p.LevelOverride, &p.IsAutoGrouped, &p.IsStarred, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.RootPath, &p.LevelOverride, &p.IsAutoGrouped, &p.IsStarred, &p.CreatedAt, &p.ProjectKind); err != nil {
 			return nil, err
 		}
 		projects = append(projects, p)
@@ -41,7 +43,7 @@ func GetStarredProjects(db *sql.DB) ([]Project, error) {
 	var projects []Project
 	for rows.Next() {
 		var p Project
-		if err := rows.Scan(&p.ID, &p.Name, &p.RootPath, &p.LevelOverride, &p.IsAutoGrouped, &p.IsStarred, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.RootPath, &p.LevelOverride, &p.IsAutoGrouped, &p.IsStarred, &p.CreatedAt, &p.ProjectKind); err != nil {
 			return nil, err
 		}
 		projects = append(projects, p)
@@ -53,7 +55,7 @@ func GetStarredProjects(db *sql.DB) ([]Project, error) {
 func GetProjectByID(db *sql.DB, id int64) (*Project, error) {
 	p := &Project{}
 	err := db.QueryRow("SELECT "+projectColumns+" FROM projects WHERE id = ?", id).
-		Scan(&p.ID, &p.Name, &p.RootPath, &p.LevelOverride, &p.IsAutoGrouped, &p.IsStarred, &p.CreatedAt)
+		Scan(&p.ID, &p.Name, &p.RootPath, &p.LevelOverride, &p.IsAutoGrouped, &p.IsStarred, &p.CreatedAt, &p.ProjectKind)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +79,7 @@ func SearchProjects(db *sql.DB, query string) ([]Project, error) {
 	var projects []Project
 	for rows.Next() {
 		var p Project
-		if err := rows.Scan(&p.ID, &p.Name, &p.RootPath, &p.LevelOverride, &p.IsAutoGrouped, &p.IsStarred, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.RootPath, &p.LevelOverride, &p.IsAutoGrouped, &p.IsStarred, &p.CreatedAt, &p.ProjectKind); err != nil {
 			return nil, err
 		}
 		projects = append(projects, p)
@@ -139,12 +141,58 @@ func SyncProjectTx(tx *sql.Tx, name, rootPath string, level int, isAuto bool) (i
 		return 0, err
 	}
 	newAuto := existingAuto && isAuto
+	// A scan adopting an existing row means a real repository now backs it. If the
+	// row was an import placeholder (created by a knowledge import that matched no
+	// project), promote it to a real scanned project in place — its notes stay put.
+	// The default project's sentinel root_path is never a scanned repo path, so
+	// the CASE can only ever flip import_placeholder rows (ADR-0023 decision 4).
 	if _, err := tx.Exec(
-		"UPDATE projects SET name = ?, level_override = ?, is_auto_grouped = ? WHERE id = ?",
-		name, level, newAuto, id); err != nil {
+		"UPDATE projects SET name = ?, level_override = ?, is_auto_grouped = ?, project_kind = CASE WHEN project_kind = ? THEN ? ELSE project_kind END WHERE id = ?",
+		name, level, newAuto, domain.ProjectKindImportPlaceholder, domain.ProjectKindScanned, id); err != nil {
 		return 0, err
 	}
 	return id, nil
+}
+
+// EnsureImportPlaceholder returns the id of the landing project for a note whose
+// source is the repository at repoPath, when it matched no existing project
+// (ADR-0023 decision 3). It creates a kind='import_placeholder' project keyed on
+// repoPath (so root_path UNIQUE dedupes repeated imports of the same repo) and
+// names it repoName, falling back to the base name of repoPath when repoName is
+// empty. Because the placeholder's root_path is the real repo path, a later scan
+// that discovers that repo adopts the same row and SyncProjectTx promotes it to a
+// scanned project. An empty repoPath returns 0 (no placeholder — the caller should
+// land the note on the default project instead).
+func EnsureImportPlaceholder(db *sql.DB, repoPath, repoName string) (int64, error) {
+	repoPath = strings.TrimSpace(repoPath)
+	if repoPath == "" {
+		return 0, nil
+	}
+	var id int64
+	err := db.QueryRow("SELECT id FROM projects WHERE root_path = ?", repoPath).Scan(&id)
+	if err == nil {
+		return id, nil
+	}
+	if err != sql.ErrNoRows {
+		return 0, err
+	}
+	name := strings.TrimSpace(repoName)
+	if name == "" {
+		name = filepath.Base(repoPath)
+	}
+	res, err := db.Exec(
+		"INSERT INTO projects (name, root_path, level_override, is_auto_grouped, project_kind) VALUES (?, ?, 0, 0, ?)",
+		name, repoPath, domain.ProjectKindImportPlaceholder)
+	if err != nil {
+		// Lost a race to a concurrent scan/import on the same root_path: reuse it.
+		if isAlreadyExistsErr(err) {
+			if rerr := db.QueryRow("SELECT id FROM projects WHERE root_path = ?", repoPath).Scan(&id); rerr == nil {
+				return id, nil
+			}
+		}
+		return 0, err
+	}
+	return res.LastInsertId()
 }
 
 // GetCollectedProjectIDs returns the ids of all projects marked as collected.

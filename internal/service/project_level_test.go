@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"repotory/internal/db"
+	"repotory/internal/domain"
 )
 
 // Regression guard for a bug where MergeProjectUp / SplitProjectDown computed
@@ -115,7 +116,7 @@ func TestUpdateProjectLevel_SplitThenMergeIsReversible(t *testing.T) {
 	// created (the survivors keep their notes, so the group id is still live).
 	var live []int64
 	for id := int64(1); id <= 8; id++ {
-		if p, err := db.GetProjectByID(svc.db, id); err == nil && p != nil {
+		if p, err := db.GetProjectByID(svc.db, id); err == nil && p != nil && p.ProjectKind == domain.ProjectKindScanned {
 			live = append(live, p.ID)
 		}
 	}
@@ -131,7 +132,7 @@ func TestUpdateProjectLevel_SplitThenMergeIsReversible(t *testing.T) {
 
 	var after []int64
 	for id := int64(1); id <= 8; id++ {
-		if p, err := db.GetProjectByID(svc.db, id); err == nil && p != nil {
+		if p, err := db.GetProjectByID(svc.db, id); err == nil && p != nil && p.ProjectKind == domain.ProjectKindScanned {
 			after = append(after, p.ID)
 		}
 	}

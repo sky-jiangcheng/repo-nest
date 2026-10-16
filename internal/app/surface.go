@@ -164,6 +164,11 @@ var bindingSurfaces = map[string]BindingSurface{
 	"ResolveWorkspacePath": {SurfaceDesktopOnly, "", "agents pass `path` to repotory_context instead; a second client-side matcher is the disagreement this avoids"},
 	"ListWikiPageVersions": {SurfaceDesktopOnly, "", "the page history panel (ADR-0021); snapshots exist so a HUMAN can notice stale approved content, not so an agent can act on it"},
 	"DiffWikiPageVersion":  {SurfaceDesktopOnly, "", "snapshot-vs-current diff on the review page; it supports a human approve/reject decision"},
+
+	// ---- organize (ADR-0023) -------------------------------------------------
+	"ListOrganizeGroups":   {SurfaceDesktopOnly, "", "read-only, but it is the surface a person looks at to decide where unfiled notes belong; an agent choosing for the user is the curation this feature deliberately leaves to a human"},
+	"ReassignLandingNotes": {SurfaceDesktopOnly, "", "re-filing notes between projects is a human organising act, like MoveNote which also has no MCP twin"},
+	"DeleteLandingProject": {SurfaceDesktopOnly, "", "deletes a landing placeholder and may delete its notes; deletion is human-only and is a confirmed action, never an agent-callable cascade"},
 }
 
 // mcpBackedBindings returns the bindings that claim an MCP twin, for the

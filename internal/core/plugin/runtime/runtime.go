@@ -14,6 +14,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 
 	"repotory/internal/core/plugin"
@@ -225,9 +226,25 @@ func (r *Runtime) TriggerImport(name string) (ImportRun, error) {
 	var run ImportRun
 	var firstErr error
 	for _, d := range docs {
+		// A note that matched no project is LANDED, never dropped (ADR-0023):
+		// onto a repo-derived placeholder project when the importer knew the repo
+		// path, else onto the seeded default ("Uncategorized") project. Only a doc
+		// that cannot be landed at all (a placeholder/default failure) is skipped.
 		if d.ProjectID <= 0 {
-			run.Skipped++
-			continue
+			landed, lerr := r.landUnmatched(d)
+			if lerr != nil {
+				log.Printf("plugin runtime: import %q doc %q could not be landed: %v", name, d.Title, lerr)
+				if firstErr == nil {
+					firstErr = lerr
+				}
+				run.Skipped++
+				continue
+			}
+			if landed <= 0 {
+				run.Skipped++
+				continue
+			}
+			d.ProjectID = landed
 		}
 		created, err := r.upsertDoc(d, src.name)
 		if err != nil {
@@ -258,6 +275,17 @@ func (r *Runtime) recordSourceError(src *sourceEntry, err error) {
 	r.mu.Lock()
 	src.lastErr = err
 	r.mu.Unlock()
+}
+
+// landUnmatched picks a landing project for a doc whose importer matched no
+// project (ADR-0023). A known repo path yields a placeholder project (which a
+// later scan can promote to a real one); no repo path — an agent-global source
+// like openclaw/hermes — yields the seeded default ("Uncategorized") project.
+func (r *Runtime) landUnmatched(d plugin.ImportDoc) (int64, error) {
+	if strings.TrimSpace(d.RepoPath) != "" {
+		return db.EnsureImportPlaceholder(r.db, d.RepoPath, d.RepoName)
+	}
+	return db.GetDefaultProjectID(r.db)
 }
 
 // upsertDoc creates or updates a note keyed by (project, source, title).

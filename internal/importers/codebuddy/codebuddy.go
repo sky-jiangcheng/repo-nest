@@ -269,6 +269,7 @@ func (i *Importer) docFor(dir string, projects []db.Project, repos []db.Reposito
 	}
 	return plugin.ImportDoc{
 		ProjectID: pid,
+		RepoPath:  p.workspace, // when pid==0 the runtime lands the note on a placeholder named for this workspace (ADR-0023)
 		Title:     truncateRunes(title, db.MaxNoteTitleLen),
 		Content:   memsrc.ClipToBytes(b.String(), db.MaxNoteContentLen),
 		Kind:      "log",
@@ -547,11 +548,12 @@ func (m *MemoryImporter) Import() ([]plugin.ImportDoc, error) {
 
 	var docs []plugin.ImportDoc
 	pid := memsrc.MatchProject(memsrc.LastPathSegment(cfg), projects, repos)
-	if pid == 0 {
-		// No target configured: curated memory is agent-global and intentionally
-		// not scattered into the first project the importer guesses.
-		return docs, nil
-	}
+	// An unconfigured/unknown target no longer drops the curated memory. With
+	// pid==0 the runtime lands these agent-global notes on the default
+	// ("Uncategorized") project for later organizing, exactly like openclaw and
+	// hermes (ADR-0023). This supersedes ADR-0022's earlier "skip rather than
+	// scatter" behaviour — the point of that guard was to avoid guessing a WRONG
+	// project, and the neutral default bucket is not a guess.
 
 	if err := m.addMemery(home, pid, &docs); err != nil {
 		log.Printf("codebuddy-memory importer: memery read failed: %v", err)

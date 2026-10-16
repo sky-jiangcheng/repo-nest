@@ -47,6 +47,17 @@
   background: var(--warning-soft);
 }
 
+/* Brief highlight on the note a ?noteId= deep link jumped to (ADR-0023). */
+.cardFlash {
+  border-color: var(--info);
+  animation: noteFlash 2.4s ease-out;
+}
+
+@keyframes noteFlash {
+  0%, 25% { background: var(--info-soft); box-shadow: 0 0 0 3px var(--info-soft); }
+  100% { background: var(--bg-tertiary); box-shadow: 0 0 0 0 transparent; }
+}
+
 .body {
   font-size: 13px;
   margin-bottom: 8px;

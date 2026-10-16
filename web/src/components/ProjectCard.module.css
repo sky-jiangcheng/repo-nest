@@ -169,6 +169,10 @@
 
 .badgeWarning { background: var(--warning-soft); color: var(--warning); }
 
+/* Landing-bucket badges (ADR-0023): import placeholder vs the default bucket. */
+.badgePlaceholder.badgePlaceholder { background: var(--info-soft); color: var(--info); border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 600; }
+.badgeDefault.badgeDefault { background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
+
 .cardRefreshBtn {
   position: absolute;
   top: 10px;

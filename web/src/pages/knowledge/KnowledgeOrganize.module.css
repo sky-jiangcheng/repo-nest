@@ -1,0 +1,67 @@
+/* Knowledge-base organize surface (ADR-0023). Scoped styles; the `.badge` base and
+   `.btn` / `.form-input` primitives stay global. Badge variants use doubled
+   selectors so they beat the global `.badge` background. */
+
+.section {
+  margin-top: 20px;
+}
+
+.intro {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  flex-wrap: wrap;
+}
+
+.rowHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rowName {
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
+.rowCount {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.select {
+  min-width: 140px;
+  font-size: 13px;
+}
+
+.badgePlaceholder.badgePlaceholder { background: var(--info-soft); color: var(--info); }
+.badgeDefault.badgeDefault { background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-subtle); }
+.badgeGone.badgeGone { background: var(--warning-soft); color: var(--warning); }

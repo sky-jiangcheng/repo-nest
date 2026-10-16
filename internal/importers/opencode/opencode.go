@@ -125,6 +125,7 @@ func (i *Importer) docFor(path string, projects []db.Project, repos []db.Reposit
 	content = memsrc.ClipToBytes(content, db.MaxNoteContentLen)
 	return plugin.ImportDoc{
 		ProjectID: pid,
+		RepoPath:  s.Directory, // when pid==0 the runtime lands the note on a placeholder named for this repo (ADR-0023)
 		Title:     noteTitle(title, s.ID),
 		Content:   content,
 		Kind:      "log",

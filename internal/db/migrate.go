@@ -6,6 +6,8 @@ import (
 	"log"
 	"strconv"
 	"strings"
+
+	"repotory/internal/domain"
 )
 
 // migrationVersionKey is the app_config key tracking the applied schema version.
@@ -351,6 +353,22 @@ func upgradeSchema(db *sql.DB) error {
 		// decides re-embed vs remove, and only approved pages are ever embedded
 		// (ADR-0015).
 		{id: 23, fn: pageEmbedDirtyMigration},
+		// v24: project origin/role classification + the seeded default project
+		// (ADR-0023). External-knowledge imports used to silently DROP any note
+		// that matched no project (runtime.go's `ProjectID<=0 -> Skipped++`),
+		// because project_notes.project_id is NOT NULL + FK and there was no
+		// "headless note" state and no default/placeholder landing project. This
+		// adds project_kind (scanned / import_placeholder / default) and seeds the
+		// single default row, so a later importer can land an unmatched note on a
+		// placeholder (named for its repo) or the default instead of discarding it.
+		//
+		// Purely additive: one ALTERed column with a constant default (pre-v24 rows
+		// read 'scanned') + one idempotent INSERT guard, both re-asserted on every
+		// open via EnsureProjectKind — the same "ensure object on open, not just at
+		// migration" contract as v22/v23 (whose functions are both the migration fn
+		// and an InitDB self-heal call). Enum values are checked in Go, never with
+		// an inline CHECK: adding a table CHECK would force a projects rebuild.
+		{id: 24, fn: EnsureProjectKind},
 	}
 
 	for _, m := range migrations {
@@ -539,6 +557,55 @@ func migrateV13NormalizeTagsAndDropMultiRepoMeta(db *sql.DB) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+// EnsureProjectKind is migration v24 (ADR-0023). It re-asserts two things and is
+// idempotent on both, so it runs both as the migration body and from InitDB on
+// every open:
+//   - the projects.project_kind column. The constant DEFAULT makes every pre-v24
+//     row read back as 'scanned'; once the column exists the ALTER is a "duplicate
+//     column name" error that isAlreadyExistsErr tolerates as already-applied.
+//   - the single project_kind='default' "Uncategorized" landing project, inserted
+//     only when it is absent (WHERE NOT EXISTS), so re-running never duplicates it.
+//
+// The enum values are validated in Go (domain.ProjectKind*), never with a SQL
+// CHECK: attaching a CHECK to the existing projects table would force a full
+// rebuild (see ADR-0021 implementation corrections).
+func EnsureProjectKind(db *sql.DB) error {
+	if _, err := db.Exec(
+		"ALTER TABLE projects ADD COLUMN project_kind TEXT NOT NULL DEFAULT '" + domain.ProjectKindScanned + "'",
+	); err != nil && !isAlreadyExistsErr(err) {
+		return fmt.Errorf("add project_kind column: %w", err)
+	}
+	if _, err := db.Exec(
+		"INSERT INTO projects (name, root_path, level_override, is_auto_grouped, project_kind) "+
+			"SELECT ?, ?, 0, 0, ? "+
+			"WHERE NOT EXISTS (SELECT 1 FROM projects WHERE project_kind = ?)",
+		domain.DefaultProjectName, domain.DefaultProjectRootPath,
+		domain.ProjectKindDefault, domain.ProjectKindDefault,
+	); err != nil {
+		return fmt.Errorf("seed default project: %w", err)
+	}
+	return nil
+}
+
+// GetDefaultProjectID returns the id of the seeded default ("Uncategorized")
+// project, or 0 if it is somehow absent. Used by the importer landing path
+// (ADR-0023 decision 3) to place repo-pathless notes without duplicating the
+// seed lookup.
+func GetDefaultProjectID(db *sql.DB) (int64, error) {
+	var id int64
+	err := db.QueryRow(
+		"SELECT id FROM projects WHERE project_kind = ? LIMIT 1",
+		domain.ProjectKindDefault,
+	).Scan(&id)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 func insertDefaults(db *sql.DB) error {

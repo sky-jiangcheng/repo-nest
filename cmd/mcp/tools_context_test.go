@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -31,12 +32,17 @@ func TestContextToolSingleProject(t *testing.T) {
 
 func TestContextToolMultipleProjectsReturnsCatalog(t *testing.T) {
 	ts := newTestServer(t)
-	ts.seedProject("alpha", "/home/me/alpha")
-	ts.seedProject("beta", "/home/me/beta")
+	idA := ts.seedProject("alpha", "/home/me/alpha")
+	idB := ts.seedProject("beta", "/home/me/beta")
 
 	text := ts.text(ts.call("repotory_context", nil))
-	if !strings.Contains(text, "| 1 | alpha |") || !strings.Contains(text, "| 2 | beta |") {
-		t.Errorf("ambiguous context call should return a project catalog\n%s", text)
+	for _, want := range []string{
+		fmt.Sprintf("| %d | alpha |", idA),
+		fmt.Sprintf("| %d | beta |", idB),
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("ambiguous context call should list both real projects; want %q in\n%s", want, text)
+		}
 	}
 }
 

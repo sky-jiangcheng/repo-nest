@@ -20,6 +20,7 @@ import type {
   NoteCount,
   NoteVersion,
   NoteWithProject,
+  OrganizeGroup,
   Project,
   ProjectDetail,
   ProjectOverview,
@@ -58,6 +59,26 @@ export function getProjects(date?: string, starredOnly = false): Promise<Project
 
 export function getProjectDetail(id: number): Promise<ProjectDetail> {
   return call<ProjectDetail>({ method: 'GetProjectDetail', args: [id], path: `/projects/${id}` })
+}
+
+// --- Organize (ADR-0023) ------------------------------------------------------
+// Landing buckets (import placeholders / the default "Uncategorized") that still
+// hold unfiled notes, and the human actions to re-file or remove them. All
+// desktop-only: no MCP twin; they travel over /api/rpc, so no REST path is needed.
+
+/** The landing projects awaiting organization, with note counts + repo binding. */
+export function listOrganizeGroups(): Promise<OrganizeGroup[]> {
+  return call<OrganizeGroup[]>({ method: 'ListOrganizeGroups', args: [] }).then(d => d ?? [])
+}
+
+/** Move every note out of a landing project into a target; returns the count moved. */
+export function reassignLandingNotes(sourceId: number, targetId: number): Promise<number> {
+  return call<number>({ method: 'ReassignLandingNotes', args: [sourceId, targetId] }).then(r => r ?? 0)
+}
+
+/** Delete a landing placeholder; deleteNotes confirms removing the notes in it. */
+export function deleteLandingProject(id: number, deleteNotes: boolean): Promise<void> {
+  return call<void>({ method: 'DeleteLandingProject', args: [id, deleteNotes] })
 }
 
 /**

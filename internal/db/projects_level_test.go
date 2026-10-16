@@ -3,7 +3,28 @@ package db
 import (
 	"database/sql"
 	"testing"
+
+	"repotory/internal/domain"
 )
+
+// scannedProjects returns only the scanner-origin projects, excluding the seeded
+// default ("Uncategorized") landing project (ADR-0023) that otherwise inflates
+// every whole-table project count and would be mistaken for a split child in the
+// "any project that isn't the original" loops below.
+func scannedProjects(t *testing.T, database *sql.DB) []Project {
+	t.Helper()
+	all, err := GetAllProjects(database)
+	if err != nil {
+		t.Fatalf("GetAllProjects: %v", err)
+	}
+	out := make([]Project, 0, len(all))
+	for _, p := range all {
+		if p.ProjectKind == domain.ProjectKindScanned {
+			out = append(out, p)
+		}
+	}
+	return out
+}
 
 // mustExecProject inserts a project and returns its id.
 func mustExecProject(t *testing.T, database *sql.DB, name, rootPath string) int64 {
@@ -49,7 +70,7 @@ func TestSplitProjectDownMultiRepo(t *testing.T) {
 		t.Errorf("expected new level -1, got %d", newLevel)
 	}
 
-	projects, _ := GetAllProjects(database)
+	projects := scannedProjects(t, database)
 	if len(projects) != 2 {
 		t.Fatalf("expected 2 projects after split, got %d", len(projects))
 	}
@@ -85,7 +106,7 @@ func TestSplitProjectDownSingleRepo(t *testing.T) {
 	if _, err := SplitProjectDown(database, pid); err != nil {
 		t.Fatalf("SplitProjectDown on single-repo project failed: %v", err)
 	}
-	projects, _ := GetAllProjects(database)
+	projects := scannedProjects(t, database)
 	if len(projects) != 1 {
 		t.Errorf("single-repo split must not create projects, got %d", len(projects))
 	}
@@ -111,7 +132,7 @@ func TestMergeProjectUp(t *testing.T) {
 		t.Errorf("expected new level 1, got %d", newLevel)
 	}
 
-	projects, _ := GetAllProjects(database)
+	projects := scannedProjects(t, database)
 	if len(projects) != 2 {
 		t.Fatalf("expected 2 projects after merge (workspace + elsewhere), got %d", len(projects))
 	}

@@ -16,6 +16,53 @@ type Project struct {
 	Collected     bool   `db:"collected" json:"collected"`
 	CollectedAt   string `db:"collected_at" json:"collected_at"`
 	CreatedAt     string `db:"created_at" json:"created_at"`
+	// ProjectKind classifies how the row came to exist — see the ProjectKind*
+	// constants below (ADR-0023). Wired into projectColumns by migration v24.
+	ProjectKind string `db:"project_kind" json:"project_kind"`
+}
+
+// ProjectKind values (ADR-0023). The set is validated in Go, not by a SQL CHECK,
+// because adding a table-level CHECK to the existing projects table would force a
+// full rebuild (see ADR-0021 implementation corrections).
+const (
+	// ProjectKindScanned is a project discovered by the repository scanner.
+	// It is the default for every row that predates v24.
+	ProjectKindScanned = "scanned"
+	// ProjectKindImportPlaceholder is a landing project created during an
+	// external-knowledge import when the note matched no existing project. Its
+	// root_path is the source repo path, so a later scan of that repo promotes
+	// it to ProjectKindScanned.
+	ProjectKindImportPlaceholder = "import_placeholder"
+	// ProjectKindDefault is the seeded "Uncategorized" fallback project that
+	// receives imports with no derivable repo path, and the organize target of
+	// last resort. It must never be deleted.
+	ProjectKindDefault = "default"
+)
+
+// Seed values for the single ProjectKindDefault row (ADR-0023 decision 2).
+// The root_path is a synthetic sentinel no real filesystem path can produce, so
+// it satisfies projects.root_path NOT NULL UNIQUE without ever colliding with a
+// scanned repository. The display name is localized by the frontend from the
+// kind; this fixed value is only the stored/internal name.
+const (
+	DefaultProjectName     = "未分类"
+	DefaultProjectRootPath = "repotory://memory/default"
+)
+
+// OrganizeGroup is one row in the knowledge-base "organize" surface (ADR-0023
+// decision 5): a landing project — an import placeholder or the default
+// ("Uncategorized") bucket — that holds notes the user has not yet assigned to a
+// real, scanner-backed project. RepoBound reports whether a scanned repository
+// currently points at the project; an unbound placeholder whose repo has vanished
+// from disk is the "source repo gone" case where deleting it may also delete its
+// notes (a manual, user-confirmed action — the default project is never offered).
+type OrganizeGroup struct {
+	ProjectID int64  `json:"project_id"`
+	Name      string `json:"name"`
+	RootPath  string `json:"root_path"`
+	Kind      string `json:"kind"`
+	NoteCount int    `json:"note_count"`
+	RepoBound bool   `json:"repo_bound"`
 }
 
 // Repository represents a row in the repositories table.
